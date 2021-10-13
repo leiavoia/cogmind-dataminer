@@ -1,0 +1,1101 @@
+<!doctype html>
+<html lang="en">
+	<!-- what kind of idiot would build the entire app in one file? -->
+	<!-- me! :-) -->
+	<head>
+		<title>Cogmind Dataminer</title>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<script src="https://unpkg.com/vue"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.5.1/chart.min.js"></script>
+		<!-- bootstrap styles -->
+		<!-- <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-uWxY/CJNBR+1zjPWmfnSnVxwRheevXITnMqoEIeG1LJrdI0GlVs/9cVSyPYXdcSF" crossorigin="anonymous"> -->
+		<link href="css/bootstrap.slate.min.css" rel="stylesheet"/>
+		<style>
+			/* TABLE { --bs-table-accent-bg: none !important; } */
+			[v-cloak] > * { display:none }
+			.statbox { text-align:center; }
+			.statbox { font-weight: bold; }
+			.statbox .card-body .card-text { font-size: 150%;}
+			.statbox .card-body.numeric .card-text { font-size: 300%;}
+			.badges .badge { background-color: #666; }
+			.badges .badge[class~='Factory'] { background-color: #AAA; color: #333; }
+			.badges .badge[class~='Mines'] { background-color: #504330; }
+			.badges .badge[class~='Research'] { background-color: rgb(148, 35, 158); }
+			.badges .badge[class~='Access'] { background-color: #ddd; color: #333; }
+			.badges .badge[class~='DoCo'] { background-color: #2671b9; }
+			.badges .badge[class~='Command'] { background-color: #2671b9; }
+			.badges .badge[class~='A0'] { background-color: #ccc; color: rgb(131, 25, 25); }
+			.badges .badge[class~='Lab'] { background-color: rgb(111, 163, 114); }
+			.badges .badge[class*='Section 7'] { background-color: rgb(111, 163, 114); }
+			.badges .badge[class~='Zion'] { background-color: rgb(228, 148, 185); }
+			.badges .badge[class~='Imprinted'] { background-color: rgb(228, 148, 185); }
+			.badges .badge[class~='ZDC'] { background-color: rgb(175, 81, 125); }
+			.badges .badge[class~='Testing'] { background-color: rgb(28, 122, 28); }
+			.badges .badge[class~='Quarantine'] { background-color: rgb(28, 122, 28); }
+			.badges .badge[class~='Zhirov'] { background-color: rgb(100, 160, 205); }
+			.badges .badge[class~='Dataminer'] { background-color: rgb(100, 160, 205); }
+			.badges .badge[class~='Warlord'] { background-color: rgb(131, 25, 25); }
+			.badges .badge[class~='Exiles'] { background-color: rgb(100, 160, 205); }
+			.badges .badge[class~='FarCom'] { background-color: rgb(100, 160, 205); }
+			.badges .badge[class~='Materials'] { background-color: #756a57; }
+			.badges .badge[class~='Extension'] { background-color: rgb(179, 176, 14); }
+			.badges .badge[class~='Archives'] { background-color: rgb(179, 176, 14); }
+			.badges .badge[class~='Cetus'] { background-color: rgb(179, 176, 14); }
+			.badges .badge[class~='Hub'] { background-color: rgb(179, 176, 14); }
+			.badges .badge[class~='Recycling'] { background-color: rgb(190, 164, 44); }
+			.badges .badge[class~='Storage'] { background-color: rgb(209, 115, 37); }
+			.badges .badge[class~='Armory'] { background-color: rgb(216, 12, 12); }
+			.badges .badge[class~='Waste'] { background-color: rgb(48, 43, 43); }
+			.badges .badge[class~='RIF'] { background-color: rgb(216, 12, 12); }
+			.badges .badge[class~='CRM'] { background-color: rgb(13, 93, 158); }
+			.badges .badge[class~='Garrison'] { background-color: rgb(216, 12, 12); }
+			.badges .badge[class*='Caves'] { background-color: #504330; }
+			.badges .badge[class*='W0'],
+			.badges .badge[class*='W1'],
+			.badges .badge[class*='W2'],
+			.badges .badge[class*='W3'],
+			.badges .badge[class*='W4'],
+			.badges .badge[class*='W5'],
+			.badges .badge[class*='W6'],
+			.badges .badge[class*='W7'],
+			.badges .badge[class*='W8'],
+			.badges .badge[class*='W9'] { background-color: #169205; }
+	
+			TR.indent-1 TH { padding-left: 2em; color: rgb(140, 185, 199); }
+			TR.indent-1 TD { color: rgb(140, 185, 199); }
+			TR.indent-2 TH { padding-left: 4em; color: rgb(136, 202, 150); }
+			TR.indent-2 TD { color: rgb(136, 202, 150); }
+			TR.indent-3 TH { padding-left: 6em; color: #AAA; }
+			TR.indent-3 TD { color: #AAA; }
+			TR.indent-4 TH { padding-left: 8em; color: rgb(238, 202, 173); }
+			TR.indent-4 TD { color: rgb(238, 202, 173); }
+			TR.indent-5 TH { padding-left: 10em; color: rgb(236, 204, 219); }
+			TR.indent-5 TD { color: rgb(236, 204, 219); }
+			/* fix bug with Slate theme */
+			.table > :not(:first-child) {
+				border-top: 0px !important;
+			}
+			/* general alignment prettiness */
+			th:first-child , td:first-child  {
+				width:20%;
+				white-space: nowrap !important;
+			} 
+			td:last-child  {
+				width:80%;
+			}
+			H2,H3,H4,H5,H6 { margin-top: 1.5em; margin-bottom: 0.5em; }
+			.slot_loadout SPAN {
+				display:inline-block;
+				margin-right:0.25em;
+				height: 4em;
+				width: 1em;
+				background: #666;
+			}
+			.slot_loadout SPAN.p { background-color: #dfd239; }
+			.slot_loadout SPAN.n { background-color: #418d4f; }
+			.slot_loadout SPAN.u { background-color: #1e66a7; }
+			.slot_loadout SPAN.w { background-color: #aa1b36; }
+		</style>
+	</head>
+	
+	<body >
+		<div class="container-xl pt-4">
+			
+			<div id="app" v-cloak>
+			
+				<h1>
+					Cogmind Dataminer
+					<span class="text-muted" v-if="scoresheet"> : {{scoresheet.header.playerName}} : Game #{{scoresheet.game.gameNumber}}</span>	
+				</h1>
+				
+				<!-- intro page to request JSON file -->
+				<template v-if="!scoresheet || pane=='input'">
+					<h1>Cogmind Dataminer</h1>
+					<div class="container-lg">
+						<p>Enter a file hash or URL:</p>
+						<form action="" method="get">
+							<input type="text" name="file" />
+							<input type="submit" name="submit" value="Submit" />
+						</form>
+					</div>
+				</template>
+				
+				<template v-if="pane=='loading'">
+					<h1>Cogmind Dataminer</h1>
+					<p>Loading Scoresheet ...</p>
+					<progress></progress>
+				</template>
+				
+				
+				<!-- <nav class="navbar navbar-expand-xl nav-justified" v-if="scoresheet"> -->
+				<!-- <nav class="btn-block btn-group" v-if="scoresheet"> -->
+				<div class="my-3" v-if="scoresheet">
+					<button type="button" class="btn text-nowrap" :class="pane=='overview' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('overview')">Overview</button>
+					<button type="button" class="btn text-nowrap" :class="pane=='route' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('route')">Route</button>
+					<button type="button" class="btn text-nowrap" :class="pane=='build' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('build')">Build</button>
+					<button type="button" class="btn text-nowrap" :class="pane=='combat' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('combat')">Combat</button>
+					<button type="button" class="btn text-nowrap" :class="pane=='hacking' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('hacking')">Hacking</button>
+					<button type="button" class="btn text-nowrap" :class="pane=='stealth' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('stealth')">Stealth</button>
+					<button type="button" class="btn text-nowrap" :class="pane=='tables' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('tables')">Table Data</button>
+				</div>
+					
+				<!-- overview pane -->			
+				<template v-if="!pane || pane=='overview'" >							
+					<div class="container-fluid px-5 py-4 mt-3 mb-5 bg-primary text-light rounded">
+						<div class="row row-cols-lg-2 g-5">
+							<div class="col text-center">
+								<h1 class="display-1 text-success" v-if="scoresheet.header.win">ASCENDED!</h1>
+								<h1 class="display-1 text-danger" v-else>DEFEAT!</h1>
+								<!-- <img src="hot_air_balloons_2.png" /> -->
+								<p class="lead">
+									{{scoresheet.header.runResult}}
+								</p>
+								<div class="row row-cols-lg">
+									<div class="col text-center">
+										<p class="mt-4 mb-0">Final Score:</p>
+										<p class="display-3 mt-0 pt-0 text-info">{{scoresheet.performance.totalScore.toLocaleString()}}</p>
+									</div>
+									<div class="col text-center" v-if="!scoresheet.header.win">
+										<p class="mt-4 mb-0">Died In:</p>
+										<p class="display-3 mt-0 pt-0 text-info">{{scoresheet.game.finalMapReached}}</p>
+									</div>
+								</div>
+								<p class="badges text">
+									<!-- Highlights:<br/> -->
+									<span class="badge ms-1" :class="b" v-for="b in scoresheet.badges">{{b}}</span>
+								</p>
+								<p class="badges text" v-if="scoresheet.achievements.achievements && scoresheet.achievements.achievements.length">
+									Achievements:<br/>
+									<span class="badge ms-1" v-for="a in scoresheet.achievements.achievements" style="white-space: nowrap">{{a}}</span>
+								</p>
+							</div>
+							<div class="col">
+								<table class="table table-borderless" style="--bs-table-accent-bg: none">
+									<tr>
+										<th>Player</th>
+										<td>{{scoresheet.header.playerName}}</td>
+									</tr>
+									<tr>
+										<th>Date</th>
+										<td>
+											20{{scoresheet.header.runEndDate.replace(/(\d\d)(\d\d)(\d\d)/g,"$1-$2-$3")}}
+											{{scoresheet.header.runEndTime.replace(/(\d\d)(\d\d)(\d\d)/g,"$1:$2:$3")}}
+										</td>
+									</tr>
+									<tr>
+										<th>Run Time</th>
+										<td>{{scoresheet.game.runTime}}</td>
+									</tr>
+									<tr>
+										<th>Difficulty</th>
+										<td>
+											{{scoresheet.header.difficulty.replace('DIFFICULTY_','')}}
+											<span v-if="scoresheet.header.difficulty == 'DIFFICULTY_ROGUE'">(High)</span>
+											<span v-if="scoresheet.header.difficulty == 'DIFFICULTY_ADVENTURER'">(Medium)</span>
+											<span v-if="scoresheet.header.difficulty == 'DIFFICULTY_EXPLORER'">(Easy)</span>
+										</td>
+									</tr>
+									<tr>
+										<th>Special Mode</th>
+										<td>
+											<span v-if="scoresheet.game.specialMode == 'SPECIAL_MODE_NONE'">Normal</span>
+											<span v-else>{{scoresheet.game.specialMode.replace('SPECIAL_MODE_','')}}</span>
+										</td>
+									</tr>
+									<tr>
+										<th>Game Version</th>
+										<td>{{scoresheet.header.version}}</td>
+									</tr>
+									<tr>
+										<th>Seed</th>
+										<td><i>{{scoresheet.game.worldSeed}}</i></td>
+									</tr>								
+								</table>
+							</div>
+						</div>
+					</div>
+
+					<!-- <h2>Fun Facts</h2> -->
+					<div class="container-fluid mt-5 mb-5 g-0">
+						<div class="row row-cols-1 row-cols-md-3 g-4">
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Turns</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.exploration.turnsPassed.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Cadence</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.actions.cadence.toFixed(0)}} APM</span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Slots</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">
+											{{scoresheet.parts.power.slots}},
+											{{scoresheet.parts.propulsion.slots}},
+											{{scoresheet.parts.utility.slots}},
+											{{scoresheet.parts.weapon.slots}}
+										</span>
+									</div>
+								</div>
+							</div>							
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Regions Visited</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.performance.regionsVisited.count}}</span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Evolutions</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.performance.evolutions.count}}</span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox  h-100">
+									<div class="card-header">Bots Destroyed</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.performance.robotsDestroyed.count.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>							
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Alien Techs Used</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.performance.alienTechUsed.count}}</span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Prototypes ID'd</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.performance.prototypesIdentified.count.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">NPCs Murdered</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.kills.uniquesNpcsDestroyed}}</span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Allies</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.allies.totalAllies.overall.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Largest Army</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.allies.totalAllies.largestGroup}}</span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Most Corruption</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.combat.highestCorruption.overall}}%</span>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+					
+					<h2>Alert Influence</h2>
+					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+						<canvas id="alertChart"></canvas>
+					</div>
+					
+					<h2>Turns Taken</h2>
+					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+						<canvas id="turnsTakenChart"></canvas>
+					</div>
+					
+					<h2>Actions</h2>
+					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+						<p class="text-sm text-center text-muted">(click a label to show/hide category)</p>
+						<canvas id="actionsChart"></canvas>
+					</div>					
+					
+					<!-- <h2>Core Remaining %</h2>
+					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+						<canvas id="coreChart"></canvas>
+					</div> -->
+					
+					<h2>Score Breakdown</h2>
+					<table class="table ">
+						<tr v-for="(v,k) in scoresheet.performance">
+							<th>{{k.Undatafy()}}</th>
+							<td>{{typeof(v)==='object' ? v.points : v}}</td>
+						</tr>
+						<tr v-for="(v,k) in scoresheet.bonus" :class="{'indent-1': (k!='bonus')}">
+							<th>{{k.Undatafy()}}</th>
+							<td>{{v}}</td>
+						</tr>
+					</table>
+					
+				</template>	
+				
+				<!-- ROUTE -->
+				<template v-if="pane=='route'">
+					<h2>Route</h2>
+					<table class="table" style="font-size: 150%">
+						<tr v-for="row of scoresheet.charts.route_data">
+							<th>{{row.depth}}</th>
+							<td class="badges">
+								<span class="badge ms-1" :class="m" v-for="m of row.maps">{{m}}</span>
+							</td>
+						</tr>
+					</table>
+					
+					<h2>Log Tail</h2>
+					<blockquote class="text-info">
+						<span v-for="row of scoresheet.lastMessages.messages">
+							{{row}}<br/>
+						</span>
+					</blockquote>
+					
+					<h2>History</h2>
+					<table class="table">
+						<tr>
+							<th>Map</th>
+							<th>Turn</th>
+							<th>Event</th>
+						</tr>
+						<tbody v-for="map of scoresheet.route.entries">
+							<tr v-for="row of map.historyEvents">
+								<td class="text-nowrap">{{map.location.depth}}/{{map.location.mapname}}</td>
+								<td>{{row.turn}}</td>
+								<td>{{row.event}}</td>
+							</tr>
+						</tbody>
+					</table>
+				</template>
+				
+				<!-- BUILD -->
+				<template v-if="pane=='build'">
+					
+					<h2 class="">Slots</h2>
+					
+					<p class="slot_loadout">
+						<span v-for="n in scoresheet.parts.power.slots" class="p"></span>
+						<span v-for="n in scoresheet.parts.propulsion.slots" class="n"></span>
+						<span v-for="n in scoresheet.parts.utility.slots" class="u"></span>
+						<span v-for="n in scoresheet.parts.weapon.slots" class="w"></span>
+					</p>
+					<p>
+						Power: {{scoresheet.parts.power.slots}},
+						Propulsion: {{scoresheet.parts.propulsion.slots}},
+						Utility: {{scoresheet.parts.utility.slots}},
+						Weapon: {{scoresheet.parts.weapon.slots}}
+					</p>
+
+		
+					<h2 class="">Class Distribution</h2>
+					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+						<canvas id="classDistroChart"></canvas>
+					</div>
+					
+					<h2 class="">Weight</h2>
+					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+						<canvas id="weightChart"></canvas>
+					</div>
+					
+					<h2 class="">Inventory Capacity</h2>
+					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+						<canvas id="inventoryChart"></canvas>
+					</div>
+					
+					<h2>Part Swapping</h2>
+					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+						<div class="row row-cols-sm-2 g-5">
+							<div class="col">
+								<h3 class="text-center">Parts Lost</h3>
+								<canvas id="partsLostPieChart"></canvas>
+							</div>
+							<div class="col">
+								<h3 class="text-center">Parts Attached</h3>
+								<canvas id="partsAttachedPieChart"></canvas>
+							</div>
+						</div>
+						<div class="row row-cols-sm-2 g-5">
+							<div class="col">
+								<h3 class="text-center">Power Attached</h3>
+								<canvas id="powerAttachedPieChart"></canvas>
+							</div>
+							<div class="col">
+								<h3 class="text-center">Propulsion Attached</h3>
+								<canvas id="propulsionAttachedPieChart"></canvas>
+							</div>
+						</div>
+						<div class="row row-cols-sm-2 g-5">
+							<div class="col">
+								<h3 class="text-center">Utilities Attached</h3>
+								<canvas id="utilityAttachedPieChart"></canvas>
+							</div>
+							<div class="col">
+								<h3 class="text-center">Weapons Attached</h3>
+								<canvas id="weaponAttachedPieChart"></canvas>
+							</div>
+						</div>
+					</div>
+									
+					<h2>Favorite Parts</h2>
+					
+					<h3>Overall</h3>
+					<table class="table ">
+						<tr v-for="(v,k) in scoresheet.favorites">
+							<th>{{k.Undatafy()}}</th>
+							<td>{{v.overall}}</td>
+						</tr>
+					</table>
+					
+					<h3>Per-Type</h3>
+					<table class="table ">
+						<tbody v-for="(group,groupname) in scoresheet.favorites">
+							<tr>
+								<th>{{groupname}}</th>
+								<td></td>
+							</tr>
+							<tr v-for="(v,k) in group" v-if="k!='overall'" class="indent-1">
+								<th>{{k.Undatafy()}}</th>
+								<td>{{v}}</td>
+							</tr>
+						</tbody>
+					</table>
+					
+					<h2>Peak Performance</h2>
+					<table class="table">
+						<tr v-for="(v,k) in scoresheet.bestStates">
+							<th>{{k.Undatafy()}}</th>
+							<td>{{v}}</td>
+						</tr>
+					</table>
+								
+					<h2>Alien Techs Used</h2>
+					<table class="table">
+						<tr v-for="v in scoresheet.alienTechUsed.parts">
+							<td>{{v}}</td>
+						</tr>
+					</table>
+				</template>
+				
+				<!-- HACKING -->
+				<template v-if="pane=='hacking'">
+					<div class="container-fluid mt-5 mb-5 g-0">
+						<div class="row row-cols-1 row-cols-md-3 g-4">
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Hacking Skill</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{((scoresheet.stats.hacking.totalHacks.successful / scoresheet.stats.hacking.totalHacks.overall) * 100).toFixed(1) || 0}}%</span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Successfull Hacks</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.hacking.totalHacks.successful.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Failed Hacks</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{
+											(scoresheet.stats.hacking.totalHacks.overall
+											- scoresheet.stats.hacking.totalHacks.successful).toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Detections</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.hacking.hackingDetections.overall.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Database Lockouts</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.hacking.totalHacks.databaseLockouts.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Parts Repaired</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.hacking.partsRepaired.overall.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Parts Recycled</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.hacking.partsRecycled.overall.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Parts Scanalyzed</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.hacking.partsScanalyzed.overall.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Part Schematics Acquired</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.hacking.partSchematicsAcquired.overall.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Parts Built</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.hacking.partSchematicsAcquired.partsBuilt.overall.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Bot Schematics Acquired</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.hacking.robotSchematicsAcquired.overall.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Bots Built</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.hacking.robotSchematicsAcquired.robotsBuilt.overall.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+							
+					<h2>Hacks Per Machine</h2>
+					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+						<canvas id="hacksPerMachineChart"></canvas>
+					</div>
+					
+					<template v-if="scoresheet.charts.num_directhacks">
+						<h2>Direct Hacks</h2>
+						<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+							<canvas id="directHacksChart" ></canvas>
+						</div>
+					</template>
+					
+					<template v-if="scoresheet.charts.num_uhacks">
+						<h2>Unauthorized Hacks</h2>
+						<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+							<canvas id="unauthorizedHacksChart"></canvas>
+						</div>
+					</template>
+					
+					<h2>Bot Hacking</h2>
+					<div class="container-fluid mt-5 mb-5 g-0">
+						<div class="row row-cols-1 row-cols-md-3 g-4">				
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">RIF Installations</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.bothacking.usedRifInstaller.overall.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>	
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Bots Rewired</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.bothacking.robotsRewired.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>	
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Bots Hacked</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.bothacking.robotsHacked.overall.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>	
+						</div>
+					</div>
+					
+					<template v-if="scoresheet.charts.num_bothacks">
+						<h3>Bothacks</h3>
+						<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+							<div class="container g-0">
+								<canvas id="botHacksChart"></canvas>
+							</div>
+						</div>
+					</template>
+								
+				</template>
+				
+				<!-- COMBAT -->
+				<template v-if="pane=='combat'">
+				
+					<div class="container-fluid mt-5 mb-5 g-0">
+						<div class="row row-cols-1 row-cols-md-3 g-4">
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Volleys</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.combat.volleysFired.overall.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Shots Fired</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.combat.shotsFired.overall.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Accuracy</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{
+											(100* (scoresheet.stats.combat.shotsHitRobots.overall / (
+												((scoresheet.stats.combat.shotsFired.overall
+												+ scoresheet.stats.combat.meleeAttacks.overall) || 1)
+											)))
+											.toFixed(1)
+											}}%</span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Shots Per Volley</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{
+											(scoresheet.stats.combat.shotsFired.overall / scoresheet.stats.combat.volleysFired.overall)
+											.toFixed(1)
+											}}</span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Criticals</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{
+											(100*(
+												( scoresheet.stats.combat.shotsHitRobots?.criticalHits 
+													|| scoresheet.stats.combat.shotsHitRobots?.criticalStrikes?.overall 
+													|| 0 )
+												/ ( (scoresheet.stats.combat.meleeAttacks.overall
+													+ scoresheet.stats.combat.shotsFired.overall) || 1 )
+												))
+											.toFixed(1)
+											}}%</span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Overflow Damage</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{
+											(100*(scoresheet.stats.combat.overflowDamage.overall / (scoresheet.stats.combat.damageInflicted.overall||1)))
+											.toFixed(1)
+											}}%</span>									
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Total Damage Inflicted</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{ scoresheet.stats.combat.damageInflicted.overall.toLocaleString() }}</span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Total Damage Received</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{ scoresheet.stats.combat.damageTaken.overall.toLocaleString() }}</span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Dish-Out Ratio</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text" v-if="scoresheet.stats.dishoutRatio === -1">Perfect!</span>
+										<span class="card-text" v-else>{{(100*scoresheet.stats.dishoutRatio).toFixed(0)}}%</span>
+									</div>
+								</div>
+							</div>														
+						</div>
+					</div>
+											
+					<div class="row row-cols-sm-2 g-5">
+						<div class="col">
+							<h3 class="text-center">Damage Types</h3>
+							<canvas id="damageTypesChart"></canvas>
+						</div>
+						<div class="col">
+							<h3 class="text-center">Weapon Types</h3>
+							<canvas id="weaponTypesChart"></canvas>
+						</div>
+					</div>
+					
+					<h2>Damage Inflicted</h2>
+					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+						<p class="text-sm text-center text-muted">(click a label to show/hide category)</p>
+						<canvas id="damageInflictedChart"></canvas>
+					</div>
+					
+					<h2>Damage Received</h2>
+					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+						<canvas id="damageReceivedChart"></canvas>
+					</div>
+					
+					<h2 class="">Bots Destroyed</h2>
+					<div class="container-fluid mt-5 mb-5 g-0">
+						<div class="row row-cols-1 row-cols-md-3 g-4">
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Combat Bots Destroyed</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.kills.combatHostilesDestroyed.overall.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Kill Steak</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.kills.bestKillStreak.overall.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Most Kills In One Turn</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.kills.maxKillsInSingleTurn.overall}}</span>
+									</div>
+								</div>
+							</div>							
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Bots Corrupted</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.combat.robotsCorrupted.overall.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Bots Melted</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.combat.robotsMelted.overall.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Bots Crushed By Treads</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.combat.targetsRammed.crushed.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+										
+					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+						<canvas id="killsChart"></canvas>
+					</div>
+					
+					<h3 class="">Bot Types Destroyed</h3>
+					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+						<canvas id="killsTypesChart"></canvas>
+					</div>
+					
+					<h2>Miscellanea</h2>
+					<div class="container-fluid mt-5 mb-5 g-0">
+						<div class="row row-cols-1 row-cols-md-3 g-4">
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Bots Rammed</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.combat.targetsRammed.overall.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Sneak Attacks</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.combat.meleeAttacks.sneakAttacks.overall.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Power Chain Reactions</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.combat.powerChainReactions.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Sieges</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{ scoresheet.stats.combat.siegeActivations.overall }}</span>
+									</div>
+								</div>
+							</div>		
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Hottest Temperature</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.combat.highestTemperature.overall.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>											
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Overheating Issues</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{
+											scoresheet.stats.combat.highestTemperature.effects.length
+											? coresheet.stats.combat.highestTemperature.effects.overall.toLocaleString()
+											: 0
+											}}</span>
+									</div>
+								</div>
+							</div>			
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Melee Follow-Up</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{
+											(100*(scoresheet.stats.combat.meleeAttacks.followUpAttacks / scoresheet.stats.combat.meleeAttacks.overall))
+											.toFixed(1)
+											}}%</span>									
+									</div>
+								</div>
+							</div>							
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Max Gun-Sling</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{ (scoresheet.stats.combat.shotsFired.secondaryTargets.maxGunslingingChain || 0).toLocaleString() }}</span>
+									</div>
+								</div>
+							</div>																										
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Machines Disabled</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.machines.machinesDisabled.overall.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Collateral Damage</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.performance.valueDestroyed.count.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Attacks By Allies</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.allies.allyAttacks.kills}}</span>
+									</div>
+								</div>
+							</div>															
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Cave-Ins</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.exploration.spacesMoved.caveInsTriggered}}</span>
+									</div>
+								</div>
+							</div>															
+						</div>
+					</div>					
+				</template>
+				
+				
+				<!-- STEALTH -->
+				<template v-if="pane=='stealth'">
+					<!-- <h2>Stealth</h2> -->
+					<div class="container-fluid mt-5 mb-5 g-0">
+						<div class="row row-cols-1 row-cols-md-3 g-4">
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Max Alert</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.alert.peakInfluence.overall.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>						
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Times Spotted</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.stealth.timesSpotted.overall.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>		
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Squads Dispatched</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.alert.squadsDispatched.overall.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>											
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Most Bots Tracking You</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.stealth.timesSpotted.peakTrackingTotal.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>					
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Tactical Retreats</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.stealth.timesSpotted.tacticalRetreats.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>					
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Distress Signals Sent</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.stealth.distressSignals.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>					
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Signals Jammed By You</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.stealth.communicationsJammed.overall.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>					
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Haulers Distressed</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.alert.haulersReinforced.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>					
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Engineers Distressed</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.alert.constructionImpeded.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>					
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Traps Triggered</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.traps.trapsTriggered.overall.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>					
+				
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Derelict Logs Recovered</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.intel.derelictLogsRecovered.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>					
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Bots Analyzed</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.intel.robotAnalysisTotal.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>								
+						</div>
+					</div>
+					
+					<h2>Making A Scene</h2>
+					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+						<p class="text-sm text-center text-muted">(click a label to show/hide category)</p>
+						<canvas id="stealthChart"></canvas>
+					</div>
+												
+				</template>		
+				
+				
+				<!-- TABULAR DATA -->
+				<template v-if="pane=='tables'">
+					<table class="table table-sm ">
+						<tr v-for="i of scoresheet.flatstats" :class.once="[`indent-${i[2]}`]">
+							<th>{{i[0].Undatafy()}}</th>
+							<td>{{i[1]}}</td>
+						</tr>
+					</table>			
+				</template>		
+				
+			</div>
+
+		</div>
+		
+		<script src="js/dataminer.js"></script>
+		
+		<!-- bootstrap JS stuff if you want FX -->
+		<!-- <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-kQtW33rZJAHjgefvhyyzcGF3C5TFyBQBA13V1RKPf4uH+bwyzQxZ6CmMZHmNBEfJ" crossorigin="anonymous"></script> -->
+	</body>
+</html>
