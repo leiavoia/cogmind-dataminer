@@ -1,5 +1,4 @@
 <?php
-// http_response_code(404);exit;
 $logfile = './request_log.txt';
 $api_url = 'https://cogmind-api.gridsagegames.com/scoresheets/';
 
@@ -11,7 +10,6 @@ function Download( $url ) {
 		curl_setopt($curl, CURLOPT_USERAGENT, 'Cogmind Dataminer Proxy (That guy knows everything!)'); // user agent
 		curl_setopt($curl, CURLOPT_FOLLOWLOCATION, 1); // allow redirects
 		curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1); // return as a string
-		// curl_setopt($curl, CURLOPT_BINARYTRANSFER, 1); // required for videos, etc
 		curl_setopt($curl, CURLOPT_FAILONERROR, 1); // don't give us false-positive garbage
 		$data = curl_exec($curl);
 		curl_close($curl);
@@ -33,7 +31,7 @@ try {
 			ob_flush();
 			// log, because we can
 			try {
-				if ( file_exists($logfile) ) {
+				if ( file_exists($logfile) && filesize($logfile) < 500000000 ) {
 					$file = fopen($logfile, 'a');
 					fwrite( $file, $hash . "\t" . date('Y-m-d H:i:s') . "\t" . $_SERVER['REMOTE_ADDR'] . PHP_EOL );
 					fclose($file);

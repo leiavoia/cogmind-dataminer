@@ -2,6 +2,7 @@
 ( function() {
 
 var app = null; // app is global? are you stupid?
+var filehash = null; // you fool!
 
 // chart defaults
 Chart.defaults.color = '#FFF';
@@ -101,8 +102,6 @@ Chart.colors_by_key = {
 	constructionImpeded: '#0a8524',
 	trapsTriggered: '#bb2324',
 	signalsJammed: '#2379bb',
-		
-				
 };
 
 Chart.SortPieData = function ( data, labels, colors=null ) { // coupled arrays
@@ -132,18 +131,25 @@ app = new Vue({
 		pane: null, // dont set to 'overview' by default. graphs need to be prompted to draw
 		ChangePane,
 		charts: [],
-		error_msg: null
+		error_msg: null,
+		filehash: filehash
 	}
 })
+
 ChangePane('input');
 
-// var urlParams = new URLSearchParams(window.location.search);
-// https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS/Errors/CORSMissingAllowOrigin
+// check URL for a file hash
 let urlpart = window.location.search.trim().replace('?','').replace('hash=','').replace(/&.+/,'');
-// let file = `data/${urlpart}`;
+urlpart = decodeURIComponent(urlpart).replace(/^.*\//,'').replace(/\..+$/,'');
 if ( urlpart.match(/^[A-Za-z0-9]{17,18}$/) ) {
-	// file = 'https://cogmind-api.gridsagegames.com/scoresheets/' + urlpart + '.json';
-	file = 'proxy.php?' + urlpart;
+	app.filehash = urlpart;
+	// if we're on gridsagegames now, okay to just get the file directly
+	// https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS/Errors/CORSMissingAllowOrigin
+	if ( window.location.hostname.match('gridsagegames.com') ) {
+		file = 'https://cogmind-api.gridsagegames.com/scoresheets/' + urlpart + '.json';
+	}
+	// otherwise we need to use a local php proxy because kyz doesnt know how to set CORS yet. 
+	else { file = 'proxy.php?' + urlpart; }
 }
 else { file = null; }
 
@@ -162,6 +168,10 @@ if ( file ) {
 		return rsp.json();
 	})
 	.then( data => {
+		// NOTE: this info not available from manual file uploads. (Hash is not stored in file itself) 
+		data.meta.source_file_txt = 'https://cogmind-api.gridsagegames.com/scoresheets/' + urlpart;
+		data.meta.source_file_json = 'https://cogmind-api.gridsagegames.com/scoresheets/' + urlpart + '.json';
+		data.meta.permalink = window.location.href.replace( window.location.search, '?' + urlpart );
 		AnalyzeScoresheet(data);
 		app.scoresheet = data;
 		ChangePane('overview');
@@ -173,9 +183,6 @@ if ( file ) {
 }
 
 function AnalyzeScoresheet( data ) {
-
-	data.meta.source_file_txt = 'https://cogmind-api.gridsagegames.com/scoresheets/' + urlpart;
-	data.meta.source_file_json = 'https://cogmind-api.gridsagegames.com/scoresheets/' + urlpart + '.json';
 
 	data.flatstats = TabularizeData(data.stats);
 	
@@ -525,6 +532,8 @@ function ChangePane(pane) {
 		}
 		
 		else if ( pane === 'input' ) {
+			app.scoresheet = null;
+			app.filehash = null;
 			let el = document.getElementById('jsonfile');
 			if ( el ) {
 				el.addEventListener('change', event => {

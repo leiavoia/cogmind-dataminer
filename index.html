@@ -6,6 +6,7 @@
 		<title>Cogmind Dataminer</title>
 		<meta charset="UTF-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<link rel="icon" type="image/x-icon" href="favicon.ico" sizes="16x16">
 		<script src="https://unpkg.com/vue"></script>
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.5.1/chart.min.js"></script>
 		<!-- bootstrap styles -->
@@ -100,11 +101,12 @@
 	</head>
 	
 	<body >
-		<div class="container-xl pt-4">
+		<div class="container-lg pt-4">
 			
 			<div id="app" v-cloak>
 			
 				<h1>
+					<img src="dataminer_icon.png" style="height:1em; width: 1em; background-color: #000;" />
 					Cogmind Dataminer
 					<span class="text-muted" v-if="scoresheet"> : {{scoresheet.header.playerName}} : Game #{{scoresheet.game.gameNumber}}</span>	
 				</h1>
@@ -112,28 +114,32 @@
 				<!-- intro page to request JSON file -->
 				<template v-if="pane=='input'">
 					<div class="container-fluid my-5 text-light text-center g-0">
-						<div class="row row-cols-lg-2">
+						<div class="row row-cols-xl-2">
 							<div class="col mb-5">
 								<div class="container-fluid p-3 pb-5 mt-3 mb-5 bg-primary text-light rounded">
-									<h2>Enter a file hash or URL:</h2>
+									<h2>Scoresheet URL or Hash:</h2>
 									<form action="" method="get">
 										<div class="input-group">
-											<input type="text" class="form-control" name="hash" />
+											<input type="text" class="form-control" name="hash" placeholder="Example: FjLf3qHftm4yrzkjq" />
 											<input type="submit" class="btn bg-secondary text-light" name="submit" value="Fetch" />
 										</div>							
 									</form>
-									<p class="my-5"><a href="https://www.gridsagegames.com/cogmind/scores/runs_by_version.html" target="_blank">Scoresheets Archive</a></p>
+									<p class="my-5">Find your records: &nbsp;
+										<a href="https://www.gridsagegames.com/cogmind/scores/runs_by_version.html" target="_blank">Scoresheets Archive</a> 
+										&nbsp; 
+										<a href="https://www.gridsagegames.com/cogmind/scores/runs_by_version_patron.html" target="_blank">Patreon Beta Scoresheets</a>
+									</p>
 								</div>
 							</div>
 							<div class="col mb-5">
 								<div class="container-fluid p-3 pb-5 mt-3 mb-5 bg-primary text-light rounded">
-									<h2>Upload Scoresheet:</h2>
+									<h2>Upload Scoresheet .JSON:</h2>
 									<form action="" method="">
 										<div class="input-group">
 											<input type="file" class="form-control" id="jsonfile" name="jsonfile" accept="application/json" />
 											<!-- <button type="submit" class="btn bg-secondary text-light" name="submit" value="Upload">Upload</button> -->
 										</div>							
-										<p class="my-5">Files are stored in: </p>
+										<p class="my-5">&nbsp;<!-- a blank for your message --></p>
 									</form>
 								</div>
 							</div>
@@ -233,11 +239,12 @@
 										<th>Seed</th>
 										<td><i>{{scoresheet.game.worldSeed}}</i></td>
 									</tr>								
-									<tr>
+									<tr v-if="scoresheet.meta.source_file_txt || scoresheet.meta.source_file_json || scoresheet.meta.permalink">
 										<th>Source Files</th>
 										<td v-if="scoresheet.meta.source_file_txt" class="text-bold">
-											<a v-bind:href="scoresheet.meta.source_file_txt" target="_blank">TXT</a>&nbsp; 
-											<a v-bind:href="scoresheet.meta.source_file_json" target="_blank">JSON</a>
+											<a v-bind:href="scoresheet.meta.source_file_txt" target="_blank" v-if="scoresheet.meta.source_file_txt">TXT</a>&nbsp; 
+											<a v-bind:href="scoresheet.meta.source_file_json" target="_blank" v-if="scoresheet.meta.source_file_json">JSON</a>&nbsp; 
+											<a v-bind:href="scoresheet.meta.permalink" target="_blank" v-if="scoresheet.meta.permalink">Permalink</a>
 										</td>
 									</tr>								
 								</table>
@@ -940,7 +947,7 @@
 									<div class="card-header">Melee Follow-Up</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{
-											(100*(scoresheet.stats.combat.meleeAttacks.followUpAttacks / scoresheet.stats.combat.meleeAttacks.overall))
+											(100*(scoresheet.stats.combat.meleeAttacks.followUpAttacks / (scoresheet.stats.combat.meleeAttacks.overall || 1)))
 											.toFixed(1)
 											}}%</span>									
 									</div>
