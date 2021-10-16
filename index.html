@@ -110,27 +110,48 @@
 				</h1>
 				
 				<!-- intro page to request JSON file -->
-				<template v-if="!scoresheet || pane=='input'">
-					<h1>Cogmind Dataminer</h1>
-					<div class="container-lg">
-						<p>Enter a file hash or URL:</p>
-						<form action="" method="get">
-							<input type="text" name="file" />
-							<input type="submit" name="submit" value="Submit" />
-						</form>
+				<template v-if="pane=='input'">
+					<div class="container-fluid my-5 text-light text-center g-0">
+						<div class="row row-cols-lg-2">
+							<div class="col mb-5">
+								<div class="container-fluid p-3 pb-5 mt-3 mb-5 bg-primary text-light rounded">
+									<h2>Enter a file hash or URL:</h2>
+									<form action="" method="get">
+										<div class="input-group">
+											<input type="text" class="form-control" name="hash" />
+											<input type="submit" class="btn bg-secondary text-light" name="submit" value="Fetch" />
+										</div>							
+									</form>
+									<p class="my-5"><a href="https://www.gridsagegames.com/cogmind/scores/runs_by_version.html" target="_blank">Scoresheets Archive</a></p>
+								</div>
+							</div>
+							<div class="col mb-5">
+								<div class="container-fluid p-3 pb-5 mt-3 mb-5 bg-primary text-light rounded">
+									<h2>Upload Scoresheet:</h2>
+									<form action="" method="">
+										<div class="input-group">
+											<input type="file" class="form-control" id="jsonfile" name="jsonfile" accept="application/json" />
+											<!-- <button type="submit" class="btn bg-secondary text-light" name="submit" value="Upload">Upload</button> -->
+										</div>							
+										<p class="my-5">Files are stored in: </p>
+									</form>
+								</div>
+							</div>
+						</div>
 					</div>
+					<div class="alert alert-warning mt-5" role="alert" v-if="error_msg" >{{error_msg}}</div>
 				</template>
 				
-				<template v-if="pane=='loading'">
-					<h1>Cogmind Dataminer</h1>
+				<div v-if="pane=='loading'" class="text-center" style="font-size: 200%">
 					<p>Loading Scoresheet ...</p>
-					<progress></progress>
-				</template>
+					<progress styl="height: 2em;" ></progress>
+				</div>
 				
 				
 				<!-- <nav class="navbar navbar-expand-xl nav-justified" v-if="scoresheet"> -->
 				<!-- <nav class="btn-block btn-group" v-if="scoresheet"> -->
-				<div class="my-3" v-if="scoresheet">
+				<div class="my-3" v-if="scoresheet && pane!='input' && pane!='loading' ">
+					<button type="button" class="btn text-nowrap btn-primary" v-on:click="ChangePane('input')">◄</button>
 					<button type="button" class="btn text-nowrap" :class="pane=='overview' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('overview')">Overview</button>
 					<button type="button" class="btn text-nowrap" :class="pane=='route' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('route')">Route</button>
 					<button type="button" class="btn text-nowrap" :class="pane=='build' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('build')">Build</button>
@@ -141,7 +162,7 @@
 				</div>
 					
 				<!-- overview pane -->			
-				<template v-if="!pane || pane=='overview'" >							
+				<template v-if="pane=='overview'" >							
 					<div class="container-fluid px-5 py-4 mt-3 mb-5 bg-primary text-light rounded">
 						<div class="row row-cols-lg-2 g-5">
 							<div class="col text-center">
@@ -200,7 +221,8 @@
 										<th>Special Mode</th>
 										<td>
 											<span v-if="scoresheet.game.specialMode == 'SPECIAL_MODE_NONE'">Normal</span>
-											<span v-else>{{scoresheet.game.specialMode.replace('SPECIAL_MODE_','')}}</span>
+											<span v-else-if="typeof(scoresheet.game.specialMode)=='string'">{{scoresheet.game.specialMode.replace('SPECIAL_MODE_','')}}</span>
+											<span v-else>{{scoresheet.game.specialMode}}</span>
 										</td>
 									</tr>
 									<tr>
@@ -210,6 +232,13 @@
 									<tr>
 										<th>Seed</th>
 										<td><i>{{scoresheet.game.worldSeed}}</i></td>
+									</tr>								
+									<tr>
+										<th>Source Files</th>
+										<td v-if="scoresheet.meta.source_file_txt" class="text-bold">
+											<a v-bind:href="scoresheet.meta.source_file_txt" target="_blank">TXT</a>&nbsp; 
+											<a v-bind:href="scoresheet.meta.source_file_json" target="_blank">JSON</a>
+										</td>
 									</tr>								
 								</table>
 							</div>
@@ -240,10 +269,7 @@
 									<div class="card-header">Slots</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">
-											{{scoresheet.parts.power.slots}},
-											{{scoresheet.parts.propulsion.slots}},
-											{{scoresheet.parts.utility.slots}},
-											{{scoresheet.parts.weapon.slots}}
+											{{scoresheet.parts.power.slots}}-{{scoresheet.parts.propulsion.slots}}-{{scoresheet.parts.utility.slots}}-{{scoresheet.parts.weapon.slots}}
 										</span>
 									</div>
 								</div>

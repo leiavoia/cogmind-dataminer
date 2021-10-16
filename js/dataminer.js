@@ -1,3 +1,5 @@
+// WORST. JAVASCRIPT. EVER.
+( function() {
 
 var app = null; // app is global? are you stupid?
 
@@ -122,16 +124,59 @@ Chart.SortPieData = function ( data, labels, colors=null ) { // coupled arrays
 
 // ======== NOW LETS ACTUALLY GET SOME WORK DONE ==========
 
-// var urlParams = new URLSearchParams(window.location.search);
-let file = window.location.search.replace('?','') || 'sample.json';
-fetch( `data/${file}` )
-.then( rsp => {
-	if ( !rsp.ok ) {
-		throw new Error('Network response was not ok');
-	}			
-	return rsp.json();
+// set up Vue
+app = new Vue({
+	el: '#app',
+	data: { 
+		scoresheet: null, // populates when request for JSON succeeds
+		pane: null, // dont set to 'overview' by default. graphs need to be prompted to draw
+		ChangePane,
+		charts: [],
+		error_msg: null
+	}
 })
-.then( data => {
+ChangePane('input');
+
+// var urlParams = new URLSearchParams(window.location.search);
+// https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS/Errors/CORSMissingAllowOrigin
+let urlpart = window.location.search.trim().replace('?','').replace('hash=','').replace(/&.+/,'');
+// let file = `data/${urlpart}`;
+if ( urlpart.match(/^[A-Za-z0-9]{17,18}$/) ) {
+	// file = 'https://cogmind-api.gridsagegames.com/scoresheets/' + urlpart + '.json';
+	file = 'proxy.php?' + urlpart;
+}
+else { file = null; }
+
+// request data and get the party started
+if ( file ) {
+	ChangePane('loading');
+	fetch( file ).then( rsp => {
+		if ( !rsp.ok ) {
+			ChangePane('input');
+			app.error_msg = 'Networking is having a bad day. It happens.';
+		}
+		if ( !rsp.body ) {
+			ChangePane('input');
+			app.error_msg = 'Server returned nothing. Maybe not a real file. Maybe nothing is real. I don\'t know.';
+		}		
+		return rsp.json();
+	})
+	.then( data => {
+		AnalyzeScoresheet(data);
+		app.scoresheet = data;
+		ChangePane('overview');
+	})
+	.catch(error => {
+		app.error_msg = 'Error when trying to get file: ' + error;
+		ChangePane('input');
+	});
+}
+
+function AnalyzeScoresheet( data ) {
+
+	data.meta.source_file_txt = 'https://cogmind-api.gridsagegames.com/scoresheets/' + urlpart;
+	data.meta.source_file_json = 'https://cogmind-api.gridsagegames.com/scoresheets/' + urlpart + '.json';
+
 	data.flatstats = TabularizeData(data.stats);
 	
 	// precompute some stuff
@@ -406,20 +451,7 @@ fetch( `data/${file}` )
 							
 	// Badges
 	CalculateBadges(data);
-
-	// set up Vue
-	app = new Vue({
-		el: '#app',
-		data: { 
-			scoresheet: data,
-			pane: null, // dont set to 'overview' by default. graphs need to be prompted to draw
-			ChangePane,
-			charts: []
-		}
-	})
-
-	ChangePane('overview');
-});
+}
 
 function Undatafy() { 
 	return this
@@ -471,9 +503,8 @@ function ChangePane(pane) {
 	// switch panes
 	app.pane = pane;
 	// draw charts that need the rendered HTML to be present first
-	// ( this is silly. why are you programming so bad? )
-	setTimeout( _ => {
-	
+	Vue.nextTick( _ => {
+		
 		if ( pane === 'overview' ) {
 			app.charts.push( DrawAlertChart( 
 				app.scoresheet.charts.alert_chart_data, 
@@ -491,6 +522,28 @@ function ChangePane(pane) {
 			// 	app.scoresheet.charts.core_chart_data, 
 			// 	app.scoresheet.charts.chart_map_labels
 			// 	) );
+		}
+		
+		else if ( pane === 'input' ) {
+			let el = document.getElementById('jsonfile');
+			if ( el ) {
+				el.addEventListener('change', event => {
+					var reader = new FileReader();
+					reader.onload = e => {
+						let json = JSON.parse(e.target.result);
+						// smells like a scoresheet?
+						if ( typeof(json)==='object' && json.header && json.header.playerName ) { 
+							AnalyzeScoresheet(json);
+							app.scoresheet = json;
+							return ChangePane('overview');
+						}
+						else {
+							app.error_msg = 'Not a Cogmind JSON scoresheet file. Make sure it has a .json extension.';
+						}
+					};
+					reader.readAsText(event.target.files[0]);
+				});
+			}
 		}
 		
 		else if ( pane === 'build' ) {
@@ -564,7 +617,7 @@ function ChangePane(pane) {
 
 		}
 		
-	}, 250 );
+	});
 }
 
 function CalculateBadges(data) {
@@ -1182,7 +1235,7 @@ function DrawHacksPerMachineChart( data, labels ) {
 	}];
 	const config = {
 		type: 'bar',
-		data: { labels, datasets },
+		data: { labels: labels.map(x=>x.Undatafy()), datasets },
 		options: {
 			responsive: true,	
 			aspectRatio: 3,		
@@ -1562,4 +1615,5 @@ function DrawKillsChart( data, labels ) {
 	};
 	return new Chart( document.getElementById('killsChart'), config );
 }
-			
+
+}())
