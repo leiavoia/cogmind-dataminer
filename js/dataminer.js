@@ -565,7 +565,13 @@ function AnalyzeScoresheet( data ) {
 
 function Undatafy() { 
 	return this
-		.replace(/((?<!^)[A-Z](?![A-Z]))(?=\S)/g, ' $1')
+		// .replace(/((?<!^)[A-Z](?![A-Z]))(?=\S)/g, ' $1') // doesn't work on iOS :-(
+        .replace(/[^a-zA-Z0-9]+/g, '-')
+        .replace(/([A-Z]+)([A-Z][a-z])/g, '$1-$2')
+        .replace(/([a-z])([A-Z])/g, '$1-$2')
+        .replace(/([0-9])([^0-9])/g, '$1-$2')
+        .replace(/([^0-9])([0-9])/g, '$1-$2')
+        .replace(/-+/g, ' ')
 		.replace(/^./, s => s.toUpperCase() );
 }
 String.prototype.Undatafy = Undatafy; // you're bad for doing this
