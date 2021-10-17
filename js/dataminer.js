@@ -3,6 +3,7 @@
 
 var app = null; // app is global? are you stupid?
 var filehash = null; // you fool!
+var use_local_dev = false;
 
 // chart defaults
 Chart.defaults.color = '#FFF';
@@ -88,7 +89,7 @@ Chart.colors_by_key = {
 	propulsion: '#418d4f',
 	utility: '#1e66a7',
 	weapon: '#aa1b36',
-	terminals: '#62C462',
+	terminals: '#41A34F',
 	fabricators: '#314cad',
 	repairStations: '#972217',
 	recyclingUnits: '#ebe53e',
@@ -119,7 +120,69 @@ Chart.SortPieData = function ( data, labels, colors=null ) { // coupled arrays
 	}
 }
 
-
+// this has indexes for everything in scoresheet.bestStates
+// plus our analysis of 400 actual games from Beta 11 X7,
+// sprinkled with lev's personal judgement and inaccuracies.
+// NOTE: we don't have values for ok/good/excl yet, so just using a percent system for now.
+const metrics = {
+	heatDissipation: 		{ min: 10,	max: 100,	record: 292,	ok: 18,	good: 30,	excl: 50 },
+	energyGeneration: 		{ min: 10,	max: 100,	record: 169,	ok: 20,	good: 50,	excl: 80 },
+	energyCapacity: 		{ min: 100,	max: 1500,	record: 3400,	ok: 300,good: 500,	excl: 1000 },
+	matterStores: 			{ min: 300,	max: 1000,	record: 1800,	ok: 100,good: 250,	excl: 500 }, // not sure about min here
+	matterCapacity: 		{ min: 300,	max: 1000,	record: 1800,	ok: 0,	good: 0,	excl: 0 }, // or here
+	sightRange: 			{ min: 8,	max: 24,	record: 24,		ok: 0,	good: 0,	excl: 0 },
+	robotScanRange: 		{ min: 0,	max: 30,	record: 48,		ok: 0,	good: 0,	excl: 0 }, // how does 48 happen?
+	terrainScanDensity: 	{ min: 0,	max: 1500,	record: 2210,	ok: 0,	good: 0,	excl: 0 },
+	ecmStrength: 			{ min: 0,	max: 4, 	record: 4, 		ok: 0,	good: 0,	excl: 0 },
+	armorCoverage: 			{ min: 0,	max: 2000,	record: 7650,	ok: 0,	good: 0,	excl: 0 },
+	coreShielding: 			{ min: 0,	max: 40,	record: 40,		ok: 0,	good: 0,	excl: 0 },
+	evasion: 				{ min: 0,	max: 100,	record: 100,	ok: 0,	good: 0,	excl: 0 },
+	recoilReduction: 		{ min: 0,	max: 14,	record: 14,		ok: 0,	good: 0,	excl: 0 },
+	terrainScanRange: 		{ min: 0,	max: 30,	record: 30,		ok: 0,	good: 0,	excl: 0 },
+	powerAmplification: 	{ min: 0,	max: 150,	record: 150,	ok: 0,	good: 0,	excl: 0 },
+	additionalMassSupport: 	{ min: 0,	max: 25,	record: 25,		ok: 0,	good: 0,	excl: 0 },
+	propulsionShielding: 	{ min: 0,	max: 100,	record: 90,		ok: 0,	good: 0,	excl: 0 },
+	utilityShielding: 		{ min: 0,	max: 100,	record: 90,		ok: 0,	good: 0,	excl: 0 },
+	meleeSpeedBoost: 		{ min: 0,	max: 50,	record: 50,		ok: 0,	good: 0,	excl: 0 },
+	phaseShifting: 			{ min: 0,	max: 20,	record: 20,		ok: 0,	good: 0,	excl: 0 },
+	targetAnalysis: 		{ min: 0,	max: 10,	record: 10,		ok: 0,	good: 0,	excl: 0 },
+	coreAnalysis: 			{ min: 0,	max: 15,	record: 15,		ok: 0,	good: 0,	excl: 0 },
+	armorIntegrityAnalysis:	{ min: 0,	max: 50,	record: 50,		ok: 0,	good: 0,	excl: 0 },
+	matterFiltering: 		{ min: 0,	max: 50,	record: 50,		ok: 0,	good: 0,	excl: 0 },
+	offensiveHacking: 		{ min: 0,	max: 60,	record: 90,		ok: 0,	good: 0,	excl: 0 },
+	defensiveHacking: 		{ min: 0,	max: 60,	record: 65,		ok: 0,	good: 0,	excl: 0 },
+	coolantPotential: 		{ min: 0,	max: 300,	record: 320,	ok: 0,	good: 0,	excl: 0 },
+	jammingRange: 			{ min: 0,	max: 22,	record: 22,		ok: 0,	good: 0,	excl: 0 },
+	targetingAccuracy: 		{ min: 0,	max: 40,	record: 48,		ok: 0,	good: 0,	excl: 0 },
+	kinecelleration: 		{ min: 0,	max: 50,	record: 50,		ok: 0,	good: 0,	excl: 0 },
+	resistanceEm: 			{ min: 0,	max: 100,	record: 100,	ok: 0,	good: 0,	excl: 0 },
+	cloakStrength: 			{ min: 0,	max: 5, 	record: 5, 		ok: 0,	good: 0,	excl: 0 },
+	resistanceKi: 			{ min: 0,	max: 100,	record: 65,		ok: 0,	good: 0,	excl: 0 },
+	resistanceTh: 			{ min: 0,	max: 100,	record: 85,		ok: 0,	good: 0,	excl: 0 },
+	powerShielding: 		{ min: 0,	max: 100,	record: 90,		ok: 0,	good: 0,	excl: 0 },
+	weaponShielding: 		{ min: 0,	max: 100,	record: 100,	ok: 0,	good: 0,	excl: 0 },
+	pointDefenseRating: 	{ min: 0,	max: 720,	record: 720,	ok: 0,	good: 0,	excl: 0 },
+	launcherAccuracy: 		{ min: 0,	max: 100,	record: 100,	ok: 0,	good: 0,	excl: 0 },
+	salvageTargeting: 		{ min: 0,	max: 6, 	record: 6, 		ok: 0,	good: 0,	excl: 0 },
+	weaponCycling: 			{ min: 0,	max: 30,	record: 30,		ok: 0,	good: 0,	excl: 0 },
+	particleCharging: 		{ min: 0,	max: 50,	record: 50,		ok: 0,	good: 0,	excl: 0 },
+	stasisCanceling: 		{ min: 0,	max: 4, 	record: 2, 		ok: 0,	good: 0,	excl: 0 },
+	energyFiltering: 		{ min: 0,	max: 50,	record: 50,		ok: 0,	good: 0,	excl: 0 },
+	corruptionPrevention: 	{ min: 0,	max: 40,	record: 40,		ok: 0,	good: 0,	excl: 0 },
+	resistanceEx: 			{ min: 0,	max: 100,	record: 90,		ok: 0,	good: 0,	excl: 0 },
+	resistanceI: 			{ min: 0,	max: 35,	record: 35,		ok: 0,	good: 0,	excl: 0 },
+	resistanceS: 			{ min: 0,	max: 35,	record: 35,		ok: 0,	good: 0,	excl: 0 },
+	resistanceP: 			{ min: 0,	max: 35,	record: 35,		ok: 0,	good: 0,	excl: 0 },
+	overloadAmplification: 	{ min: 0,	max: 100,	record: 100,	ok: 0,	good: 0,	excl: 0 },
+	heatShielding: 			{ min: 0,	max: 100,	record: 100,	ok: 0,	good: 0,	excl: 0 },
+	overloadRegulation: 	{ min: 0,	max: 80,	record: 80,		ok: 0,	good: 0,	excl: 0 },
+	meleeAccuracy: 			{ min: 0,	max: 60,	record: 60,		ok: 0,	good: 0,	excl: 0 },
+	forceBoost: 			{ min: 0,	max: 5, 	record: 5, 		ok: 0,	good: 0,	excl: 0 },
+	thermalConversion: 		{ min: 0,	max: 60,	record: 60,		ok: 0,	good: 0,	excl: 0 },
+	reclamationEfficiency: 	{ min: 0,	max: 25,	record: 25,		ok: 0,	good: 0,	excl: 0 },
+	emShielding: 			{ min: 0,	max: 4, 	record: 4, 		ok: 0,	good: 0,	excl: 0 },
+	baseTemperature: 		{ min: 0,	max: 200,	record: 200,	ok: 0,	good: 0,	excl: 0 },
+};
 
 // ======== NOW LETS ACTUALLY GET SOME WORK DONE ==========
 
@@ -130,9 +193,10 @@ app = new Vue({
 		scoresheet: null, // populates when request for JSON succeeds
 		pane: null, // dont set to 'overview' by default. graphs need to be prompted to draw
 		ChangePane,
+		metrics,
 		charts: [],
 		error_msg: null,
-		filehash: filehash
+		filehash: filehash,
 	}
 })
 
@@ -140,18 +204,24 @@ ChangePane('input');
 
 // check URL for a file hash
 let urlpart = window.location.search.trim().replace('?','').replace('hash=','').replace(/&.+/,'');
-urlpart = decodeURIComponent(urlpart).replace(/^.*\//,'').replace(/\..+$/,'');
-if ( urlpart.match(/^[A-Za-z0-9]{17,18}$/) ) {
-	app.filehash = urlpart;
-	// if we're on gridsagegames now, okay to just get the file directly
-	// https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS/Errors/CORSMissingAllowOrigin
-	if ( window.location.hostname.match('gridsagegames.com') ) {
-		file = 'https://cogmind-api.gridsagegames.com/scoresheets/' + urlpart + '.json';
-	}
-	// otherwise we need to use a local php proxy because kyz doesnt know how to set CORS yet. 
-	else { file = 'proxy.php?' + urlpart; }
+// development-only switch for handling local files:
+if ( use_local_dev ) {
+	urlpart = decodeURIComponent(urlpart).replace(/^.*\//,'').replace(/\..+$/,'');
+	file = urlpart ? ('data/' + urlpart + '.json') : null; 
 }
-else { file = null; }
+else { 
+	if ( urlpart.match(/^[A-Za-z0-9]{17,18}$/) ) {
+		app.filehash = urlpart;
+		// if we're on gridsagegames now, okay to just get the file directly
+		// https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS/Errors/CORSMissingAllowOrigin
+		if ( window.location.hostname.match('gridsagegames.com') ) {
+			file = 'https://cogmind-api.gridsagegames.com/scoresheets/' + urlpart + '.json';
+		}
+		// otherwise we need to use a local php proxy because kyz doesnt know how to set CORS yet. 
+		else { file = 'proxy.php?' + urlpart; }
+	}
+	else { file = null; }
+}
 
 // request data and get the party started
 if ( file ) {
@@ -455,7 +525,40 @@ function AnalyzeScoresheet( data ) {
 	data.charts.uhack_colors.push( ...Object.entries(data.stats.hacking.unauthorizedHacks.garrisonAccess).filter(x => x[0] != 'overall').map( x => Chart.colors_by_key['garrisonAccess'] ) );
 	data.charts.uhack_colors.push( ...Object.entries(data.stats.hacking.unauthorizedHacks.recyclingUnits).filter(x => x[0] != 'overall').map( x => Chart.colors_by_key['recyclingUnits'] ) );
 	data.charts.num_uhacks = data.charts.uhack_data.filter(x=>x).length;
-							
+					
+	// builds for display
+	data.charts.final_build = {};
+	for ( let groupname in data.parts ) {
+		if ( groupname == 'rating' ) { continue; }
+		data.charts.final_build[groupname] = data.parts[groupname].parts ?? [];
+		for ( let n = data.charts.final_build[groupname].length; n < data.parts[groupname].slots; n++ ) {
+			data.charts.final_build[groupname].push('-');
+		}
+	}
+	data.charts.peak_build = {};
+	for ( let groupname in data.peakState ) {
+		if ( groupname == 'rating' ) { continue; }
+		data.charts.peak_build[groupname] = data.peakState[groupname].parts ?? [];
+		for ( let n = data.charts.peak_build[groupname].length; n < data.peakState[groupname].slots; n++ ) {
+			data.charts.peak_build[groupname].push('-');
+		}
+	}		
+	
+	// performance judgement
+	data.metricPerformance = {};
+	for ( let k in data.bestStates ) {
+		let m = metrics[k];
+		let pct = 100 * ((Math.min( m.max, data.bestStates[k] ) - m.min) / (m.max - m.min));
+		// we want to display a little red nub if they have zero
+		pct = Math.max( pct, 4 );
+		let classname = 'poor';
+		if ( pct >= 100 ) { classname = 'best'; }
+		else if ( pct > 70 ) { classname = 'excl'; }
+		else if ( pct >= 40 ) { classname = 'good'; }
+		else if ( pct >= 20 ) { classname = 'avg'; }
+		data.metricPerformance[k] = { pct, classname };
+	}
+	
 	// Badges
 	CalculateBadges(data);
 }

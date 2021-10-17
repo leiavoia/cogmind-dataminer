@@ -97,6 +97,12 @@
 			.slot_loadout SPAN.n { background-color: #418d4f; }
 			.slot_loadout SPAN.u { background-color: #1e66a7; }
 			.slot_loadout SPAN.w { background-color: #aa1b36; }
+			
+			.progress-bar.poor { background-color: #aa1b36 !important; }
+			.progress-bar.avg { background-color: #e0cc32 !important; }
+			.progress-bar.good { background-color: #308030 !important; }
+			.progress-bar.excl { background-color: #3cb356 !important; }
+			.progress-bar.best { background-color: #49dd52 !important; }
 		</style>
 	</head>
 	
@@ -168,7 +174,8 @@
 				</div>
 					
 				<!-- overview pane -->			
-				<template v-if="pane=='overview'" >							
+				<template v-if="pane=='overview'" >			
+													
 					<div class="container-fluid px-5 py-4 mt-3 mb-5 bg-primary text-light rounded">
 						<div class="row row-cols-lg-2 g-5">
 							<div class="col text-center">
@@ -252,7 +259,6 @@
 						</div>
 					</div>
 
-					<!-- <h2>Fun Facts</h2> -->
 					<div class="container-fluid mt-5 mb-5 g-0">
 						<div class="row row-cols-1 row-cols-md-3 g-4">
 							<div class="col">
@@ -389,6 +395,19 @@
 						</tr>
 					</table>
 					
+					<h2>Peak Performance</h2>
+					<table class="table">
+						<tr v-for="(v,k) in scoresheet.bestStates">
+							<th>{{k.Undatafy()}}</th>
+							<td>{{v}}</td>
+							<td>
+							<div class="progress">
+								<div class="progress-bar bg-secondary" role="progressbar" :class="scoresheet.metricPerformance[k].classname" :style="{width:`${scoresheet.metricPerformance[k].pct}%`}"></div>
+							</div>
+							</td>
+						</tr>
+					</table>					
+					
 				</template>	
 				
 				<!-- ROUTE -->
@@ -444,13 +463,12 @@
 						Utility: {{scoresheet.parts.utility.slots}},
 						Weapon: {{scoresheet.parts.weapon.slots}}
 					</p>
-
 		
 					<h2 class="">Class Distribution</h2>
 					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
 						<canvas id="classDistroChart"></canvas>
 					</div>
-					
+										
 					<h2 class="">Weight</h2>
 					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
 						<canvas id="weightChart"></canvas>
@@ -509,7 +527,7 @@
 					<table class="table ">
 						<tbody v-for="(group,groupname) in scoresheet.favorites">
 							<tr>
-								<th>{{groupname}}</th>
+								<th>{{groupname.Undatafy()}}</th>
 								<td></td>
 							</tr>
 							<tr v-for="(v,k) in group" v-if="k!='overall'" class="indent-1">
@@ -518,14 +536,37 @@
 							</tr>
 						</tbody>
 					</table>
-					
-					<h2>Peak Performance</h2>
-					<table class="table">
-						<tr v-for="(v,k) in scoresheet.bestStates">
-							<th>{{k.Undatafy()}}</th>
-							<td>{{v}}</td>
-						</tr>
-					</table>
+											
+					<div class="row row-cols-sm-2 g-5">
+						<div class="col">
+							<h2>Peak Build</h2>
+							<table class="table table-sm">
+								<tbody v-for="(group,groupname) in scoresheet.charts.peak_build">
+									<tr>
+										<th>{{groupname.Undatafy()}}</th>
+									</tr>
+									<tr v-for="part in group" class="indent-1">
+										<th>{{part}}</th>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+						<div class="col">
+							<h2>Final Build</h2>
+							<table class="table table-sm">
+								<tbody v-for="(group,groupname) in scoresheet.charts.final_build">
+									<tr>
+										<th>{{groupname.Undatafy()}}</th>
+									</tr>
+									<tr v-for="part in group" class="indent-1">
+										<th>{{part}}</th>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+					</div>
+										
+
 								
 					<h2>Alien Techs Used</h2>
 					<table class="table">
