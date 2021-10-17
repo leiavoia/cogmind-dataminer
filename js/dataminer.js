@@ -760,7 +760,8 @@ function CalculateBadges(data) {
 	if ( data.bonus.destroyedRevision17 ) { data.badges.push('-R17'); }
 	if ( data.bonus.alignedWithFarcom) { data.badges.push('FarCom'); }
 	if ( data.bonus.wasImprinted) { data.badges.push('Imprinted'); }
-	if ( data.bonus.networkHubsDisabled/* ==1600 */) { data.badges.push('404'); }
+	if ( data.bonus.networkHubsDisabled == 800 ) { data.badges.push('404'); }
+	if ( data.bonus.networkHubsDisabled > 0 && data.bonus.networkHubsDisabled < 800 ) { data.badges.push('NetworkDown'); }
 	if ( data.bonus.builtEnhancedGrunts ) { data.badges.push('G-00'); }
 	if ( data.bonus.usedRifInstaller ) { data.badges.push('RIF'); }
 	if ( data.bonus.usedCoreResetMatrix ) { data.badges.push('CRM'); }
