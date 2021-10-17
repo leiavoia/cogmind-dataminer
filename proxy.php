@@ -21,7 +21,7 @@ function Download( $url ) {
 try {
 	$hash = isset($_SERVER['QUERY_STRING']) ? $_SERVER['QUERY_STRING'] : null;
 	$hash = preg_replace('/\.json$/i','',$hash);
-	if ( $hash && preg_match('/^[A-Za-z0-9{17,18}$]/',$hash) ) {
+	if ( $hash && preg_match('/^[A-Za-z0-9{12,18}$]/',$hash) ) {
 		$url = $api_url . $hash . '.json';
 		$json = Download($url);
 		if ( $json ) {

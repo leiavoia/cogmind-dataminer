@@ -96,7 +96,7 @@ Chart.colors_by_key = {
 	garrisonAccess: '#dfdfdf',
 	scanalyzers: '#c228bc',
 	spotted: '#ebe53e',
-	squadsDispatches: '#d35d94',
+	squadsDispatched: '#d35d94',
 	mostBotsTracking: '#7e187d',
 	distressSignals: '#ff8a00',
 	haulersReinforced: '#8bdb5d',
@@ -210,7 +210,7 @@ if ( use_local_dev ) {
 	file = urlpart ? ('data/' + urlpart + '.json') : null; 
 }
 else { 
-	if ( urlpart.match(/^[A-Za-z0-9]{17,18}$/) ) {
+	if ( urlpart.match(/^[A-Za-z0-9]{12,18}$/) ) {
 		app.filehash = urlpart;
 		// if we're on gridsagegames now, okay to just get the file directly
 		// https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS/Errors/CORSMissingAllowOrigin
@@ -273,7 +273,7 @@ function AnalyzeScoresheet( data ) {
 		damage_chart_data: {}, // by type
 		stealth_chart_data: { // by type
 			spotted: [],
-			squadsDispatches: [],
+			squadsDispatched: [],
 			mostBotsTracking: [],
 			distressSignals: [],
 			haulersReinforced: [],
@@ -304,7 +304,7 @@ function AnalyzeScoresheet( data ) {
 		
 		// stealth actions
 		data.charts.stealth_chart_data.spotted.push( map.stats.stealth.timesSpotted.overall );
-		data.charts.stealth_chart_data.squadsDispatches.push( map.stats.alert.squadsDispatched.overall );
+		data.charts.stealth_chart_data.squadsDispatched.push( map.stats.alert.squadsDispatched.overall );
 		data.charts.stealth_chart_data.mostBotsTracking.push( map.stats.stealth.timesSpotted.peakTrackingTotal );
 		data.charts.stealth_chart_data.distressSignals.push( map.stats.stealth.distressSignals );
 		data.charts.stealth_chart_data.haulersReinforced.push( map.stats.alert.haulersReinforced );
