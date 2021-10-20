@@ -3,7 +3,7 @@
 
 var app = null; // app is global? are you stupid?
 var filehash = null; // you fool!
-var use_local_dev = false;
+var use_local_dev = true;
 
 // chart defaults
 Chart.defaults.color = '#FFF';
@@ -33,12 +33,6 @@ Chart.pie_colors = [ // you should not be adding stuff in like this.
 	'#867f66',
 	'#152d69',
 	'#57391f',
-];
-Chart.propulsion_colors = [ // no really, you are being very bad 
-	'#dfd239', // power
-	'#418d4f', // prop
-	'#1e66a7', // utility
-	'#aa1b36', // weapon
 ];
 Chart.green_colors = [ // i can do what i want!
 	'#7fc97d',
@@ -103,6 +97,12 @@ Chart.colors_by_key = {
 	constructionImpeded: '#0a8524',
 	trapsTriggered: '#bb2324',
 	signalsJammed: '#2379bb',
+	core: '#5bc2c9',
+	flight: '#ffbfc0',
+	hover: '#8a1997',
+	legs: '#1E66A7',
+	wheels: '#238628',
+	treads: '#f19700',
 };
 
 Chart.SortPieData = function ( data, labels, colors=null ) { // coupled arrays
@@ -286,6 +286,9 @@ function AnalyzeScoresheet( data ) {
 		chart_map_labels: [],
 		core_chart_data: [],
 		damage_received_chart_data: [],
+		avg_speed_data: [],
+		minmax_speed_data: [], // pairs of [min,max]
+		prop_chart_data: {}, // by type
 		damage_chart_data: {}, // by type
 		stealth_chart_data: { // by type
 			spotted: [],
@@ -328,6 +331,12 @@ function AnalyzeScoresheet( data ) {
 		data.charts.stealth_chart_data.trapsTriggered.push( map.stats.traps.trapsTriggered.overall );
 		data.charts.stealth_chart_data.signalsJammed.push( map.stats.stealth.communicationsJammed.overall );
 		
+		// propulsion
+		// note: not all indexes are present for every map area, so iterate over the "overall" list instead
+		for ( let k of ['core','flight','hover','legs','wheels','treads'] ) {
+			if ( typeof(data.charts.prop_chart_data[k]) === 'undefined' ) { data.charts.prop_chart_data[k] = []; }
+			data.charts.prop_chart_data[k].push( map.stats.exploration.spacesMoved[k] || 0 );
+		}
 		// combat kills
 		data.charts.kills_chart_data.push(map.stats.kills.combatHostilesDestroyed.overall);
 		// getting non-combat bot kills is more tricky
@@ -356,6 +365,13 @@ function AnalyzeScoresheet( data ) {
 		// support
 		data.charts.support_chart_data.push( map.stats.build.heaviestBuild.greatestSupport );
 		
+		// speed
+		data.charts.avg_speed_data.push( map.stats.exploration.spacesMoved.averageSpeed );
+		data.charts.minmax_speed_data.push( [
+			map.stats.exploration.spacesMoved.slowestSpeed,
+			map.stats.exploration.spacesMoved.fastestSpeed 
+		] );
+
 		// hacks
 		data.charts.hacks_chart_data.push( map.stats.hacking.totalHacks.successfull );
 		
@@ -397,7 +413,15 @@ function AnalyzeScoresheet( data ) {
 		data.charts.class_distro_chart_data.push( c.percent );
 		data.charts.class_distro_chart_labels.push( c.name );
 	}
-			
+		
+	// propulsion pie chart
+	data.charts.prop_pie_chart_data = [];
+	data.charts.prop_pie_chart_labels = [];
+	for ( let k of ['core','flight','hover','legs','wheels','treads'] ) {
+		data.charts.prop_pie_chart_data.push( data.stats.exploration.spacesMoved[k] || 0 );
+		data.charts.prop_pie_chart_labels.push(k);
+	}
+				
 	// overall damage types
 	data.charts.overall_damage_data = {}
 	for ( let k in data.stats.combat.damageInflicted ) {
@@ -685,6 +709,14 @@ function ChangePane(pane) {
 				app.scoresheet.charts.class_distro_chart_data, 
 				app.scoresheet.charts.class_distro_chart_labels
 				) );
+			app.charts.push( DrawPropPieChart(
+				app.scoresheet.charts.prop_pie_chart_data, 
+				app.scoresheet.charts.prop_pie_chart_labels
+				) );
+			app.charts.push( DrawPropGraph(
+				app.scoresheet.charts.prop_chart_data, 
+				app.scoresheet.charts.chart_map_labels
+				) );
 			app.charts.push( DrawPartsAttachedPieChart(
 				app.scoresheet.charts.parts_attached_chart_data, 
 				app.scoresheet.charts.parts_attached_chart_labels
@@ -714,6 +746,11 @@ function ChangePane(pane) {
 				weight_chart_data: app.scoresheet.charts.weight_chart_data,
 				}, app.scoresheet.charts.chart_map_labels
 				) );
+			app.charts.push( DrawSpeedGraph( {
+				avg_speed_data: app.scoresheet.charts.avg_speed_data,
+				minmax_speed_data: app.scoresheet.charts.minmax_speed_data,
+				}, app.scoresheet.charts.chart_map_labels
+				) );
 			app.charts.push( DrawInventoryChart( app.scoresheet.charts.inventory_chart_data, app.scoresheet.charts.chart_map_labels ) );
 		}
 		
@@ -732,6 +769,10 @@ function ChangePane(pane) {
 		
 		else if ( pane === 'stealth' ) {
 			app.charts.push( DrawStealthChart(app.scoresheet.charts.stealth_chart_data, app.scoresheet.charts.chart_map_labels) );
+		}
+		
+		else if ( pane === 'route' ) {
+			
 		}
 		
 		else if ( pane === 'hacking' ) {
@@ -940,7 +981,113 @@ function DrawStealthChart( data, labels ) {
 	};
 	return new Chart( document.getElementById('stealthChart'), config );
 }
-			
+		
+
+function DrawPropGraph( data, labels ) {
+	datasets = [];
+	for ( let k in data ) {
+		datasets.push( {
+			label: k.Undatafy(),
+			backgroundColor: Chart.colors_by_key[k],
+			borderColor: Chart.colors_by_key[k],
+			fill: true,
+			data: data[k]
+		});
+	}
+	
+	const config = {
+		type: 'bar',
+		data: { labels, datasets },
+		options: {
+			responsive: true,
+			scales: {
+				x: { stacked: true, },
+				y: { stacked: true }
+			},					
+			interaction: {
+				intersect: false,
+			},					
+			plugins: {
+				legend: {
+					position: 'top',
+				},
+				title: {
+					display: false,
+					text: 'Mobility'
+				}
+			}
+		},
+	};
+	return new Chart( document.getElementById('propGraph'), config );
+}
+
+function DrawSpeedGraph( data, labels ) {
+	let speed_colors = data.avg_speed_data.map( x => {
+		if ( x >= 200 ) return '#d41f21';
+		if ( x >= 160 ) return '#f08e00';
+		if ( x >= 120 ) return '#f0e200';
+		if ( x >= 80 ) return '#67f000';
+		if ( x >= 40 ) return '#00f0f0';
+		return '#3a46ee';
+	});
+	datasets = [];
+		datasets.push( {
+			borderColor: '#999',
+			pointBackgroundColor: speed_colors,
+			fill: false,
+			// fill: 'start',
+			tension: 0.4,
+			data: data.avg_speed_data,
+			order: 1,
+			borderWidth: 2,
+			pointBorderWidth: 0,
+			pointRadius:8,
+		});
+		datasets.push( {
+			// backgroundColor: '#666',
+			backgroundColor: '#FFFFFF22',
+			data: data.minmax_speed_data,
+			type: 'bar',
+			minBarLength: 10,
+			borderWidth: 0,
+			order: 2
+		});
+	
+	const config = {
+		type: 'line',
+		data: { labels, datasets },
+		options: {
+			responsive: true,
+			interaction: {
+				intersect: false,
+			},					
+			plugins: {
+				legend: {
+					position: 'top',
+					display: false
+				},
+				title: {
+					display: false,
+					text: 'Average Speed'
+				}
+			},
+			scales: { y: {
+				reverse: true,
+				min: 0,
+				// max: 600,
+				suggestedMax: 200
+			}}
+		},
+	};
+	// if any of the values is too high, add a hard cap to keep graph from going wonkey
+	let graph_max = 500;
+	data.avg_speed_data.forEach( x => graph_max = Math.max(graph_max,x) );
+	if ( data.minmax_speed_data.filter( x => x[0] >= graph_max ).length ) {
+		config.options.scales.y.max = graph_max;
+	}
+	return new Chart( document.getElementById('speedGraph'), config );
+}
+
 function DrawDamageInflictedChart( data, labels, include_allies=true ) {
 	datasets = [];
 	let colors = {
@@ -1190,6 +1337,36 @@ function DrawKillTypesChart( data, labels ) {
 		},
 	};
 	return new Chart( document.getElementById('killsTypesChart'), config );
+}
+			
+function DrawPropPieChart( data, labels ) {
+	Chart.SortPieData(data,labels);
+	let colors = labels.map( x => Chart.colors_by_key[x] );
+	datasets = [ { 
+		label: 'Propulsion', 
+		data, 
+		backgroundColor: colors,
+		borderWidth: 0,
+		fill: true,
+	}];
+	const config = {
+		type: 'pie',
+		data: { labels: labels.map(x=>x.Undatafy()), datasets },
+		options: {
+			aspectRatio: 1.75,	
+			responsive: true,			
+			interaction: {
+				intersect: false,
+			},					
+			plugins: {
+				legend: { position: 'left', display: true, },
+				title: {
+					display: false,
+				}
+			}
+		},
+	};
+	return new Chart( document.getElementById('propPieChart'), config );
 }
 			
 function DrawPartsAttachedPieChart( data, labels ) {

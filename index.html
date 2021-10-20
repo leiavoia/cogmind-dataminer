@@ -276,6 +276,14 @@
 							</div>
 							<div class="col">
 								<div class="card statbox h-100">
+									<div class="card-header">Average Speed</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.exploration.spacesMoved.averageSpeed.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
 									<div class="card-header">Slots</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">
@@ -292,14 +300,14 @@
 									</div>
 								</div>
 							</div>
-							<div class="col">
+							<!-- <div class="col">
 								<div class="card statbox h-100">
 									<div class="card-header">Evolutions</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.performance.evolutions.count}}</span>
 									</div>
 								</div>
-							</div>
+							</div> -->
 							<div class="col">
 								<div class="card statbox  h-100">
 									<div class="card-header">Bots Destroyed</div>
@@ -316,14 +324,14 @@
 									</div>
 								</div>
 							</div>
-							<div class="col">
+							<!-- <div class="col">
 								<div class="card statbox h-100">
 									<div class="card-header">Prototypes ID'd</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.performance.prototypesIdentified.count.toLocaleString()}}</span>
 									</div>
 								</div>
-							</div>
+							</div> -->
 							<div class="col">
 								<div class="card statbox h-100">
 									<div class="card-header">NPCs Murdered</div>
@@ -353,6 +361,14 @@
 									<div class="card-header">Most Corruption</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.combat.highestCorruption.overall}}%</span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Peak Build Rating</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.peakState.rating}}</span>
 									</div>
 								</div>
 							</div>
@@ -466,6 +482,51 @@
 						<canvas id="classDistroChart"></canvas>
 					</div>
 										
+					<h2>Propulsion Used</h2>
+					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+						<p class="text-sm text-center text-muted">(click a label to show/hide category)</p>
+						<canvas id="propPieChart"></canvas>
+					</div>
+					
+					<h2>Mobility</h2>
+					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+						<p class="text-sm text-center text-muted">(click a label to show/hide category)</p>
+						<canvas id="propGraph"></canvas>
+					</div>		
+					
+					<h2>Speed <span class="text-muted">(Time Units Per Step)</span></h2>
+					<div class="container-fluid mt-5 mb-3 g-0">
+						<div class="row row-cols-1 row-cols-md-3 g-4">
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Average Speed</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.exploration.spacesMoved.averageSpeed.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Fastest Speed</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.exploration.spacesMoved.fastestSpeed.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Slowest Speed</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.exploration.spacesMoved.slowestSpeed.toLocaleString()}}</span>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+						<canvas id="speedGraph"></canvas>
+					</div>		
+												
 					<h2 class="">Weight</h2>
 					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
 						<canvas id="weightChart"></canvas>
@@ -475,7 +536,7 @@
 					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
 						<canvas id="inventoryChart"></canvas>
 					</div>
-					
+																				
 					<h2>Part Swapping</h2>
 					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
 						<div class="row row-cols-sm-2 g-5">
@@ -562,8 +623,6 @@
 							</table>
 						</div>
 					</div>
-										
-
 								
 					<h2>Alien Techs Used</h2>
 					<table class="table">
