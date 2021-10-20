@@ -1,0 +1,6 @@
+*.code-workspace
+data/
+data/*
+analyzer.php
+*.min.js
+request_log.txt
