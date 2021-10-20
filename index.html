@@ -124,17 +124,14 @@
 							<div class="col mb-5">
 								<div class="container-fluid p-3 pb-5 mt-3 mb-5 bg-primary text-light rounded">
 									<h2>Scoresheet URL or Hash:</h2>
-									<form action="" method="get">
+									<form action="" method="get" v-on:submit.prevent="LoadScoresheet()">
 										<div class="input-group">
-											<input type="text" class="form-control" name="hash" placeholder="Example: FjLf3qHftm4yrzkjq" />
+											<input type="text" class="form-control" v-model="filehash" placeholder="Example: FjLf3qHftm4yrzkjq" />
 											<input type="submit" class="btn bg-secondary text-light" name="submit" value="Fetch" />
 										</div>							
 									</form>
-									<p class="my-5">Find your records: &nbsp;
-										<a href="https://www.gridsagegames.com/cogmind/scores/runs_by_version.html" target="_blank">Scoresheets Archive</a> 
-										&nbsp; 
-										<a href="https://www.gridsagegames.com/cogmind/scores/runs_by_version_patron.html" target="_blank">Patreon Beta Scoresheets</a>
-									</p>
+									<p class="mt-5"><a href="https://www.gridsagegames.com/cogmind/scores/runs_by_version.html" target="_blank">Scoresheets Archive</a></p>
+									<p class="mb-3"><a href="https://www.gridsagegames.com/cogmind/scores/runs_by_version_patron.html" target="_blank">Patreon Beta Scoresheets</a></p>
 								</div>
 							</div>
 							<div class="col mb-5">

@@ -132,7 +132,7 @@ const metrics = {
 	matterCapacity: 		{ min: 300,	max: 1000,	record: 1800,	ok: 0,	good: 0,	excl: 0 }, // or here
 	sightRange: 			{ min: 8,	max: 24,	record: 24,		ok: 0,	good: 0,	excl: 0 },
 	robotScanRange: 		{ min: 0,	max: 20,	record: 20,		ok: 0,	good: 0,	excl: 0 }, 
-	terrainScanDensity: 	{ min: 0,	max: 1500,	record: 2210,	ok: 0,	good: 0,	excl: 0 },
+	terrainScanDensity: 	{ min: 0,	max: 500,	record: 2210,	ok: 0,	good: 0,	excl: 0 }, // Huge jump: Adv.=200, Exp.=1000
 	ecmStrength: 			{ min: 0,	max: 4, 	record: 4, 		ok: 0,	good: 0,	excl: 0 },
 	armorCoverage: 			{ min: 0,	max: 2000,	record: 7650,	ok: 0,	good: 0,	excl: 0 },
 	coreShielding: 			{ min: 0,	max: 40,	record: 40,		ok: 0,	good: 0,	excl: 0 },
@@ -193,6 +193,7 @@ app = new Vue({
 		scoresheet: null, // populates when request for JSON succeeds
 		pane: null, // dont set to 'overview' by default. graphs need to be prompted to draw
 		ChangePane,
+		LoadScoresheet,
 		metrics,
 		charts: [],
 		error_msg: null,
@@ -202,54 +203,69 @@ app = new Vue({
 
 ChangePane('input');
 
-// check URL for a file hash
-let urlpart = window.location.search.trim().replace('?','').replace('hash=','').replace(/&.+/,'');
-// development-only switch for handling local files:
-if ( use_local_dev ) {
-	urlpart = decodeURIComponent(urlpart).replace(/^.*\//,'').replace(/\..+$/,'');
-	file = urlpart ? ('data/' + urlpart + '.json') : null; 
-}
-else { 
-	if ( urlpart.match(/^[A-Za-z0-9]{12,18}$/) ) {
-		app.filehash = urlpart;
-		// if we're on gridsagegames now, okay to just get the file directly
-		// https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS/Errors/CORSMissingAllowOrigin
-		if ( window.location.hostname.match('gridsagegames.com') ) {
-			file = 'https://cogmind-api.gridsagegames.com/scoresheets/' + urlpart + '.json';
-		}
-		// otherwise we need to use a local php proxy because kyz doesnt know how to set CORS yet. 
-		else { file = 'proxy.php?' + urlpart; }
-	}
-	else { file = null; }
-}
+// check URL for a file hash - we dont care about the URL itself, just the hashy part
+let hash = window.location.search.trim().replace('?','').replace(/\s+/,'').replace('hash=','').replace(/&.+/,'');
+LoadScoresheet(hash);
 
-// request data and get the party started
-if ( file ) {
-	ChangePane('loading');
-	fetch( file ).then( rsp => {
-		if ( !rsp.ok ) {
-			ChangePane('input');
-			app.error_msg = 'Networking is having a bad day. It happens.';
+
+function LoadScoresheet( hash ) {
+
+	this.error_msg = null;
+	
+	// look for the app's bound data from form input if nothing supplied manually from function param
+	hash = hash || this.filehash || '';
+	
+	// development-only switch for handling local files:
+	if ( use_local_dev ) {
+		hash = decodeURIComponent(hash).replace(/^.*\//,'').replace(/\..+$/,'');
+		file = hash ? ('data/' + hash + '.json') : null;
+		app.filehash = null; 
+	}
+	else { 
+		if ( hash.match(/^[A-Za-z0-9]{12,18}$/) ) {
+			app.filehash = hash;
+			// if we're on gridsagegames now, okay to just get the file directly
+			// https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS/Errors/CORSMissingAllowOrigin
+			if ( window.location.hostname.match('gridsagegames.com') ) {
+				file = 'https://cogmind-api.gridsagegames.com/scoresheets/' + hash + '.json';
+			}
+			// otherwise we need to use a local php proxy because kyz doesnt know how to set CORS yet. 
+			else { file = 'proxy.php?' + hash; }
 		}
-		if ( !rsp.body ) {
+		else {
+			this.error_msg = 'Not a recognized file hash. Try something else.';
+			app.filehash = null;
+			file = null; 
+		}
+	}
+	
+	// request data and get the party started
+	if ( file ) {
+		ChangePane('loading');
+		fetch( file ).then( rsp => {
+			if ( !rsp.ok || !rsp.body || String(rsp.status).match(/^(4|5)/) ) {
+				ChangePane('input');
+				app.error_msg = 'Couldnt get scoresheet. Maybe a typo. Maybe not a real file. Maybe nothing is real. I don\'t know.';
+				return false;
+			}		
+			return rsp.json();
+		})
+		.then( data => {
+			if ( data ) { 
+				// NOTE: this info not available from manual file uploads. (Hash is not stored in file itself) 
+				data.meta.source_file_txt = 'https://cogmind-api.gridsagegames.com/scoresheets/' + hash;
+				data.meta.source_file_json = 'https://cogmind-api.gridsagegames.com/scoresheets/' + hash + '.json';
+				data.meta.permalink = window.location.href.replace( window.location.search, '?' + hash );
+				AnalyzeScoresheet(data);
+				app.scoresheet = data;
+				ChangePane('overview');
+			}
+		})
+		.catch(error => {
+			app.error_msg = 'Error when trying to get file: ' + error;
 			ChangePane('input');
-			app.error_msg = 'Server returned nothing. Maybe not a real file. Maybe nothing is real. I don\'t know.';
-		}		
-		return rsp.json();
-	})
-	.then( data => {
-		// NOTE: this info not available from manual file uploads. (Hash is not stored in file itself) 
-		data.meta.source_file_txt = 'https://cogmind-api.gridsagegames.com/scoresheets/' + urlpart;
-		data.meta.source_file_json = 'https://cogmind-api.gridsagegames.com/scoresheets/' + urlpart + '.json';
-		data.meta.permalink = window.location.href.replace( window.location.search, '?' + urlpart );
-		AnalyzeScoresheet(data);
-		app.scoresheet = data;
-		ChangePane('overview');
-	})
-	.catch(error => {
-		app.error_msg = 'Error when trying to get file: ' + error;
-		ChangePane('input');
-	});
+		});
+	}
 }
 
 function AnalyzeScoresheet( data ) {
