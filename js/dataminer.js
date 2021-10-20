@@ -3,7 +3,7 @@
 
 var app = null; // app is global? are you stupid?
 var filehash = null; // you fool!
-var use_local_dev = true;
+var use_local_dev = false;
 
 // chart defaults
 Chart.defaults.color = '#FFF';
@@ -301,6 +301,8 @@ function AnalyzeScoresheet( data ) {
 			trapsTriggered: [],
 			signalsJammed: []
 		},
+		fabbed_stuff: [], // [{ map, name, qty }]
+		schematics: [], // [{ map, name }]
 		route_data: [], // { depth: int, maps: [strings] }
 		}
 	for ( map of data.route.entries ) {
@@ -388,6 +390,22 @@ function AnalyzeScoresheet( data ) {
 		// core
 		// data.charts.core_chart_data.push( map.stats.combat.coreRemainingPercent || 100 ); //BUG in stat tracking. branches record zero?
 		
+		// stuff we got
+		if ( map.fabricatedObjects ) {
+			data.charts.fabbed_stuff.push( ...map.fabricatedObjects.map( x => ({
+				map: (map.location.depth + '/' + map.location.mapname),
+				name: x.name,
+				qty: x.count
+			})));
+		}
+		if ( map.obtainedSchematics ) {
+			data.charts.schematics.push( ...map.obtainedSchematics.map( x => ({
+				map: (map.location.depth + '/' + map.location.mapname),
+				name: x.name,
+				qty: x.count
+			})));
+		}
+
 		// route
 		let last_route = data.charts.route_data.length ? data.charts.route_data[ data.charts.route_data.length-1 ] : null;
 		if ( !last_route || last_route.depth != map.location.depth ) {

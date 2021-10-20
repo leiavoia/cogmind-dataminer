@@ -799,6 +799,23 @@
 							</div>
 						</div>
 					</template>
+						
+					<h2>Schematics Obtained</h2>						
+					<table class="table text-nowrap">
+						<tr v-for="i of scoresheet.charts.schematics">
+							<td>{{i.map}}</td>
+							<td>{{i.name.Undatafy()}}</td>
+						</tr>
+					</table>					
+						
+					<h2>Fabricated Stuff</h2>						
+					<table class="table text-nowrap">
+						<tr v-for="i of scoresheet.charts.fabbed_stuff">
+							<td>{{i.map}}</td>
+							<td>{{i.name.Undatafy()}}</td>
+							<td>{{i.qty}}</td>
+						</tr>
+					</table>			
 								
 				</template>
 				
@@ -1209,8 +1226,8 @@
 					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
 						<p class="text-sm text-center text-muted">(click a label to show/hide category)</p>
 						<canvas id="stealthChart"></canvas>
-					</div>
-												
+					</div>			
+					
 				</template>		
 				
 				
