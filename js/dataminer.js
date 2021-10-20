@@ -285,6 +285,7 @@ function AnalyzeScoresheet( data ) {
 		alert_chart_data: [],
 		chart_map_labels: [],
 		core_chart_data: [],
+		// build_chart_data: [],
 		damage_received_chart_data: [],
 		avg_speed_data: [],
 		minmax_speed_data: [], // pairs of [min,max]
@@ -364,6 +365,9 @@ function AnalyzeScoresheet( data ) {
 		
 		// support
 		data.charts.support_chart_data.push( map.stats.build.heaviestBuild.greatestSupport );
+		
+		// build quality
+		// data.charts.build_chart_data.push( map.peakState.rating );
 		
 		// speed
 		data.charts.avg_speed_data.push( map.stats.exploration.spacesMoved.averageSpeed );
@@ -708,50 +712,57 @@ function ChangePane(pane) {
 			app.charts.push( DrawClassDistroChart(
 				app.scoresheet.charts.class_distro_chart_data, 
 				app.scoresheet.charts.class_distro_chart_labels
-				) );
+			) );
 			app.charts.push( DrawPropPieChart(
 				app.scoresheet.charts.prop_pie_chart_data, 
 				app.scoresheet.charts.prop_pie_chart_labels
-				) );
+			) );
 			app.charts.push( DrawPropGraph(
 				app.scoresheet.charts.prop_chart_data, 
 				app.scoresheet.charts.chart_map_labels
-				) );
+			) );
 			app.charts.push( DrawPartsAttachedPieChart(
 				app.scoresheet.charts.parts_attached_chart_data, 
 				app.scoresheet.charts.parts_attached_chart_labels
-				) );
+			) );
 			app.charts.push( DrawPowerAttachedPieChart(
 				app.scoresheet.charts.parts_attached_power_chart_data, 
 				app.scoresheet.charts.parts_attached_power_chart_labels
-				) );
+			) );
 			app.charts.push( DrawPropulsionAttachedPieChart(
 				app.scoresheet.charts.parts_attached_propulsion_chart_data, 
 				app.scoresheet.charts.parts_attached_propulsion_chart_labels
-				) );
+			) );
 			app.charts.push( DrawUtilityAttachedPieChart(
 				app.scoresheet.charts.parts_attached_utility_chart_data, 
 				app.scoresheet.charts.parts_attached_utility_chart_labels
-				) );
+			) );
 			app.charts.push( DrawWeaponAttachedPieChart(
 				app.scoresheet.charts.parts_attached_weapon_chart_data, 
 				app.scoresheet.charts.parts_attached_weapon_chart_labels
-				) );
+			) );
 			app.charts.push( DrawPartsLostPieChart(
 				app.scoresheet.charts.parts_lost_chart_data, 
 				app.scoresheet.charts.parts_lost_chart_labels
-				) );
+			) );
 			app.charts.push( DrawWeightChart( {
 				support_chart_data: app.scoresheet.charts.support_chart_data,
 				weight_chart_data: app.scoresheet.charts.weight_chart_data,
 				}, app.scoresheet.charts.chart_map_labels
-				) );
+			) );
 			app.charts.push( DrawSpeedGraph( {
 				avg_speed_data: app.scoresheet.charts.avg_speed_data,
 				minmax_speed_data: app.scoresheet.charts.minmax_speed_data,
 				}, app.scoresheet.charts.chart_map_labels
-				) );
-			app.charts.push( DrawInventoryChart( app.scoresheet.charts.inventory_chart_data, app.scoresheet.charts.chart_map_labels ) );
+			) );
+			app.charts.push( DrawInventoryChart( 
+				app.scoresheet.charts.inventory_chart_data, 
+				app.scoresheet.charts.chart_map_labels 
+			) );
+			// app.charts.push( DrawBuildChart( 
+			// 	app.scoresheet.charts.build_chart_data, 
+			// 	app.scoresheet.charts.chart_map_labels 
+			// ) );
 		}
 		
 		else if ( pane === 'combat' ) {
@@ -1663,6 +1674,40 @@ function DrawIndvMachineHacksChart( data, labels, colors, key ) {
 	};
 	return new Chart( document.getElementById(key + 'HacksChart'), config );
 }
+
+// function DrawBuildChart( data, labels ) {
+// 	const chartdata = {
+// 		labels: labels,
+// 		datasets: [{
+// 			label: 'Build Quality',
+// 			borderWidth: 1,
+// 			fill: true,
+// 			tension: 0.4,
+// 			data: data,
+// 		}]
+// 	};
+// 	const config = {
+// 		type: 'line',
+// 		data: chartdata,
+// 		options: {
+// 			aspectRatio: 4,
+// 			responsive: true,
+// 			interaction: {
+// 				intersect: false,
+// 			},					
+// 			plugins: {
+// 				legend: {
+// 					display: false,
+// 					position: 'top',
+// 				},
+// 				title: {
+// 					display: false,
+// 				}
+// 			}
+// 		},
+// 	};
+// 	return new Chart( document.getElementById('buildQualityChart'), config );
+// }
 
 function DrawAlertChart( data, labels ) {
 	const chartdata = {
