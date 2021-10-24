@@ -34,50 +34,6 @@ Chart.pie_colors = [ // you should not be adding stuff in like this.
 	'#152d69',
 	'#57391f',
 ];
-Chart.green_colors = [ // i can do what i want!
-	'#7fc97d',
-	'#67d164',
-	'#4ac546',
-	'#33a52f',
-	'#268623',
-	'#1b6b18',
-	'#11520e',
-	'#093507',
-	'#012000',
-];
-Chart.yellow_colors = [ // you're not the boss of me!
-	'#f0ed9e',
-	'#e6e066',
-	'#d4cd2d',
-	'#beb717',
-	'#9c960e',
-	'#726d08',
-	'#4b4705',
-	'#1b1a00',
-];
-Chart.blue_colors = [
-	'#87adf5',
-	'#608fe9',
-	'#3c74e0',
-	'#2160da',
-	'#0e43aa',
-	'#093486',
-	'#0a275e',
-	'#061a3f',
-];
-Chart.red_colors = [
-	'#ffa9a9',
-	'#dd6161',
-	'#e03b3b',
-	'#e60d0d',
-	'#ca0c0c',
-	'#ad0b0b',
-	'#990a0a',
-	'#860808',
-	'#700606',
-	'#5a0404',
-	'#420202',
-];
 Chart.colors_by_key = {
 	power: '#dfd239',
 	propulsion: '#418d4f',
@@ -307,7 +263,7 @@ function AnalyzeScoresheet( data ) {
 		}
 	for ( map of data.route.entries ) {
 		// map labels
-		map.location.mapname = String(map.location.map).replace('MAP_','');
+		map.location.mapname = typeof(map.location.map)=='string' ? map.location.map.replace('MAP_','') : 'Unknown Map';
 		map.location.mapname = (map_names[map.location.mapname] || map.location.mapname);
 		data.charts.chart_map_labels.push( map.location.depth + '/' + map.location.mapname );
 		
@@ -883,14 +839,11 @@ function CalculateBadges(data) {
 	if ( data.bonus.zhirovDestroyedMainc ) { data.badges.push('ZhirovsRevenge'); }
 	if ( data.bonus.used0b10Conduit ) { data.badges.push('ConduitH4XX0RED'); }
 	
-	
-	
-			
 	// places of interest
 	let regular_places = ['MAT','FAC','RES','ACC','COM'].map( m => map_names[m] || m );
 	for ( let x of data.route.entries ) {
 		// notable places visited
-		let mapname = String(x.location.map).replace('MAP_','');
+		let mapname = typeof(x.location.map)=='string' ? x.location.map.replace('MAP_','') : 'Unknown Map';
 		let nicename = map_names[mapname] || mapname;
 		if ( ['SCR','MAT','UPP','FAC','LOW','RES','ACC','PRO','MIN'].indexOf(mapname) === -1 ) {
 			data.badges.push( nicename );
@@ -909,8 +862,37 @@ function CalculateBadges(data) {
 	if ( botnets >= 4 && botnets / (unauthed_hacks+terminal_hacks) >= 0.20  ) {
 		data.badges.push('BotnetGood');
 	}
-	else if ( unauthed_hacks > 10 && botnets <= 2 && (unauthed_hacks+terminal_hacks) <= 0.05  ) {
+	else if ( unauthed_hacks > 10 && botnets <= 2 && botnets / (unauthed_hacks+terminal_hacks) <= 0.05  ) {
 		data.badges.push('BotnetBad');
+	}
+	
+	// hacking skills
+	if ( unauthed_hacks > 30 && data.stats.hacking.totalHacks.successful / (data.stats.hacking.totalHacks?.overall||1) >= 0.75 ) {
+		data.badges.push('1337H4XX0R');
+	}
+	
+	// shot accuracy
+	if ( data.stats.combat.shotsHitRobots.overall / ((data.stats.combat.shotsFired.overall + data.stats.combat.meleeAttacks.overall) || 1) >= 0.75 ) {
+		data.badges.push('CrackShot');
+	}
+	
+	// hottest temp
+	if ( data.stats.combat.highestTemperature.overall >= 600 ) {
+		data.badges.push('Spicy!');
+	}
+	
+	// fav propulsion - tag anything over 80pct
+	let prop_threshold = 0.8 * Object.values(data.charts.prop_pie_chart_data).reduce( (a=0,x) => a+x );
+	for ( let k in data.charts.prop_pie_chart_data ) {
+		if ( data.charts.prop_pie_chart_data[k] >= prop_threshold ) {
+			data.badges.push('Team' + data.charts.prop_pie_chart_labels[k].Undatafy() + '!');
+			break;
+		}
+	}
+	
+	// high damage inflicted versus received
+	if ( data.stats.dishoutRatio > 2.0 ) {
+		data.badges.push('Punisher');
 	}
 	
 	// remove duplicates

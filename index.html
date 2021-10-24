@@ -645,7 +645,7 @@
 								<div class="card statbox h-100">
 									<div class="card-header">Hacking Skill</div>
 									<div class="card-body text-success numeric">
-										<span class="card-text">{{((scoresheet.stats.hacking.totalHacks.successful / scoresheet.stats.hacking.totalHacks.overall) * 100).toFixed(1) || 0}}%</span>
+										<span class="card-text">{{((scoresheet.stats.hacking.totalHacks.successful / (scoresheet.stats.hacking.totalHacks.overall || 1)) * 100).toFixed(1) || 0}}%</span>
 									</div>
 								</div>
 							</div>
