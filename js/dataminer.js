@@ -148,6 +148,7 @@ app = new Vue({
 	data: { 
 		scoresheet: null, // populates when request for JSON succeeds
 		pane: null, // dont set to 'overview' by default. graphs need to be prompted to draw
+		inputbox_mode: 'url',
 		ChangePane,
 		LoadScoresheet,
 		metrics,
@@ -211,7 +212,10 @@ function LoadScoresheet( hash ) {
 				// NOTE: this info not available from manual file uploads. (Hash is not stored in file itself) 
 				data.meta.source_file_txt = 'https://cogmind-api.gridsagegames.com/scoresheets/' + hash;
 				data.meta.source_file_json = 'https://cogmind-api.gridsagegames.com/scoresheets/' + hash + '.json';
-				data.meta.permalink = window.location.href.replace( window.location.search, '?' + hash );
+				data.meta.permalink = window.location.href
+					.replace( window.location.search, '' ) 
+					.replace( /#.*/, '' ) 
+					+ '?' + hash;
 				AnalyzeScoresheet(data);
 				app.scoresheet = data;
 				ChangePane('overview');
@@ -845,7 +849,7 @@ function CalculateBadges(data) {
 		// notable places visited
 		let mapname = typeof(x.location.map)=='string' ? x.location.map.replace('MAP_','') : 'Unknown Map';
 		let nicename = map_names[mapname] || mapname;
-		if ( ['SCR','MAT','UPP','FAC','LOW','RES','ACC','PRO','MIN'].indexOf(mapname) === -1 ) {
+		if ( ['SCR','MAT','UPP','FAC','LOW','RES','ACC','PRO','MIN','Unknown Map'].indexOf(mapname) === -1 ) {
 			data.badges.push( nicename );
 		}
 		// furthest regular location
@@ -881,8 +885,8 @@ function CalculateBadges(data) {
 		data.badges.push('Spicy!');
 	}
 	
-	// fav propulsion - tag anything over 80pct
-	let prop_threshold = 0.8 * Object.values(data.charts.prop_pie_chart_data).reduce( (a=0,x) => a+x );
+	// fav propulsion - tag anything over 75pct
+	let prop_threshold = 0.75 * Object.values(data.charts.prop_pie_chart_data).reduce( (a=0,x) => a+x );
 	for ( let k in data.charts.prop_pie_chart_data ) {
 		if ( data.charts.prop_pie_chart_data[k] >= prop_threshold ) {
 			data.badges.push('Team' + data.charts.prop_pie_chart_labels[k].Undatafy() + '!');
