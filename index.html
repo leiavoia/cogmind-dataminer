@@ -142,7 +142,8 @@
 								</form>
 								<p class="mt-5"><a href="https://www.gridsagegames.com/cogmind/scores/runs_by_version.html" target="_blank">Scoresheets Archive</a></p>
 								<p class=""><a href="https://www.gridsagegames.com/cogmind/scores/runs_by_version_patron.html" target="_blank">Patreon Beta Scoresheets</a></p>
-								<p class="mb-3"><a href="help.html" target="_blank">Where to find your scoresheets</a></p>
+								<p class=""><a href="help.html" target="_blank">Where to find your scoresheets</a></p>
+								<p class="mt-3 text-warning"><b>Warning:</b> Scoresheets contain spoilers!</p>
 							</div>
 							<!-- scoresheet upload pane -->
 							<div class="container-fluid p-5 pb-5 pt-2 mt-0 mb-5 bg-primary text-light rounded text-center" v-show="inputbox_mode=='upload'">
@@ -199,7 +200,6 @@
 									</div>
 								</div>
 								<p class="badges text">
-									<!-- Highlights:<br/> -->
 									<span class="badge ms-1" :class="b" v-for="b in scoresheet.badges">{{b}}</span>
 								</p>
 								<p class="badges text" v-if="scoresheet.achievements.achievements && scoresheet.achievements.achievements.length">
@@ -641,6 +641,8 @@
 							<td>{{v}}</td>
 						</tr>
 					</table>
+					<p v-if="!scoresheet.alienTechUsed.parts || !scoresheet.alienTechUsed.parts.length">None</p>
+					
 				</template>
 				
 				<!-- HACKING -->
@@ -867,7 +869,7 @@
 									<div class="card-header">Shots Per Volley</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{
-											(scoresheet.stats.combat.shotsFired.overall / scoresheet.stats.combat.volleysFired.overall)
+											(scoresheet.stats.combat.shotsFired.overall / (scoresheet.stats.combat.volleysFired.overall || 1 ))
 											.toFixed(1)
 											}}</span>
 									</div>
