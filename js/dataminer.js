@@ -267,7 +267,7 @@ function AnalyzeScoresheet( data ) {
 		}
 	for ( map of data.route.entries ) {
 		// map labels
-		map.location.mapname = typeof(map.location.map)=='string' ? map.location.map.replace('MAP_','') : 'Unknown Map';
+		map.location.mapname = typeof(map.location.map)=='string' ? map.location.map.replace('MAP_','') : (map.location.map==35 ? 'DSF' : 'Unknown Map');
 		map.location.mapname = (map_names[map.location.mapname] || map.location.mapname);
 		data.charts.chart_map_labels.push( map.location.depth + '/' + map.location.mapname );
 		
@@ -628,7 +628,8 @@ const map_names = {
 	STO: 'Storage',
 	ARM: 'Armory',
 	WAS: 'Waste',
-	GAR: 'Garrison'
+	GAR: 'Garrison',
+	DSF: 'DSF',
 };
 
 function ChangePane(pane) {
@@ -849,7 +850,7 @@ function CalculateBadges(data) {
 	let regular_places = ['MAT','FAC','RES','ACC','COM'].map( m => map_names[m] || m );
 	for ( let x of data.route.entries ) {
 		// notable places visited
-		let mapname = typeof(x.location.map)=='string' ? x.location.map.replace('MAP_','') : 'Unknown Map';
+		let mapname = typeof(x.location.map)=='string' ? x.location.map.replace('MAP_','') : (x.location.map==35 ? 'DSF' : 'Unknown Map');
 		let nicename = map_names[mapname] || mapname;
 		if ( ['SCR','MAT','UPP','FAC','LOW','RES','ACC','PRO','MIN','Unknown Map'].indexOf(mapname) === -1 ) {
 			data.badges.push( nicename );
