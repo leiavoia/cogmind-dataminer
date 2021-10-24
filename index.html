@@ -1,12 +1,14 @@
 <!doctype html>
 <html lang="en">
 	<!-- what kind of idiot would build the entire app in one file? -->
-	<!-- me! :-) -->
 	<head>
 		<title>Cogmind Dataminer</title>
-		<meta charset="UTF-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1">
-		<link rel="icon" type="image/x-icon" href="img/favicon.ico" sizes="16x16">
+		<meta name="description" content="Interactive scoresheet viewer for the game Cogmind." />
+		<meta name="keywords" content="cogmind,scoresheet,graph,run,morgue file,roguelike" />
+		<meta name="author" content="leiavoia" />
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<link rel="icon" type="image/x-icon" href="img/favicon.ico" sizes="16x16" />
 		<!-- dev version -->
 		<!-- <script src="https://unpkg.com/vue"></script> -->
 		<!-- prod version -->
@@ -121,12 +123,14 @@
 				<!-- intro page to request JSON file -->
 				<template v-if="pane=='input'">
 					<div class="alert alert-warning mt-5" role="alert" v-if="error_msg" >{{error_msg}}</div>
-					<div class="row justify-content-md-center">
+					<div class="row justify-content-md-center mt-5">
 						<div class="col-md-auto">
+							<!-- input pane toggle -->
 							<nav class="nav nav-pills nav-justified">
 								<button class="nav-item nav-link" :class="inputbox_mode=='url' ? '' : 'active'" v-on:click="inputbox_mode='url'">URL</button>
 								<button class="nav-item nav-link" :class="inputbox_mode=='upload' ? '' : 'active'" v-on:click="inputbox_mode='upload'">File Upload</button>
 							</nav>
+							<!-- scoresheet URL input pane -->
 							<div class="container-fluid p-5 pb-5 pt-2 mt-0 mb-5 bg-primary text-light rounded text-center" v-show="inputbox_mode=='url'">
 								<h2>Scoresheet URL or Hash:</h2>
 								<form action="" method="get" v-on:submit.prevent="LoadScoresheet()">
@@ -139,16 +143,17 @@
 								<p class=""><a href="https://www.gridsagegames.com/cogmind/scores/runs_by_version_patron.html" target="_blank">Patreon Beta Scoresheets</a></p>
 								<p class="mb-3"><a href="help.html" target="_blank">Where to find your scoresheets</a></p>
 							</div>
+							<!-- scoresheet upload pane -->
 							<div class="container-fluid p-5 pb-5 pt-2 mt-0 mb-5 bg-primary text-light rounded text-center" v-show="inputbox_mode=='upload'">
 								<h2>Upload Scoresheet .JSON:</h2>
 								<form action="" method="">
 									<div class="input-group">
 										<input type="file" class="form-control" id="jsonfile" name="jsonfile" accept="application/json" />
-										<!-- <button type="submit" class="btn bg-secondary text-light" name="submit" value="Upload">Upload</button> -->
 									</div>							
-									<p class="my-5">&nbsp;<!-- a blank for your message --></p>
+									<p class="mt-5 mb-3"><a href="help.html" target="_blank">Where to find your scoresheets</a></p>
 								</form>
 							</div>
+							
 						</div>
 					</div>
 				</template>
@@ -159,19 +164,17 @@
 					<progress style="height: 2em;" ></progress>
 				</div>
 				
-				
-				<!-- <nav class="navbar navbar-expand-xl nav-justified" v-if="scoresheet"> -->
-				<!-- <nav class="btn-block btn-group" v-if="scoresheet"> -->
-				<div class="my-3" v-if="scoresheet && pane!='input' && pane!='loading' ">
-					<button type="button" class="btn text-nowrap btn-primary" v-on:click="ChangePane('input')">◄</button>
-					<button type="button" class="btn text-nowrap" :class="pane=='overview' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('overview')">Overview</button>
-					<button type="button" class="btn text-nowrap" :class="pane=='route' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('route')">Route</button>
-					<button type="button" class="btn text-nowrap" :class="pane=='build' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('build')">Build</button>
-					<button type="button" class="btn text-nowrap" :class="pane=='combat' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('combat')">Combat</button>
-					<button type="button" class="btn text-nowrap" :class="pane=='hacking' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('hacking')">Hacking</button>
-					<button type="button" class="btn text-nowrap" :class="pane=='stealth' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('stealth')">Stealth</button>
-					<button type="button" class="btn text-nowrap" :class="pane=='tables' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('tables')">Table Data</button>
-				</div>
+				<!-- pane nav bar -->
+				<nav class="nav nav-pills nav-justified my-3" v-if="scoresheet && pane!='input' && pane!='loading' ">
+					<button type="button" class="btn nav-item mx-1 text-nowrap btn-primary" v-on:click="ChangePane('input')">◄</button>
+					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='overview' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('overview')">Overview</button>
+					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='route' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('route')">Route</button>
+					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='build' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('build')">Build</button>
+					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='combat' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('combat')">Combat</button>
+					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='hacking' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('hacking')">Hacking</button>
+					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='stealth' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('stealth')">Stealth</button>
+					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='tables' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('tables')">Table Data</button>
+				</nav>
 					
 				<!-- overview pane -->			
 				<template v-if="pane=='overview'" >			
@@ -803,21 +806,23 @@
 					</template>
 						
 					<h2>Schematics Obtained</h2>						
-					<table class="table text-nowrap">
+					<table class="table text-nowrap" v-if="scoresheet.charts.schematics.length">
 						<tr v-for="i of scoresheet.charts.schematics">
 							<td>{{i.map}}</td>
 							<td>{{i.name.Undatafy()}}</td>
 						</tr>
 					</table>					
+					<p v-if="!scoresheet.charts.schematics.length">None</p>		
 						
 					<h2>Fabricated Stuff</h2>						
-					<table class="table text-nowrap">
+					<table class="table text-nowrap" v-if="scoresheet.charts.fabbed_stuff.length">
 						<tr v-for="i of scoresheet.charts.fabbed_stuff">
 							<td>{{i.map}}</td>
 							<td>{{i.name.Undatafy()}}</td>
 							<td>{{i.qty}}</td>
 						</tr>
-					</table>			
+					</table>
+					<p v-if="!scoresheet.charts.fabbed_stuff.length">None</p>		
 								
 				</template>
 				
@@ -1241,11 +1246,22 @@
 							<td>{{i[1]}}</td>
 						</tr>
 					</table>			
-				</template>		
-				
-			</div>
-
-		</div>
+				</template>					
+		
+				<!-- pane nav bar -->
+				<nav class="nav nav-pills nav-justified my-5" v-if="scoresheet && pane!='input' && pane!='loading' ">
+					<button type="button" class="btn nav-item mx-1 text-nowrap btn-primary" v-on:click="ChangePane('input')">◄</button>
+					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='overview' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('overview')">Overview</button>
+					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='route' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('route')">Route</button>
+					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='build' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('build')">Build</button>
+					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='combat' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('combat')">Combat</button>
+					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='hacking' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('hacking')">Hacking</button>
+					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='stealth' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('stealth')">Stealth</button>
+					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='tables' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('tables')">Table Data</button>
+				</nav>
+					
+			</div><!-- end "app" div -->
+		</div><!-- end page container -->
 		
 		<script src="js/dataminer.js"></script>
 		

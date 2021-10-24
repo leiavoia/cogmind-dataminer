@@ -632,7 +632,10 @@ const map_names = {
 };
 
 function ChangePane(pane) {
-	if ( app.pane == pane ) { return false; }
+	if ( app.pane == pane ) { 
+		return false; 
+	}
+	window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); 
 	// cleanup current page
 	for ( let chart of app.charts ) {
 		chart.destroy();
@@ -778,7 +781,6 @@ function ChangePane(pane) {
 			if ( app.scoresheet.charts.num_uhacks ) {
 				app.charts.push( DrawIndvMachineHacksChart( app.scoresheet.charts.uhack_data, app.scoresheet.charts.uhack_labels, app.scoresheet.charts.uhack_colors, 'unauthorized' ) );
 			}
-
 		}
 		
 	});
@@ -888,7 +890,7 @@ function CalculateBadges(data) {
 	// fav propulsion - tag anything over 75pct
 	let prop_threshold = 0.75 * Object.values(data.charts.prop_pie_chart_data).reduce( (a=0,x) => a+x );
 	for ( let k in data.charts.prop_pie_chart_data ) {
-		if ( data.charts.prop_pie_chart_data[k] >= prop_threshold ) {
+		if ( data.charts.prop_pie_chart_data[k] >= prop_threshold && data.charts.prop_pie_chart_data[k] > 3000 ) {
 			data.badges.push('Team' + data.charts.prop_pie_chart_labels[k].Undatafy() + '!');
 			break;
 		}
