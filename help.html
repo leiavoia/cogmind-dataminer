@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+	<!-- what kind of idiot would build the entire app in one file? -->
+	<!-- me! :-) -->
+	<head>
+		<title>Cogmind Dataminer</title>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<link rel="icon" type="image/x-icon" href="img/favicon.ico" sizes="16x16">
+		<!-- dev version -->
+		<!-- <script src="https://unpkg.com/vue"></script> -->
+		<!-- prod version -->
+		<script src="https://unpkg.com/vue@2.6.14/dist/vue.min.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.5.1/chart.min.js"></script>
+		<link href="css/bootstrap.slate.min.css" rel="stylesheet"/>
+		<style>
+
+		</style>
+	</head>
+	
+	<body >
+		<div class="container-lg pt-4">
+			<h1>
+				<img src="img/dataminer_icon.png" style="height:1em; width: 1em; background-color: #000;" />
+				Cogmind Dataminer
+			</h1>
+				
+			<h2 class="my-4">Where to Find Your Scoresheets</h2>
+			<p>When you complete a game of Cogmind, win or lose, a scoresheet text file is created in your local installation's "scores" directory. For Steam installations on Windows, this is at:</p>
+			<p><code>C:\Program Files (x86)\Steam\steamapps\common\Cogmind\scores</code></p>
+			
+			<p>Inside are scorehseet .txt files, one for each game you have completed. They look like this:</p>
+			
+			<p><code>YourNameHere-201125-203139-1-32841_w0.txt</code></p>
+			
+			<p>Open any of these files and at the very bottom you will find the URL for the .json data file of your run. Example:</p>
+			
+			<p><code>https://cogmind-api.gridsagegames.com/scoresheets/b49f9zMF6vyn7zrHm.json</code></p>
+			
+			<p>This is the machine-readable file that the Cogmind Dataminer scoresheet viewer needs. Copy the URL (or just the "hash" at the end) and paste that into the box to load your scoresheet in the viewer.</p>
+			
+			<h2 class="my-4">I Can't Find Mine!</h2>
+			
+			<p>Your .json data file is only available online if you elected to send this data. You can enable scoresheet uploads using Cogmind's in-game settings menu.</p>
+			
+			<p>Cogmind does not currently export a .json data file for offline use. You can still view the text version of your stats in the .txt file, but it will not load into the Dataminer viewer.</p>
+			
+			<h2 class="my-4">Viewing Other Players' Games</h2>
+			
+			<p>Scoresheets from all players that elect to upload scores are available for free at gridsagegames.com:</p>
+			
+			<p class=""><a href="https://www.gridsagegames.com/cogmind/scores/runs_by_version.html" target="_blank">Scoresheets Archive</a></p>
+			<p class=""><a href="https://www.gridsagegames.com/cogmind/scores/runs_by_version_patron.html" target="_blank">Patreon Beta Scoresheets</a></p>
+			<p class=""><a href="https://www.gridsagegames.com/cogmind/scores/" target="_blank">Cogmind Leader Boards</a></p>
+			
+			<h2 class="my-4">Sharing Scoresheet Links</h2>
+			
+			<p>You can share a Dataminer link to your run by copying the "Permalink" link after loading your scoresheet. You can also just add a "?" and your scoresheet's hash to the URL.</p>
+
+		</div>
+	</body>
+</html>

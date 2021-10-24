@@ -6,11 +6,12 @@
 		<title>Cogmind Dataminer</title>
 		<meta charset="UTF-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1">
-		<link rel="icon" type="image/x-icon" href="favicon.ico" sizes="16x16">
-		<script src="https://unpkg.com/vue"></script>
+		<link rel="icon" type="image/x-icon" href="img/favicon.ico" sizes="16x16">
+		<!-- dev version -->
+		<!-- <script src="https://unpkg.com/vue"></script> -->
+		<!-- prod version -->
+		<script src="https://unpkg.com/vue@2.6.14/dist/vue.min.js"></script>
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.5.1/chart.min.js"></script>
-		<!-- bootstrap styles -->
-		<!-- <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-uWxY/CJNBR+1zjPWmfnSnVxwRheevXITnMqoEIeG1LJrdI0GlVs/9cVSyPYXdcSF" crossorigin="anonymous"> -->
 		<link href="css/bootstrap.slate.min.css" rel="stylesheet"/>
 		<style>
 			/* TABLE { --bs-table-accent-bg: none !important; } */
@@ -111,49 +112,51 @@
 			
 			<div id="app" v-cloak>
 			
-				<h1>
-					<img src="dataminer_icon.png" style="height:1em; width: 1em; background-color: #000;" />
+				<h1 class="mb-3" :class="scoresheet && pane!='input' && pane!='loading' ? '' : 'text-center'">
+					<img src="img/dataminer_icon.png" style="height:1em; width: 1em; background-color: #000;" />
 					Cogmind Dataminer
 					<span class="text-muted" v-if="scoresheet"> : {{scoresheet.header.playerName}} : Game #{{scoresheet.game.gameNumber}}</span>	
 				</h1>
 				
 				<!-- intro page to request JSON file -->
 				<template v-if="pane=='input'">
-					<div class="container-fluid my-5 text-light text-center g-0">
-						<div class="row row-cols-xl-2">
-							<div class="col mb-5">
-								<div class="container-fluid p-3 pb-5 mt-3 mb-5 bg-primary text-light rounded">
-									<h2>Scoresheet URL or Hash:</h2>
-									<form action="" method="get" v-on:submit.prevent="LoadScoresheet()">
-										<div class="input-group">
-											<input type="text" class="form-control" v-model="filehash" placeholder="Example: FjLf3qHftm4yrzkjq" />
-											<input type="submit" class="btn bg-secondary text-light" name="submit" value="Fetch" />
-										</div>							
-									</form>
-									<p class="mt-5"><a href="https://www.gridsagegames.com/cogmind/scores/runs_by_version.html" target="_blank">Scoresheets Archive</a></p>
-									<p class="mb-3"><a href="https://www.gridsagegames.com/cogmind/scores/runs_by_version_patron.html" target="_blank">Patreon Beta Scoresheets</a></p>
-								</div>
+					<div class="alert alert-warning mt-5" role="alert" v-if="error_msg" >{{error_msg}}</div>
+					<div class="row justify-content-md-center">
+						<div class="col-md-auto">
+							<nav class="nav nav-pills nav-justified">
+								<button class="nav-item nav-link" :class="inputbox_mode=='url' ? '' : 'active'" v-on:click="inputbox_mode='url'">URL</button>
+								<button class="nav-item nav-link" :class="inputbox_mode=='upload' ? '' : 'active'" v-on:click="inputbox_mode='upload'">File Upload</button>
+							</nav>
+							<div class="container-fluid p-5 pb-5 pt-2 mt-0 mb-5 bg-primary text-light rounded text-center" v-show="inputbox_mode=='url'">
+								<h2>Scoresheet URL or Hash:</h2>
+								<form action="" method="get" v-on:submit.prevent="LoadScoresheet()">
+									<div class="input-group">
+										<input type="text" class="form-control" v-model="filehash" placeholder="Example: FjLf3qHftm4yrzkjq" />
+										<input type="submit" class="btn bg-secondary text-light" name="submit" value="Fetch" />
+									</div>							
+								</form>
+								<p class="mt-5"><a href="https://www.gridsagegames.com/cogmind/scores/runs_by_version.html" target="_blank">Scoresheets Archive</a></p>
+								<p class=""><a href="https://www.gridsagegames.com/cogmind/scores/runs_by_version_patron.html" target="_blank">Patreon Beta Scoresheets</a></p>
+								<p class="mb-3"><a href="help.html" target="_blank">Where to find your scoresheets</a></p>
 							</div>
-							<div class="col mb-5">
-								<div class="container-fluid p-3 pb-5 mt-3 mb-5 bg-primary text-light rounded">
-									<h2>Upload Scoresheet .JSON:</h2>
-									<form action="" method="">
-										<div class="input-group">
-											<input type="file" class="form-control" id="jsonfile" name="jsonfile" accept="application/json" />
-											<!-- <button type="submit" class="btn bg-secondary text-light" name="submit" value="Upload">Upload</button> -->
-										</div>							
-										<p class="my-5">&nbsp;<!-- a blank for your message --></p>
-									</form>
-								</div>
+							<div class="container-fluid p-5 pb-5 pt-2 mt-0 mb-5 bg-primary text-light rounded text-center" v-show="inputbox_mode=='upload'">
+								<h2>Upload Scoresheet .JSON:</h2>
+								<form action="" method="">
+									<div class="input-group">
+										<input type="file" class="form-control" id="jsonfile" name="jsonfile" accept="application/json" />
+										<!-- <button type="submit" class="btn bg-secondary text-light" name="submit" value="Upload">Upload</button> -->
+									</div>							
+									<p class="my-5">&nbsp;<!-- a blank for your message --></p>
+								</form>
 							</div>
 						</div>
 					</div>
-					<div class="alert alert-warning mt-5" role="alert" v-if="error_msg" >{{error_msg}}</div>
 				</template>
 				
-				<div v-if="pane=='loading'" class="text-center" style="font-size: 200%">
+				<!-- loading page -->
+				<div v-if="pane=='loading'" class=" pt-5 text-center" style="font-size: 200%">
 					<p>Loading Scoresheet ...</p>
-					<progress styl="height: 2em;" ></progress>
+					<progress style="height: 2em;" ></progress>
 				</div>
 				
 				
@@ -178,7 +181,6 @@
 							<div class="col text-center">
 								<h1 class="display-1 text-success" v-if="scoresheet.header.win">ASCENDED!</h1>
 								<h1 class="display-1 text-danger" v-else>DEFEAT!</h1>
-								<!-- <img src="hot_air_balloons_2.png" /> -->
 								<p class="lead">
 									{{scoresheet.header.runResult}}
 								</p>
