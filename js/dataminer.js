@@ -214,10 +214,10 @@ function LoadScoresheet( hash ) {
 	
 	// look for the app's bound data from form input if nothing supplied manually from function param
 	hash = hash || this.filehash || '';
+	hash = decodeURIComponent(hash).replace(/^.*\//,'').replace(/\..+$/,'');
 	
 	// development-only switch for handling local files:
 	if ( use_local_dev ) {
-		hash = decodeURIComponent(hash).replace(/^.*\//,'').replace(/\..+$/,'');
 		file = hash ? ('data/' + hash + '.json') : null;
 		app.filehash = null; 
 	}
@@ -307,7 +307,7 @@ function AnalyzeScoresheet( data ) {
 		}
 	for ( map of data.route.entries ) {
 		// map labels
-		map.location.mapname = map.location.map.replace('MAP_','');
+		map.location.mapname = String(map.location.map).replace('MAP_','');
 		map.location.mapname = (map_names[map.location.mapname] || map.location.mapname);
 		data.charts.chart_map_labels.push( map.location.depth + '/' + map.location.mapname );
 		
@@ -890,7 +890,7 @@ function CalculateBadges(data) {
 	let regular_places = ['MAT','FAC','RES','ACC','COM'].map( m => map_names[m] || m );
 	for ( let x of data.route.entries ) {
 		// notable places visited
-		let mapname = x.location.map.replace('MAP_','');
+		let mapname = String(x.location.map).replace('MAP_','');
 		let nicename = map_names[mapname] || mapname;
 		if ( ['SCR','MAT','UPP','FAC','LOW','RES','ACC','PRO','MIN'].indexOf(mapname) === -1 ) {
 			data.badges.push( nicename );
