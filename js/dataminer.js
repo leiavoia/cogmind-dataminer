@@ -568,19 +568,19 @@ function AnalyzeScoresheet( data ) {
 	
 	// performance judgement
 	data.metricPerformance = {};
-	for ( let k in data.bestStates ) {
+	for ( let k in metrics ) {
 		let m = metrics[k];
-		let pct = 100 * ((Math.min( m.max, data.bestStates[k] ) - m.min) / (m.max - m.min));
+		let pct = 100 * ((Math.min( m.max, (data.bestStates[k] || 0) ) - m.min) / (m.max - m.min));
 		// we want to display a little red nub if they have zero
-		pct = Math.max( pct, 4 );
+		pct = Math.max( pct, 3 );
 		let classname = 'poor';
 		if ( pct >= 100 ) { classname = 'best'; }
 		else if ( pct > 70 ) { classname = 'excl'; }
 		else if ( pct >= 40 ) { classname = 'good'; }
 		else if ( pct >= 20 ) { classname = 'avg'; }
-		data.metricPerformance[k] = { pct, classname };
+		data.metricPerformance[k] = { pct, classname, val:(data.bestStates[k]||0) };
 	}
-	
+
 	// Badges
 	CalculateBadges(data);
 }

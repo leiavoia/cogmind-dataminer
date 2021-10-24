@@ -416,9 +416,9 @@
 					
 					<h2>Peak Performance</h2>
 					<table class="table">
-						<tr v-for="(v,k) in scoresheet.bestStates">
+						<tr v-for="(v,k) in scoresheet.metricPerformance">
 							<th>{{k.Undatafy()}}</th>
-							<td>{{v}}</td>
+							<td>{{v.val}}</td>
 							<td>
 							<div class="progress">
 								<div class="progress-bar bg-secondary" role="progressbar" :class="scoresheet.metricPerformance[k].classname" :style="{width:`${scoresheet.metricPerformance[k].pct}%`}"></div>
@@ -449,7 +449,7 @@
 					</blockquote>
 					
 					<h2>History</h2>
-					<table class="table">
+					<table class="table table-sm">
 						<tr>
 							<th>Map</th>
 							<th>Turn</th>
