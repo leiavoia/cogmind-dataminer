@@ -132,7 +132,7 @@
 								<button class="nav-item nav-link" :class="inputbox_mode=='upload' ? '' : 'active'" v-on:click="inputbox_mode='upload'">File Upload</button>
 							</nav>
 							<!-- scoresheet URL input pane -->
-							<div class="container-fluid p-5 pb-5 pt-2 mt-0 mb-5 bg-primary text-light rounded text-center" v-show="inputbox_mode=='url'">
+							<div class="container-fluid p-5 pb-5 pt-2 mt-0 mb-3 bg-primary text-light rounded text-center" v-show="inputbox_mode=='url'">
 								<h2>Scoresheet URL or Hash:</h2>
 								<form action="" method="get" v-on:submit.prevent="LoadScoresheet()">
 									<div class="input-group">
@@ -156,6 +156,30 @@
 								</form>
 							</div>
 							
+						</div>
+					</div>
+					
+					<!-- recently viewed -->
+					<div class="row justify-content-md-center mt-3" v-if="recentlyViewed && recentlyViewed.length">
+						<div class="col-md-auto">
+							<h2 class="my-4 text-center">Recently Viewed</h2> 
+							<table class="table table-hover">
+								<tr>
+									<th>Player</th>
+									<th>Game</th>
+									<th>Result</th>
+									<th>Score</th>
+									<th>Date</th>
+								</tr>
+								<tr class="text-nowrap" style="cursor: pointer;" v-for="row of recentlyViewed" v-on:click="LoadScoresheet(row.hash)">
+									<td>{{row.name}}</td>
+									<td>#{{row.gameNumber}}</td>
+									<td>{{row.win ? 'ASCENDED' : row.finalmap}}</td>
+									<td>{{row.score.toLocaleString()}}</td>
+									<td>{{row.date}}</td>
+								</tr>
+							</table>
+							<p class="text-center"><a href="javascript:void(0)" class="text-muted" v-on:click="ClearScoresheetList()">Clear List</a></p>
 						</div>
 					</div>
 				</template>
@@ -215,10 +239,7 @@
 									</tr>
 									<tr>
 										<th>Date</th>
-										<td>
-											20{{scoresheet.header.runEndDate.replace(/(\d\d)(\d\d)(\d\d)/g,"$1-$2-$3")}}
-											{{scoresheet.header.runEndTime.replace(/(\d\d)(\d\d)(\d\d)/g,"$1:$2:$3")}}
-										</td>
+										<td>{{scoresheet.header.date}}</td>
 									</tr>
 									<tr>
 										<th>Run Time</th>

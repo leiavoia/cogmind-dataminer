@@ -1,9 +1,11 @@
 // WORST. JAVASCRIPT. EVER.
 ( function() {
 
+// turn this on if you want to search for "?filename.json" in local /data directory
+var use_local_dev = false;
+
 var app = null; // app is global? are you stupid?
 var filehash = null; // you fool!
-var use_local_dev = false;
 
 // chart defaults
 Chart.defaults.color = '#FFF';
@@ -140,6 +142,53 @@ const metrics = {
 	baseTemperature: 		{ min: 0,	max: 200,	record: 200,	ok: 0,	good: 0,	excl: 0 },
 };
 
+const map_names = {
+	FAC: 'Factory',
+	MIN: 'Mines',
+	LOW: 'Lower Caves',
+	UPP: 'Upper Caves',
+	SCR: 'Scrap',
+	RES: 'Research',
+	ACC: 'Access',
+	COM: 'Command',
+	AC0: 'A0',
+	LAB: 'Lab',
+	SEC: 'Section 7',
+	ZIO: 'Zion',
+	DEE: 'ZDC',
+	TES: 'Testing',
+	QUA: 'Quarantine',
+	PRO: 'Proxy Caves',
+	ZHI: 'Zhirov',
+	DAT: 'Dataminer',
+	WAR: 'Warlord',
+	EXI: 'Exiles',
+	MAT: 'Materials',
+	EXT: 'Extension',
+	ARC: 'Archives',
+	CET: 'Cetus',
+	HUB: 'Hub',
+	REC: 'Recycling',
+	STO: 'Storage',
+	ARM: 'Armory',
+	WAS: 'Waste',
+	GAR: 'Garrison',
+	DSF: 'DSF', 35: 'DSF', // bug for Beta11-X8 data format not updated yet
+};
+
+function Undatafy() { 
+	return this
+		// .replace(/((?<!^)[A-Z](?![A-Z]))(?=\S)/g, ' $1') // doesn't work on iOS :-(
+        .replace(/[^a-zA-Z0-9]+/g, '-')
+        .replace(/([A-Z]+)([A-Z][a-z])/g, '$1-$2')
+        .replace(/([a-z])([A-Z])/g, '$1-$2')
+        .replace(/([0-9])([^0-9])/g, '$1-$2')
+        .replace(/([^0-9])([0-9])/g, '$1-$2')
+        .replace(/-+/g, ' ')
+		.replace(/^./, s => s.toUpperCase() );
+}
+String.prototype.Undatafy = Undatafy; // you're bad for doing this
+
 // ======== NOW LETS ACTUALLY GET SOME WORK DONE ==========
 
 // set up Vue
@@ -155,23 +204,23 @@ app = new Vue({
 		charts: [],
 		error_msg: null,
 		filehash: filehash,
+		recentlyViewed: GetScoresheetList(),
+		ClearScoresheetList,
 	}
 })
 
-ChangePane('input');
-
 // check URL for a file hash - we dont care about the URL itself, just the hashy part
 let hash = window.location.search.trim().replace('?','').replace(/\s+/,'').replace('hash=','').replace(/&.+/,'');
-LoadScoresheet(hash);
-
+if ( hash ) { LoadScoresheet(hash); }
+else { ChangePane('input'); }
 
 function LoadScoresheet( hash ) {
 
 	this.error_msg = null;
 	
 	// look for the app's bound data from form input if nothing supplied manually from function param
-	hash = hash || this.filehash || '';
-	hash = decodeURIComponent(hash).replace(/^.*\//,'').replace(/\..+$/,'');
+	hash = String( hash || this.filehash || '' );
+	hash = decodeURIComponent(hash.trim()).replace(/^.*\//,'').replace(/\..+$/,'');
 	
 	// development-only switch for handling local files:
 	if ( use_local_dev ) {
@@ -179,7 +228,7 @@ function LoadScoresheet( hash ) {
 		app.filehash = null; 
 	}
 	else { 
-		if ( hash.match(/^[A-Za-z0-9]{12,18}$/) ) {
+		if ( hash.match(/^[A-Za-z0-9]{9,18}$/) ) {
 			app.filehash = hash;
 			// if we're on gridsagegames now, okay to just get the file directly
 			// https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS/Errors/CORSMissingAllowOrigin
@@ -196,8 +245,24 @@ function LoadScoresheet( hash ) {
 		}
 	}
 	
-	// request data and get the party started
-	if ( file ) {
+	// check to see if we already have it cached in localStorage
+	let data = localStorage.getItem(hash);
+	if ( data ) {
+		data = JSON.parse(data);
+		data.meta.source_file_txt = 'https://cogmind-api.gridsagegames.com/scoresheets/' + hash;
+		data.meta.source_file_json = 'https://cogmind-api.gridsagegames.com/scoresheets/' + hash + '.json';
+		data.meta.permalink = window.location.href
+			.replace( window.location.search, '' ) 
+			.replace( /#.*/, '' ) 
+			+ '?' + hash;
+		AnalyzeScoresheet(data);
+		app.scoresheet = data;
+		ChangePane('overview');
+		UpdateURLWhenNewScoresheetLoaded(hash, data);
+	}
+	
+	// request data from server and get the party started
+	else if ( file ) {
 		ChangePane('loading');
 		fetch( file ).then( rsp => {
 			if ( !rsp.ok || !rsp.body || String(rsp.status).match(/^(4|5)/) ) {
@@ -216,9 +281,11 @@ function LoadScoresheet( hash ) {
 					.replace( window.location.search, '' ) 
 					.replace( /#.*/, '' ) 
 					+ '?' + hash;
+				SaveScoresheetToList( hash, data );
 				AnalyzeScoresheet(data);
 				app.scoresheet = data;
 				ChangePane('overview');
+				UpdateURLWhenNewScoresheetLoaded(hash, data);
 			}
 		})
 		.catch(error => {
@@ -458,11 +525,10 @@ function AnalyzeScoresheet( data ) {
 	data.charts.hacks_per_machine_chart_labels = ['terminals','fabricators','repairStations','scanalyzers','recyclingUnits','garrisonAccess'];
 		
 	// furthest map reached
-	data.game.finalMapReached = 
-		data.route.entries[ data.route.entries.length-1 ].location.depth
-		+ '/' +
-		data.route.entries[ data.route.entries.length-1 ].location.map.replace('MAP_','');
-	
+	let final_map = data.route.entries[ data.route.entries.length-1 ].location;
+	data.game.finalMapReached = final_map.depth + '/' +
+		(typeof(final_map.map)=='string' ? final_map.map.replace('MAP_','') : (final_map.map==35 ? 'DSF' : '???'));
+		
 	// turn cadence (factor out WAITs)
 	let timeParts = data.game.runTime.split(':');
 	let playtimeInMinutes = parseInt(timeParts[1]) + (parseInt(timeParts[0])*60);
@@ -581,58 +647,21 @@ function AnalyzeScoresheet( data ) {
 		data.metricPerformance[k] = { pct, classname, val:(data.bestStates[k]||0) };
 	}
 
+	// mysql date
+	data.header.date = '20' + data.header.runEndDate.replace(/(\d\d)(\d\d)(\d\d)/g,"$1-$2-$3") + ' '
+		+ data.header.runEndTime.replace(/(\d\d)(\d\d)(\d\d)/g,"$1:$2:$3");
+		
+	// [!]HACK for GJ
+	if ( data.meta.playerId == 209397991 ) {
+		data.header.playerName = 'GJ';
+	}
+								
 	// Badges
 	CalculateBadges(data);
 }
 
-function Undatafy() { 
-	return this
-		// .replace(/((?<!^)[A-Z](?![A-Z]))(?=\S)/g, ' $1') // doesn't work on iOS :-(
-        .replace(/[^a-zA-Z0-9]+/g, '-')
-        .replace(/([A-Z]+)([A-Z][a-z])/g, '$1-$2')
-        .replace(/([a-z])([A-Z])/g, '$1-$2')
-        .replace(/([0-9])([^0-9])/g, '$1-$2')
-        .replace(/([^0-9])([0-9])/g, '$1-$2')
-        .replace(/-+/g, ' ')
-		.replace(/^./, s => s.toUpperCase() );
-}
-String.prototype.Undatafy = Undatafy; // you're bad for doing this
-
-const map_names = {
-	FAC: 'Factory',
-	MIN: 'Mines',
-	LOW: 'Lower Caves',
-	UPP: 'Upper Caves',
-	SCR: 'Scrap',
-	RES: 'Research',
-	ACC: 'Access',
-	COM: 'Command',
-	AC0: 'A0',
-	LAB: 'Lab',
-	SEC: 'Section 7',
-	ZIO: 'Zion',
-	DEE: 'ZDC',
-	TES: 'Testing',
-	QUA: 'Quarantine',
-	PRO: 'Proxy Caves',
-	ZHI: 'Zhirov',
-	DAT: 'Dataminer',
-	WAR: 'Warlord',
-	EXI: 'Exiles',
-	MAT: 'Materials',
-	EXT: 'Extension',
-	ARC: 'Archives',
-	CET: 'Cetus',
-	HUB: 'Hub',
-	REC: 'Recycling',
-	STO: 'Storage',
-	ARM: 'Armory',
-	WAS: 'Waste',
-	GAR: 'Garrison',
-	DSF: 'DSF',
-};
-
 function ChangePane(pane) {
+
 	if ( app.pane == pane ) { 
 		return false; 
 	}
@@ -669,6 +698,9 @@ function ChangePane(pane) {
 		else if ( pane === 'input' ) {
 			app.scoresheet = null;
 			app.filehash = null;
+			// update list of recent games
+			app.recentlyViewed = GetScoresheetList();
+			// listen for file uploads
 			let el = document.getElementById('jsonfile');
 			if ( el ) {
 				el.addEventListener('change', event => {
@@ -677,8 +709,10 @@ function ChangePane(pane) {
 						let json = JSON.parse(e.target.result);
 						// smells like a scoresheet?
 						if ( typeof(json)==='object' && json.header && json.header.playerName ) { 
+							SaveScoresheetToList( json.meta.runId, json ); // no file hash available so use "runId" instead
 							AnalyzeScoresheet(json);
 							app.scoresheet = json;
+							UpdateURLWhenNewScoresheetLoaded(json.meta.runId, json);
 							return ChangePane('overview');
 						}
 						else {
@@ -855,7 +889,7 @@ function CalculateBadges(data) {
 		if ( ['SCR','MAT','UPP','FAC','LOW','RES','ACC','PRO','MIN','Unknown Map'].indexOf(mapname) === -1 ) {
 			data.badges.push( nicename );
 		}
-		// furthest regular location
+		// farthest regular location
 		else if ( regular_places.indexOf(nicename) !== -1 ) {
 			data.badges = data.badges.filter( x => regular_places.indexOf(x) === -1 );
 			data.badges.push( nicename );
@@ -926,6 +960,12 @@ function FlattenData(data) {
 	}
 	Flattener(data);
 	return flatdata;			
+}
+
+function UpdateURLWhenNewScoresheetLoaded( hash, data ) {
+	const url = new URL(window.location);
+	url.search = '?' + hash;
+	window.history.replaceState({hash}, `${data.header.playerName} : Game #${data.game.gameNumber}`, url);
 }
 
 // returns array of [ truncated_key, value, depth ] where value may be null	
@@ -1978,6 +2018,46 @@ function DrawKillsChart( data, labels ) {
 		},
 	};
 	return new Chart( document.getElementById('killsChart'), config );
+}
+
+// returns: [ { hash, name, date, score, win, finalmap } ]
+function GetScoresheetList() {
+	let list = localStorage.getItem("scoresheet_list");
+	if ( list ) { list = JSON.parse(list); }
+	return list || [];
+}
+
+function SaveScoresheetToList( hash, json ) {
+	// final map
+	let finalmap = json.route.entries[ json.route.entries.length-1 ].location;
+	finalmap = finalmap.depth + '/' +
+		(typeof(finalmap.map)=='string' ? finalmap.map.replace('MAP_','') : (finalmap.map==35 ? 'DSF' : '???'));
+	// MYSQL style data
+	let date = '20' + json.header.runEndDate.replace(/(\d\d)(\d\d)(\d\d)/g,"$1-$2-$3") + ' '
+		+ json.header.runEndTime.replace(/(\d\d)(\d\d)(\d\d)/g,"$1:$2:$3");	
+	let list = GetScoresheetList() || [];
+	let i = list.findIndex( x => x.hash == hash );
+	if ( i >= 0 ) { list.splice( i, 1 ); }
+	list.unshift({
+		hash,
+		name: ( json.meta.playerId == 209397991 ? 'GJ' : json.header.playerName ), // [!]HACK for GJ
+		gameNumber: json.game.gameNumber,
+		date,
+		win: json.header.win,
+		finalmap,
+		score: json.performance.totalScore
+	});
+	if ( list.length > 10 ) { 
+		localStorage.removeItem( list.pop().hash );
+	}
+	localStorage.setItem("scoresheet_list",JSON.stringify(list));
+	// save file itself
+	localStorage.setItem(hash,JSON.stringify(json));
+}
+
+function ClearScoresheetList() {
+	localStorage.clear();
+	this.recentlyViewed = GetScoresheetList();
 }
 
 }())
