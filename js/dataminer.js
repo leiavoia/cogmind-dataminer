@@ -897,14 +897,16 @@ function CalculateBadges(data) {
 	}
 	
 	// botnets good or bad?
-	let botnets = data.stats.hacking.unauthorizedHacks?.terminals?.botnet;
-	let unauthed_hacks = data.stats.hacking.unauthorizedHacks?.overall;
-	let terminal_hacks = data.stats.hacking.terminalHacks?.overall;
-	if ( botnets >= 4 && botnets / (unauthed_hacks+terminal_hacks) >= 0.20  ) {
-		data.badges.push('BotnetGood');
-	}
-	else if ( unauthed_hacks > 10 && botnets <= 2 && botnets / (unauthed_hacks+terminal_hacks) <= 0.05  ) {
-		data.badges.push('BotnetBad');
+	let botnets = data.stats.hacking.unauthorizedHacks?.terminals?.botnet || 0;
+	let unauthed_hacks = data.stats.hacking.unauthorizedHacks?.overall || 0;
+	let terminal_hacks = data.stats.hacking.terminalHacks?.overall || 0;
+	if ( unauthed_hacks + terminal_hacks ) { 
+		if ( botnets >= 4 && botnets / (unauthed_hacks+terminal_hacks) >= 0.20  ) {
+			data.badges.push('BotnetGood');
+		}
+		else if ( unauthed_hacks > 10 && botnets <= 2 && botnets / (unauthed_hacks+terminal_hacks) <= 0.05  ) {
+			data.badges.push('BotnetBad');
+		}
 	}
 	
 	// hacking skills
