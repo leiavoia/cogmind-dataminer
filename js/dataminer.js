@@ -373,7 +373,7 @@ function AnalyzeScoresheet( data ) {
 		let total_bots_killed = 0;
 		let green_bots_killed = 0;
 		for ( let k in map.stats.kills.classesDestroyed ) {
-			if ( ["worker", "builder", "hauler", "recycler", "mechanic"].indexOf(k) > -1 ) {
+			if ( ["engineer", "worker", "builder", "hauler", "recycler", "mechanic"].indexOf(k) > -1 ) {
 				green_bots_killed += map.stats.kills.classesDestroyed[k];
 			}
 			if ( k != 'overall' ) {

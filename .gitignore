@@ -1,6 +1,11 @@
 *.code-workspace
 data/
 data/*
+cache/*
+scoresheets/
+scoresheets/*
+docker-compose-lamp/
+docker-compose-lamp/*
 analyzer.php
 *.min.js
 request_log.txt
