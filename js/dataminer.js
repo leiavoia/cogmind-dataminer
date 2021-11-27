@@ -196,6 +196,7 @@ app = new Vue({
 	el: '#app',
 	data: { 
 		scoresheet: null, // populates when request for JSON succeeds
+		analysis: null, // populates when request for JSON succeeds
 		pane: null, // dont set to 'overview' by default. graphs need to be prompted to draw
 		inputbox_mode: 'url',
 		ChangePane,
@@ -257,8 +258,10 @@ function LoadScoresheet( hash ) {
 			+ '?' + hash;
 		AnalyzeScoresheet(data);
 		app.scoresheet = data;
-		ChangePane('overview');
-		UpdateURLWhenNewScoresheetLoaded(hash, data);
+		DownloadDataminerDataAnalysis( app ).then( _ => { 
+			ChangePane('overview');
+			UpdateURLWhenNewScoresheetLoaded(hash, data);
+		} );
 	}
 	
 	// request data from server and get the party started
@@ -284,8 +287,10 @@ function LoadScoresheet( hash ) {
 				SaveScoresheetToList( hash, data );
 				AnalyzeScoresheet(data);
 				app.scoresheet = data;
-				ChangePane('overview');
-				UpdateURLWhenNewScoresheetLoaded(hash, data);
+				DownloadDataminerDataAnalysis( app ).then( _ => { 
+					ChangePane('overview');
+					UpdateURLWhenNewScoresheetLoaded(hash, data);
+				} );
 			}
 		})
 		.catch(error => {
@@ -293,6 +298,34 @@ function LoadScoresheet( hash ) {
 			ChangePane('input');
 		});
 	}
+}
+
+function DownloadDataminerDataAnalysis( app ) {
+	// TODO: don't re-download if categories are the same as what we have already
+	$url = window.location.href
+		.replace( window.location.search, '' ) 
+		.replace( /#.*/, '' ) 
+		.replace('.html','')
+		+ 'dataminer.php'
+		+ `?version=${app.scoresheet.header.version}`
+		+ `&difficulty=${app.scoresheet.header.difficulty}`
+		+ `&mode=${app.scoresheet.header.specialMode}`
+		;
+	return fetch( $url ).then( rsp => {
+		if ( !rsp.ok || !rsp.body || String(rsp.status).match(/^(4|5)/) ) {
+			app.error_msg = 'Could not get dataminer comps. Does this look right to you? ' + url;
+			return false;
+		}		
+		return rsp.json();
+	})
+	.then( data => {
+		if ( data ) { 
+			app.analysis = data;
+		}
+	})
+	.catch(error => {
+		app.error_msg = 'Error when trying to get file: ' + error;
+	});	
 }
 
 function AnalyzeScoresheet( data ) {
@@ -338,6 +371,11 @@ function AnalyzeScoresheet( data ) {
 		map.location.mapname = (map_names[map.location.mapname] || map.location.mapname);
 		data.charts.chart_map_labels.push( map.location.depth + '/' + map.location.mapname );
 		
+		// critical hits changed in Beta 11 and don't use the old stat.
+		data.stats.combat.criticalHitPercent = 100*(
+			( data.stats.combat.shotsHitRobots?.criticalHits || data.stats.combat.shotsHitRobots?.criticalStrikes?.overall || 0 )
+			/ ( (data.stats.combat.meleeAttacks.overall + data.stats.combat.shotsFired.overall) || 1 ) );						
+														
 		// influence
 		data.charts.alert_chart_data.push(map.stats.alert.peakInfluence.overall);
 		
@@ -668,7 +706,7 @@ function ChangePane(pane) {
 	window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); 
 	// cleanup current page
 	for ( let chart of app.charts ) {
-		chart.destroy();
+		if ( chart ) chart.destroy();
 	}
 	app.charts = [];
 	// switch panes
@@ -689,6 +727,65 @@ function ChangePane(pane) {
 				app.scoresheet.charts.actions_chart_data, 
 				app.scoresheet.charts.actions_chart_labels
 				) );
+				
+			if ( app.analysis ) {
+				app.charts.push( DrawSparkChart(
+					'turnsSparkChart',
+					app.analysis['stats.exploration.turnsPassed'].chartdata,
+					app.scoresheet.stats.exploration.turnsPassed
+					) );
+				// app.charts.push( DrawSparkChart(
+				// 	'cadenceSparkChart',
+				// 	app.analysis['stats.exploration.cadence'].chartdata,
+				// 	app.scoresheet.stats.exploration.cadence
+				// 	) );
+				app.charts.push( DrawSparkChart(
+					'avgSpeedSparkChart',
+					app.analysis['stats.exploration.spacesMoved.averageSpeed'].chartdata,
+					app.scoresheet.stats.exploration.spacesMoved.averageSpeed
+					) );
+				app.charts.push( DrawSparkChart(
+					'regionsVisitedSparkChart',
+					app.analysis['performance.regionsVisited.count'].chartdata,
+					app.scoresheet.performance.regionsVisited.count
+					) );
+				app.charts.push( DrawSparkChart(
+					'botsDestroyedSparkChart',
+					app.analysis['performance.robotsDestroyed.count'].chartdata,
+					app.scoresheet.performance.robotsDestroyed.count
+					) );
+				app.charts.push( DrawSparkChart(
+					'alienTechsUsedSparkChart',
+					app.analysis['performance.alienTechUsed.count'].chartdata,
+					app.scoresheet.performance.alienTechUsed.count
+					) );
+				app.charts.push( DrawSparkChart(
+					'NPCsMurduredSparkChart',
+					app.analysis['stats.kills.uniquesNpcsDestroyed'].chartdata,
+					app.scoresheet.stats.kills.uniquesNpcsDestroyed
+					) );
+				app.charts.push( DrawSparkChart(
+					'alliesSparkChart',
+					app.analysis['stats.allies.totalAllies.overall'].chartdata,
+					app.scoresheet.stats.allies.totalAllies.overall
+					) );
+				app.charts.push( DrawSparkChart(
+					'largestArmySparkChart',
+					app.analysis['stats.allies.totalAllies.largestGroup'].chartdata,
+					app.scoresheet.stats.allies.totalAllies.largestGroup
+					) );
+				app.charts.push( DrawSparkChart(
+					'mostCorruptionSparkChart',
+					app.analysis['stats.combat.highestCorruption.overall'].chartdata,
+					app.scoresheet.stats.combat.highestCorruption.overall
+					) );
+				app.charts.push( DrawSparkChart(
+					'peakBuildSparkChart',
+					app.analysis['peakState.rating'].chartdata,
+					app.scoresheet.peakState.rating
+					) );
+			}
+			
 			// app.charts.push( DrawCoreChart( 
 			// 	app.scoresheet.charts.core_chart_data, 
 			// 	app.scoresheet.charts.chart_map_labels
@@ -712,8 +809,10 @@ function ChangePane(pane) {
 							SaveScoresheetToList( json.meta.runId, json ); // no file hash available so use "runId" instead
 							AnalyzeScoresheet(json);
 							app.scoresheet = json;
-							UpdateURLWhenNewScoresheetLoaded(json.meta.runId, json);
-							return ChangePane('overview');
+							DownloadDataminerDataAnalysis( app ).then( _ => {
+								UpdateURLWhenNewScoresheetLoaded(json.meta.runId, json);
+								return ChangePane('overview');
+							});
 						}
 						else {
 							app.error_msg = 'Not a Cogmind JSON scoresheet file. Make sure it has a .json extension.';
@@ -782,6 +881,161 @@ function ChangePane(pane) {
 		}
 		
 		else if ( pane === 'combat' ) {
+		
+			if ( app.analysis ) {
+				app.charts.push( DrawSparkChart(
+					'volleysSparkChart',
+					app.analysis['stats.combat.volleysFired.overall'].chartdata,
+					app.scoresheet.stats.combat.volleysFired.overall
+					) );
+				app.charts.push( DrawSparkChart(
+					'shotsFiredSparkChart',
+					app.analysis['stats.combat.shotsFired.overall'].chartdata,
+					app.scoresheet.stats.combat.shotsFired.overall
+					) );
+				app.charts.push( DrawSparkChart(
+					'accuracySparkChart',
+					app.analysis['stats.combat.accuracy'].chartdata,
+					(100 * (app.scoresheet.stats.combat.shotsHitRobots.overall / (
+							((app.scoresheet.stats.combat.shotsFired.overall
+							+ app.scoresheet.stats.combat.meleeAttacks.overall) || 1)
+						)))
+					) );
+				app.charts.push( DrawSparkChart(
+					'shotsPerVolleySparkChart',
+					app.analysis['stats.combat.shotsPerVolley'].chartdata,
+					(app.scoresheet.stats.combat.shotsFired.overall / (app.scoresheet.stats.combat.volleysFired.overall || 1 ))
+					) );
+				// NOTE: scoresheet format change in Beta11 makes this data unavailable. Provide interesting substitute.
+				if ( app.scoresheet.stats.combat.criticalHitPercent ) {
+					app.charts.push( DrawSparkChart(
+						'criticalHitPctSparkChart',
+						app.analysis['stats.combat.criticalHitPercent'].chartdata,
+						app.scoresheet.stats.combat.criticalHitPercent
+						) );
+				}
+				else {
+					app.charts.push( DrawSparkChart(
+						'criticalHitPctSparkChart',
+						app.analysis['stats.combat.shotsHitRobots.criticalKills'].chartdata,
+						app.scoresheet.stats.combat.shotsHitRobots.criticalKills
+						) );
+				}
+				app.charts.push( DrawSparkChart(
+					'overflowDamageSparkChart',
+					app.analysis['stats.combat.overflowDamagePercent'].chartdata,
+					(100*(app.scoresheet.stats.combat.overflowDamage.overall / (app.scoresheet.stats.combat.damageInflicted.overall||1)))
+					) );
+				app.charts.push( DrawSparkChart(
+					'totalDamageInflictedSparkChart',
+					app.analysis['stats.combat.damageInflicted.overall'].chartdata,
+					app.scoresheet.stats.combat.damageInflicted.overall
+					) );
+				app.charts.push( DrawSparkChart(
+					'totalDamageReceivedSparkChart',
+					app.analysis['stats.combat.damageTaken.overall'].chartdata,
+					app.scoresheet.stats.combat.damageTaken.overall
+					) );
+				app.charts.push( DrawSparkChart(
+					'dishOutSparkChart',
+					app.analysis['stats.combat.dishoutRatio'].chartdata,
+					( app.scoresheet.stats.dishoutRatio === -1
+						? 1000 : (100*app.scoresheet.stats.dishoutRatio) )
+					) );
+					
+				app.charts.push( DrawSparkChart(
+					'combatBotsDestroyedSparkChart',
+					app.analysis['stats.kills.combatHostilesDestroyed.overall'].chartdata,
+					app.scoresheet.stats.kills.combatHostilesDestroyed.overall
+					) );
+				app.charts.push( DrawSparkChart(
+					'killStreakSparkChart',
+					app.analysis['stats.kills.bestKillStreak.overall'].chartdata,
+					app.scoresheet.stats.kills.bestKillStreak.overall
+					) );
+				app.charts.push( DrawSparkChart(
+					'mostKillsInOneTurnSparkChart',
+					app.analysis['stats.kills.maxKillsInSingleTurn.overall'].chartdata,
+					app.scoresheet.stats.kills.maxKillsInSingleTurn.overall
+					) );
+				app.charts.push( DrawSparkChart(
+					'botsCorruptedSparkChart',
+					app.analysis['stats.combat.robotsCorrupted.overall'].chartdata,
+					app.scoresheet.stats.combat.robotsCorrupted.overall
+					) );
+				app.charts.push( DrawSparkChart(
+					'botsMeltedSparkChart',
+					app.analysis['stats.combat.robotsMelted.overall'].chartdata,
+					app.scoresheet.stats.combat.robotsMelted.overall
+					) );
+				app.charts.push( DrawSparkChart(
+					'botsCrushedSparkChart',
+					app.analysis['stats.combat.targetsRammed.crushed'].chartdata,
+					app.scoresheet.stats.combat.targetsRammed.crushed
+					) );
+					
+				app.charts.push( DrawSparkChart(
+					'caveInsSparkChart',
+					app.analysis['stats.exploration.spacesMoved.caveInsTriggered'].chartdata,
+					app.scoresheet.stats.exploration.spacesMoved.caveInsTriggered
+					) );
+				app.charts.push( DrawSparkChart(
+					'meleeFollowupSparkChart',
+					app.analysis['stats.combat.meleeFollowupPercent'].chartdata,
+					(100*(app.scoresheet.stats.combat.meleeAttacks.followUpAttacks / (app.scoresheet.stats.combat.meleeAttacks.overall || 1)))
+					) );
+				app.charts.push( DrawSparkChart(
+					'botsRammedSparkChart',
+					app.analysis['stats.combat.targetsRammed.overall'].chartdata,
+					app.scoresheet.stats.combat.targetsRammed.overall
+					) );
+				app.charts.push( DrawSparkChart(
+					'sneakAttacksSparkChart',
+					app.analysis['stats.combat.meleeAttacks.sneakAttacks.overall'].chartdata,
+					app.scoresheet.stats.combat.meleeAttacks.sneakAttacks.overall
+					) );
+				app.charts.push( DrawSparkChart(
+					'powerChainReactionsSparkChart',
+					app.analysis['stats.combat.powerChainReactions'].chartdata,
+					app.scoresheet.stats.combat.powerChainReactions
+					) );
+				app.charts.push( DrawSparkChart(
+					'siegesSparkChart',
+					app.analysis['stats.combat.siegeActivations.overall'].chartdata,
+					app.scoresheet.stats.combat.siegeActivations.overall
+					) );
+				app.charts.push( DrawSparkChart(
+					'hottestTempSparkChart',
+					app.analysis['stats.combat.highestTemperature.overall'].chartdata,
+					app.scoresheet.stats.combat.highestTemperature.overall
+					) );
+				app.charts.push( DrawSparkChart(
+					'overheatingIssuesSparkChart',
+					app.analysis['stats.combat.highestTemperature.effects.overall'].chartdata,
+					app.scoresheet.stats.combat.highestTemperature.effects.overall
+					) );
+				app.charts.push( DrawSparkChart(
+					'maxGunslingSparkChart',
+					app.analysis['stats.combat.shotsFired.secondaryTargets.maxGunslingingChain'].chartdata,
+					app.scoresheet.stats.combat.shotsFired.secondaryTargets.maxGunslingingChain
+					) );
+				app.charts.push( DrawSparkChart(
+					'machinesDisabledSparkChart',
+					app.analysis['stats.machines.machinesDisabled.overall'].chartdata,
+					app.scoresheet.stats.machines.machinesDisabled.overall
+					) );
+				app.charts.push( DrawSparkChart(
+					'collateralDamageSparkChart',
+					app.analysis['performance.valueDestroyed.count'].chartdata,
+					app.scoresheet.performance.valueDestroyed.count
+					) );
+				app.charts.push( DrawSparkChart(
+					'attacksByAlliesSparkChart',
+					app.analysis['stats.allies.allyAttacks.kills'].chartdata,
+					app.scoresheet.stats.allies.allyAttacks.kills
+					) );
+			}
+		
 			app.charts.push( DrawKillTypesChart(app.scoresheet.charts.kill_types_chart_data, app.scoresheet.charts.kill_types_chart_labels) );
 			app.charts.push( DrawDamageInflictedChart(app.scoresheet.charts.damage_chart_data, app.scoresheet.charts.chart_map_labels) );
 			app.charts.push( DrawDamageTypesChart(app.scoresheet.charts.overall_damage_data) );
@@ -791,11 +1045,73 @@ function ChangePane(pane) {
 				combatbots: app.scoresheet.charts.kills_chart_data,
 				greenbots: app.scoresheet.charts.greenbot_kills_chart_data,
 				other: app.scoresheet.charts.neutral_kills_chart_data,
-			}, app.scoresheet.charts.chart_map_labels) );	
+			}, app.scoresheet.charts.chart_map_labels) );			
 		}
 		
 		else if ( pane === 'stealth' ) {
 			app.charts.push( DrawStealthChart(app.scoresheet.charts.stealth_chart_data, app.scoresheet.charts.chart_map_labels) );
+			if ( app.analysis ) {
+				app.charts.push( DrawSparkChart(
+					'maxAlertSparkChart',
+					app.analysis['stats.alert.peakInfluence.overall'].chartdata,
+					app.scoresheet.stats.alert.peakInfluence.overall
+					) );
+				app.charts.push( DrawSparkChart(
+					'spottedSparkChart',
+					app.analysis['stats.stealth.timesSpotted.overall'].chartdata,
+					app.scoresheet.stats.stealth.timesSpotted.overall
+					) );
+				app.charts.push( DrawSparkChart(
+					'squadsDispatchedSparkChart',
+					app.analysis['stats.alert.squadsDispatched.overall'].chartdata,
+					app.scoresheet.stats.alert.squadsDispatched.overall
+					) );
+				app.charts.push( DrawSparkChart(
+					'mostBotsTrackingSparkChart',
+					app.analysis['stats.stealth.timesSpotted.peakTrackingTotal'].chartdata,
+					app.scoresheet.stats.stealth.timesSpotted.peakTrackingTotal
+					) );
+				app.charts.push( DrawSparkChart(
+					'retreatsSparkChart',
+					app.analysis['stats.stealth.timesSpotted.tacticalRetreats'].chartdata,
+					app.scoresheet.stats.stealth.timesSpotted.tacticalRetreats
+					) );
+				app.charts.push( DrawSparkChart(
+					'distressSignalsSparkChart',
+					app.analysis['stats.stealth.distressSignals'].chartdata,
+					app.scoresheet.stats.stealth.distressSignals
+					) );
+				app.charts.push( DrawSparkChart(
+					'signalsJammedSparkChart',
+					app.analysis['stats.stealth.communicationsJammed.overall'].chartdata,
+					app.scoresheet.stats.stealth.communicationsJammed.overall
+					) );
+				app.charts.push( DrawSparkChart(
+					'haulersDistressedSparkChart',
+					app.analysis['stats.alert.haulersReinforced'].chartdata,
+					app.scoresheet.stats.alert.haulersReinforced
+					) );
+				app.charts.push( DrawSparkChart(
+					'engineersDistressedSparkChart',
+					app.analysis['stats.alert.constructionImpeded'].chartdata,
+					app.scoresheet.stats.alert.constructionImpeded
+					) );
+				app.charts.push( DrawSparkChart(
+					'trapsTriggeredSparkChart',
+					app.analysis['stats.traps.trapsTriggered.overall'].chartdata,
+					app.scoresheet.stats.traps.trapsTriggered.overall
+					) );
+				app.charts.push( DrawSparkChart(
+					'logsRecoveredSparkChart',
+					app.analysis['stats.intel.derelictLogsRecovered'].chartdata,
+					app.scoresheet.stats.intel.derelictLogsRecovered
+					) );
+				app.charts.push( DrawSparkChart(
+					'botsAnalyzedSparkChart',
+					app.analysis['stats.intel.robotAnalysisTotal'].chartdata,
+					app.scoresheet.stats.intel.robotAnalysisTotal
+					) );
+			}		
 		}
 		
 		else if ( pane === 'route' ) {
@@ -816,6 +1132,84 @@ function ChangePane(pane) {
 			if ( app.scoresheet.charts.num_uhacks ) {
 				app.charts.push( DrawIndvMachineHacksChart( app.scoresheet.charts.uhack_data, app.scoresheet.charts.uhack_labels, app.scoresheet.charts.uhack_colors, 'unauthorized' ) );
 			}
+			if ( app.analysis ) {
+				app.charts.push( DrawSparkChart(
+					'hackingSkillSparkChart',
+					app.analysis['stats.hacking.hackingSkill'].chartdata,
+					(((app.scoresheet.stats.hacking.totalHacks.successful / (app.scoresheet.stats.hacking.totalHacks.overall || 1)) * 100) || 0)
+					) );
+				app.charts.push( DrawSparkChart(
+					'successfullHacksSparkChart',
+					app.analysis['stats.hacking.totalHacks.successful'].chartdata,
+					app.scoresheet.stats.hacking.totalHacks.successful
+					) );
+				// app.charts.push( DrawSparkChart(
+				// 	'failedHacksSparkChart',
+				// 	app.analysis['stats.exploration.turnsPassed'].chartdata,
+				// 	(app.scoresheet.stats.hacking.totalHacks.overall
+				// 	- app.scoresheet.stats.hacking.totalHacks.successful)
+				// 	) );
+				app.charts.push( DrawSparkChart(
+					'detectionsSparkChart',
+					app.analysis['stats.hacking.hackingDetections.overall'].chartdata,
+					app.scoresheet.stats.hacking.hackingDetections.overall
+					) );
+				app.charts.push( DrawSparkChart(
+					'dbLockoutsSparkChart',
+					app.analysis['stats.hacking.totalHacks.databaseLockouts'].chartdata,
+					app.scoresheet.stats.hacking.totalHacks.databaseLockouts
+					) );
+				app.charts.push( DrawSparkChart(
+					'partsRepairedSparkChart',
+					app.analysis['stats.hacking.partsRepaired.overall'].chartdata,
+					app.scoresheet.stats.hacking.partsRepaired.overall
+					) );
+				app.charts.push( DrawSparkChart(
+					'partsRecycledSparkChart',
+					app.analysis['stats.hacking.partsRecycled.overall'].chartdata,
+					app.scoresheet.stats.hacking.partsRecycled.overall
+					) );
+				app.charts.push( DrawSparkChart(
+					'partsScannedSparkChart',
+					app.analysis['stats.hacking.partsScanalyzed.overall'].chartdata,
+					app.scoresheet.stats.hacking.partsScanalyzed.overall
+					) );
+				app.charts.push( DrawSparkChart(
+					'numPartSchematicsSparkChart',
+					app.analysis['stats.hacking.partSchematicsAcquired.overall'].chartdata,
+					app.scoresheet.stats.hacking.partSchematicsAcquired.overall
+					) );
+				app.charts.push( DrawSparkChart(
+					'partsBuiltSparkChart',
+					app.analysis['stats.hacking.partSchematicsAcquired.partsBuilt.overall'].chartdata,
+					app.scoresheet.stats.hacking.partSchematicsAcquired.partsBuilt.overall
+					) );
+				app.charts.push( DrawSparkChart(
+					'numBotSchematicsSparkChart',
+					app.analysis['stats.hacking.robotSchematicsAcquired.overall'].chartdata,
+					app.scoresheet.stats.hacking.robotSchematicsAcquired.overall
+					) );
+				app.charts.push( DrawSparkChart(
+					'botsBuiltSparkChart',
+					app.analysis['stats.hacking.robotSchematicsAcquired.robotsBuilt.overall'].chartdata,
+					app.scoresheet.stats.hacking.robotSchematicsAcquired.robotsBuilt.overall
+					) );
+				app.charts.push( DrawSparkChart(
+					'rifInstallsSparkChart',
+					app.analysis['stats.bothacking.usedRifInstaller.overall'].chartdata,
+					app.scoresheet.stats.bothacking.usedRifInstaller.overall
+					) );
+				app.charts.push( DrawSparkChart(
+					'botsRewiredSparkChart',
+					app.analysis['stats.bothacking.robotsRewired'].chartdata,
+					app.scoresheet.stats.bothacking.robotsRewired
+					) );
+				app.charts.push( DrawSparkChart(
+					'botsHackedSparkChart',
+					app.analysis['stats.bothacking.robotsHacked.overall'].chartdata,
+					app.scoresheet.stats.bothacking.robotsHacked.overall
+					) );
+			}			
 		}
 		
 	});
@@ -1827,6 +2221,64 @@ function DrawCoreChart( data, labels ) {
 		},
 	};
 	return new Chart( document.getElementById('coreChart'), config );
+}
+
+function DrawSparkChart( canvasID, data, myval ) {
+	if ( !data ) { 
+		console.log("No data for spark chart " + canvasID); 
+		document.getElementById(canvasID).style.display = "none";
+		return false; 
+		}
+	// let least = data[0][0];
+	let seglen = data[1][0] - data[0][0];
+	// get rid of non-participating zeros that make graph hard to read
+	if ( data.length && !data[0][0] /* && !data[0][1] */ ) {
+		data.shift();
+	}
+	let colors = data.map( x => x[0] >= myval && myval > (x[0] - seglen) ? '#62C462' : '#515960' );
+	// if the data is literally off the chart, add a token to the last column
+	if ( myval >= data[ data.length-1 ][0] + seglen ) {
+		data[ data.length-1 ][1]++;
+		colors[ colors.length-1 ] = '#62C462';
+	}
+	const chartdata = {
+		labels: data.map( x => x[0] ),
+		datasets: [{
+			// categoryPercentage: 0.9,
+			// barPercentage: 1,	
+			backgroundColor: colors,
+			borderWidth: 0,
+			fill: true,
+			tension: 0.0,
+			data: data.map( x => x[1] ),
+			minBarLength: 3
+		}]
+	};
+	const config = {
+		type: 'bar',
+		data: chartdata,
+		options: {
+			aspectRatio: 5,
+			responsive: true,
+			interaction: {
+				intersect: false,
+			},					
+			plugins: {
+				legend: {
+					display: false,
+				},
+				title: {
+					display: false,
+				}
+			},
+			scales: {
+				x: { display: false },
+				y: { display: false }
+			}
+			
+		},
+	};
+	return new Chart( document.getElementById(canvasID), config );
 }
 
 function DrawTurnsTakenChart( data, labels ) {

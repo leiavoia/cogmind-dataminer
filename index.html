@@ -120,7 +120,7 @@
 					Cogmind Dataminer
 					<span class="text-muted" v-if="scoresheet"> : {{scoresheet.header.playerName}} : Game #{{scoresheet.game.gameNumber}}</span>	
 				</h1>
-				
+						
 				<!-- intro page to request JSON file -->
 				<template v-if="pane=='input'">
 					<div class="alert alert-warning mt-5" role="alert" v-if="error_msg" >{{error_msg}}</div>
@@ -201,7 +201,7 @@
 					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='stealth' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('stealth')">Stealth</button>
 					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='tables' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('tables')">Table Data</button>
 				</nav>
-					
+				
 				<!-- overview pane -->			
 				<template v-if="pane=='overview'" >			
 													
@@ -266,6 +266,10 @@
 										<th>Game Version</th>
 										<td>{{scoresheet.header.version}}</td>
 									</tr>
+									<tr v-if="analysis">
+										<th>Comparisons</th>
+										<td>{{analysis['parts.inventory.slots'].samples.toLocaleString()}} runs in dataset</td>
+									</tr>
 									<tr>
 										<th>Seed</th>
 										<td><i>{{scoresheet.game.worldSeed}}</i></td>
@@ -290,6 +294,7 @@
 									<div class="card-header">Turns</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.exploration.turnsPassed.toLocaleString()}}</span>
+										<canvas id="turnsSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>
@@ -298,14 +303,16 @@
 									<div class="card-header">Cadence</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.actions.cadence.toFixed(0)}} APM</span>
+										<!-- <canvas id="cadenceSparkChart" v-if="analysis"></canvas> -->
 									</div>
 								</div>
 							</div>
 							<div class="col">
 								<div class="card statbox h-100">
-									<div class="card-header">Average Speed</div>
+									<div class="card-header">Average Mobility Speed</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.exploration.spacesMoved.averageSpeed.toLocaleString()}}</span>
+										<canvas id="avgSpeedSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>
@@ -324,6 +331,7 @@
 									<div class="card-header">Regions Visited</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.performance.regionsVisited.count}}</span>
+										<canvas id="regionsVisitedSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>
@@ -340,6 +348,7 @@
 									<div class="card-header">Bots Destroyed</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.performance.robotsDestroyed.count.toLocaleString()}}</span>
+										<canvas id="botsDestroyedSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>							
@@ -348,6 +357,7 @@
 									<div class="card-header">Alien Techs Used</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.performance.alienTechUsed.count}}</span>
+										<canvas id="alienTechsUsedSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>
@@ -364,6 +374,7 @@
 									<div class="card-header">NPCs Murdered</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.kills.uniquesNpcsDestroyed}}</span>
+										<canvas id="NPCsMurduredSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>
@@ -372,6 +383,7 @@
 									<div class="card-header">Allies</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.allies.totalAllies.overall.toLocaleString()}}</span>
+										<canvas id="alliesSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>
@@ -380,6 +392,7 @@
 									<div class="card-header">Largest Army</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.allies.totalAllies.largestGroup}}</span>
+										<canvas id="largestArmySparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>
@@ -388,6 +401,7 @@
 									<div class="card-header">Most Corruption</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.combat.highestCorruption.overall}}%</span>
+										<canvas id="mostCorruptionSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>
@@ -396,6 +410,7 @@
 									<div class="card-header">Peak Build Rating</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.peakState.rating}}</span>
+										<canvas id="peakBuildSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>
@@ -675,6 +690,7 @@
 									<div class="card-header">Hacking Skill</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{((scoresheet.stats.hacking.totalHacks.successful / (scoresheet.stats.hacking.totalHacks.overall || 1)) * 100).toFixed(1) || 0}}%</span>
+										<canvas id="hackingSkillSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>
@@ -683,6 +699,7 @@
 									<div class="card-header">Successfull Hacks</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.hacking.totalHacks.successful.toLocaleString()}}</span>
+										<canvas id="successfullHacksSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>
@@ -693,6 +710,7 @@
 										<span class="card-text">{{
 											(scoresheet.stats.hacking.totalHacks.overall
 											- scoresheet.stats.hacking.totalHacks.successful).toLocaleString()}}</span>
+										<!-- <canvas id="failedHacksSparkChart" v-if="analysis"></canvas> -->
 									</div>
 								</div>
 							</div>
@@ -701,6 +719,7 @@
 									<div class="card-header">Detections</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.hacking.hackingDetections.overall.toLocaleString()}}</span>
+										<canvas id="detectionsSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>
@@ -709,6 +728,7 @@
 									<div class="card-header">Database Lockouts</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.hacking.totalHacks.databaseLockouts.toLocaleString()}}</span>
+										<canvas id="dbLockoutsSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>
@@ -717,6 +737,7 @@
 									<div class="card-header">Parts Repaired</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.hacking.partsRepaired.overall.toLocaleString()}}</span>
+										<canvas id="partsRepairedSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>
@@ -725,6 +746,7 @@
 									<div class="card-header">Parts Recycled</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.hacking.partsRecycled.overall.toLocaleString()}}</span>
+										<canvas id="partsRecycledSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>
@@ -733,6 +755,7 @@
 									<div class="card-header">Parts Scanalyzed</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.hacking.partsScanalyzed.overall.toLocaleString()}}</span>
+										<canvas id="partsScannedSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>
@@ -741,6 +764,7 @@
 									<div class="card-header">Part Schematics Acquired</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.hacking.partSchematicsAcquired.overall.toLocaleString()}}</span>
+										<canvas id="numPartSchematicsSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>
@@ -749,6 +773,7 @@
 									<div class="card-header">Parts Built</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.hacking.partSchematicsAcquired.partsBuilt.overall.toLocaleString()}}</span>
+										<canvas id="partsBuiltSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>
@@ -757,6 +782,7 @@
 									<div class="card-header">Bot Schematics Acquired</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.hacking.robotSchematicsAcquired.overall.toLocaleString()}}</span>
+										<canvas id="numBotSchematicsSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>
@@ -765,6 +791,7 @@
 									<div class="card-header">Bots Built</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.hacking.robotSchematicsAcquired.robotsBuilt.overall.toLocaleString()}}</span>
+										<canvas id="botsBuiltSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>
@@ -798,6 +825,7 @@
 									<div class="card-header">RIF Installations</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.bothacking.usedRifInstaller.overall.toLocaleString()}}</span>
+										<canvas id="rifInstallsSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>	
@@ -806,6 +834,7 @@
 									<div class="card-header">Bots Rewired</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.bothacking.robotsRewired.toLocaleString()}}</span>
+										<canvas id="botsRewiredSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>	
@@ -814,6 +843,7 @@
 									<div class="card-header">Bots Hacked</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.bothacking.robotsHacked.overall.toLocaleString()}}</span>
+										<canvas id="botsHackedSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>	
@@ -860,6 +890,7 @@
 									<div class="card-header">Volleys</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.combat.volleysFired.overall.toLocaleString()}}</span>
+										<canvas id="volleysSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>
@@ -868,6 +899,7 @@
 									<div class="card-header">Shots Fired</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.combat.shotsFired.overall.toLocaleString()}}</span>
+										<canvas id="shotsFiredSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>
@@ -882,6 +914,7 @@
 											)))
 											.toFixed(1)
 											}}%</span>
+										<canvas id="accuracySparkChart"></canvas>
 									</div>
 								</div>
 							</div>
@@ -893,23 +926,26 @@
 											(scoresheet.stats.combat.shotsFired.overall / (scoresheet.stats.combat.volleysFired.overall || 1 ))
 											.toFixed(1)
 											}}</span>
+										<canvas id="shotsPerVolleySparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>
-							<div class="col">
+							<!-- this info not available in Beta 11 so substitute something else of interest -->
+							<div class="col" v-if="scoresheet.stats.combat.criticalHitPercent">
 								<div class="card statbox h-100">
-									<div class="card-header">Criticals</div>
+									<div class="card-header">Critical Hits</div>
 									<div class="card-body text-success numeric">
-										<span class="card-text">{{
-											(100*(
-												( scoresheet.stats.combat.shotsHitRobots?.criticalHits 
-													|| scoresheet.stats.combat.shotsHitRobots?.criticalStrikes?.overall 
-													|| 0 )
-												/ ( (scoresheet.stats.combat.meleeAttacks.overall
-													+ scoresheet.stats.combat.shotsFired.overall) || 1 )
-												))
-											.toFixed(1)
-											}}%</span>
+										<span class="card-text">{{ scoresheet.stats.combat.criticalHitPercent.toFixed(1) }}%</span>
+										<canvas id="criticalHitPctSparkChart" v-if="analysis"></canvas>
+									</div>
+								</div>
+							</div>
+							<div class="col" v-else>
+								<div class="card statbox h-100">
+									<div class="card-header">Critical Kills</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{ scoresheet.stats.combat.shotsHitRobots.criticalKills }}</span>
+										<canvas id="criticalHitPctSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>
@@ -920,7 +956,8 @@
 										<span class="card-text">{{
 											(100*(scoresheet.stats.combat.overflowDamage.overall / (scoresheet.stats.combat.damageInflicted.overall||1)))
 											.toFixed(1)
-											}}%</span>									
+											}}%</span>
+										<canvas id="overflowDamageSparkChart" v-if="analysis"></canvas>	
 									</div>
 								</div>
 							</div>
@@ -929,6 +966,7 @@
 									<div class="card-header">Total Damage Inflicted</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{ scoresheet.stats.combat.damageInflicted.overall.toLocaleString() }}</span>
+										<canvas id="totalDamageInflictedSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>
@@ -937,6 +975,7 @@
 									<div class="card-header">Total Damage Received</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{ scoresheet.stats.combat.damageTaken.overall.toLocaleString() }}</span>
+										<canvas id="totalDamageReceivedSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>
@@ -946,6 +985,7 @@
 									<div class="card-body text-success numeric">
 										<span class="card-text" v-if="scoresheet.stats.dishoutRatio === -1">Perfect!</span>
 										<span class="card-text" v-else>{{(100*scoresheet.stats.dishoutRatio).toFixed(0)}}%</span>
+										<canvas id="dishOutSparkChart"></canvas>
 									</div>
 								</div>
 							</div>														
@@ -982,6 +1022,7 @@
 									<div class="card-header">Combat Bots Destroyed</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.kills.combatHostilesDestroyed.overall.toLocaleString()}}</span>
+										<canvas id="combatBotsDestroyedSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>
@@ -990,6 +1031,7 @@
 									<div class="card-header">Kill Streak</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.kills.bestKillStreak.overall.toLocaleString()}}</span>
+										<canvas id="killStreakSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>
@@ -998,6 +1040,7 @@
 									<div class="card-header">Most Kills In One Turn</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.kills.maxKillsInSingleTurn.overall}}</span>
+										<canvas id="mostKillsInOneTurnSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>							
@@ -1006,6 +1049,7 @@
 									<div class="card-header">Bots Corrupted</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.combat.robotsCorrupted.overall.toLocaleString()}}</span>
+										<canvas id="botsCorruptedSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>
@@ -1014,14 +1058,16 @@
 									<div class="card-header">Bots Melted</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.combat.robotsMelted.overall.toLocaleString()}}</span>
+										<canvas id="botsMeltedSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>
 							<div class="col">
 								<div class="card statbox h-100">
-									<div class="card-header">Bots Crushed By Treads</div>
+									<div class="card-header">Bots Smooshed By Treads</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.combat.targetsRammed.crushed.toLocaleString()}}</span>
+										<canvas id="botsCrushedSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>
@@ -1045,14 +1091,16 @@
 									<div class="card-header">Bots Rammed</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.combat.targetsRammed.overall.toLocaleString()}}</span>
+										<canvas id="botsRammedSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>
 							<div class="col">
 								<div class="card statbox h-100">
-									<div class="card-header">Sneak Attacks</div>
+									<div class="card-header">Melee Sneak Attacks</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.combat.meleeAttacks.sneakAttacks.overall.toLocaleString()}}</span>
+										<canvas id="sneakAttacksSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>
@@ -1061,6 +1109,7 @@
 									<div class="card-header">Power Chain Reactions</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.combat.powerChainReactions.toLocaleString()}}</span>
+										<canvas id="powerChainReactionsSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>
@@ -1069,6 +1118,7 @@
 									<div class="card-header">Sieges</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{ scoresheet.stats.combat.siegeActivations.overall }}</span>
+										<canvas id="siegesSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>		
@@ -1077,6 +1127,7 @@
 									<div class="card-header">Hottest Temperature</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.combat.highestTemperature.overall.toLocaleString()}}</span>
+										<canvas id="hottestTempSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>											
@@ -1084,11 +1135,8 @@
 								<div class="card statbox h-100">
 									<div class="card-header">Overheating Issues</div>
 									<div class="card-body text-success numeric">
-										<span class="card-text">{{
-											scoresheet.stats.combat.highestTemperature.effects.length
-											? coresheet.stats.combat.highestTemperature.effects.overall.toLocaleString()
-											: 0
-											}}</span>
+										<span class="card-text">{{ scoresheet.stats.combat.highestTemperature.effects.overall }}</span>
+										<canvas id="overheatingIssuesSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>			
@@ -1099,7 +1147,8 @@
 										<span class="card-text">{{
 											(100*(scoresheet.stats.combat.meleeAttacks.followUpAttacks / (scoresheet.stats.combat.meleeAttacks.overall || 1)))
 											.toFixed(1)
-											}}%</span>									
+											}}%</span>
+										<canvas id="meleeFollowupSparkChart"></canvas>	
 									</div>
 								</div>
 							</div>							
@@ -1108,6 +1157,7 @@
 									<div class="card-header">Max Gun-Sling</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{ (scoresheet.stats.combat.shotsFired.secondaryTargets.maxGunslingingChain || 0).toLocaleString() }}</span>
+										<canvas id="maxGunslingSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>																										
@@ -1116,6 +1166,7 @@
 									<div class="card-header">Machines Disabled</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.machines.machinesDisabled.overall.toLocaleString()}}</span>
+										<canvas id="machinesDisabledSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>
@@ -1124,6 +1175,7 @@
 									<div class="card-header">Collateral Damage</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.performance.valueDestroyed.count.toLocaleString()}}</span>
+										<canvas id="collateralDamageSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>
@@ -1132,6 +1184,7 @@
 									<div class="card-header">Attacks By Allies</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.allies.allyAttacks.kills}}</span>
+										<canvas id="attacksByAlliesSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>															
@@ -1140,6 +1193,7 @@
 									<div class="card-header">Cave-Ins</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.exploration.spacesMoved.caveInsTriggered}}</span>
+										<canvas id="caveInsSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>															
@@ -1158,6 +1212,7 @@
 									<div class="card-header">Max Alert</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.alert.peakInfluence.overall.toLocaleString()}}</span>
+										<canvas id="maxAlertSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>						
@@ -1166,6 +1221,7 @@
 									<div class="card-header">Times Spotted</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.stealth.timesSpotted.overall.toLocaleString()}}</span>
+										<canvas id="spottedSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>		
@@ -1174,6 +1230,7 @@
 									<div class="card-header">Squads Dispatched</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.alert.squadsDispatched.overall.toLocaleString()}}</span>
+										<canvas id="squadsDispatchedSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>											
@@ -1182,6 +1239,7 @@
 									<div class="card-header">Most Bots Tracking You</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.stealth.timesSpotted.peakTrackingTotal.toLocaleString()}}</span>
+										<canvas id="mostBotsTrackingSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>					
@@ -1190,6 +1248,7 @@
 									<div class="card-header">Tactical Retreats</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.stealth.timesSpotted.tacticalRetreats.toLocaleString()}}</span>
+										<canvas id="retreatsSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>					
@@ -1198,6 +1257,8 @@
 									<div class="card-header">Distress Signals Sent</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.stealth.distressSignals.toLocaleString()}}</span>
+
+										<canvas id="distressSignalsSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>					
@@ -1206,22 +1267,25 @@
 									<div class="card-header">Signals Jammed By You</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.stealth.communicationsJammed.overall.toLocaleString()}}</span>
+										<canvas id="signalsJammedSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>					
 							<div class="col">
 								<div class="card statbox h-100">
-									<div class="card-header">Haulers Distressed</div>
+									<div class="card-header">Haulers Reinforced</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.alert.haulersReinforced.toLocaleString()}}</span>
+										<canvas id="haulersDistressedSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>					
 							<div class="col">
 								<div class="card statbox h-100">
-									<div class="card-header">Engineers Distressed</div>
+									<div class="card-header">Engineers Reinforced</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.alert.constructionImpeded.toLocaleString()}}</span>
+										<canvas id="engineersDistressedSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>					
@@ -1230,6 +1294,7 @@
 									<div class="card-header">Traps Triggered</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.traps.trapsTriggered.overall.toLocaleString()}}</span>
+										<canvas id="trapsTriggeredSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>					
@@ -1239,6 +1304,7 @@
 									<div class="card-header">Derelict Logs Recovered</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.intel.derelictLogsRecovered.toLocaleString()}}</span>
+										<canvas id="logsRecoveredSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>					
@@ -1247,6 +1313,7 @@
 									<div class="card-header">Bots Analyzed</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.intel.robotAnalysisTotal.toLocaleString()}}</span>
+										<canvas id="botsAnalyzedSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>								
