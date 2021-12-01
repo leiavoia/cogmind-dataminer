@@ -330,7 +330,10 @@ function DownloadDataminerDataAnalysis( app ) {
 
 function AnalyzeScoresheet( data ) {
 
-	data.flatstats = TabularizeData(data.stats);
+	// flatten data into something we can iterate over as table rows.
+	// NOTE: this copies the format returned by the Dataminer analysis file
+	// so you can make easy 1:1 comparisons
+	data.flatstats = TabularizeData(data.stats, 'stats');
 	
 	// precompute some stuff
 	data.charts = {
@@ -1337,26 +1340,26 @@ function CalculateBadges(data) {
 }
 
 // returns a Map object
-function FlattenData(data) {
-	flatdata = new Map();
-	let Flattener = (data,prefix='') => {
-		for ( let k in data ) {
-			let v = data[k];
-			flatkey = prefix + (prefix ? ':' : '') + k; 
-			if ( typeof(v) === 'number' || typeof(v) === 'boolean' || typeof(v) === 'string' ) {
-				flatdata.set(flatkey,v);
-			}
-			else if ( Array.isArray(v) ) {
-				// skip
-			}
-			else if ( typeof(v) === 'object' && v ) {
-				Flattener(v,flatkey);
-			}
-		}
-	}
-	Flattener(data);
-	return flatdata;			
-}
+// function FlattenData(data) {
+// 	flatdata = new Map();
+// 	let Flattener = (data,prefix='') => {
+// 		for ( let k in data ) {
+// 			let v = data[k];
+// 			flatkey = prefix + (prefix ? ':' : '') + k; 
+// 			if ( typeof(v) === 'number' || typeof(v) === 'boolean' || typeof(v) === 'string' ) {
+// 				flatdata.set(flatkey,v);
+// 			}
+// 			else if ( Array.isArray(v) ) {
+// 				// skip
+// 			}
+// 			else if ( typeof(v) === 'object' && v ) {
+// 				Flattener(v,flatkey);
+// 			}
+// 		}
+// 	}
+// 	Flattener(data);
+// 	return flatdata;			
+// }
 
 function UpdateURLWhenNewScoresheetLoaded( hash, data ) {
 	const url = new URL(window.location);
@@ -1364,16 +1367,16 @@ function UpdateURLWhenNewScoresheetLoaded( hash, data ) {
 	window.history.replaceState({hash}, `${data.header.playerName} : Game #${data.game.gameNumber}`, url);
 }
 
-// returns array of [ truncated_key, value, depth ] where value may be null	
-function TabularizeData(data) {
+// returns array of [ truncated_key, value, depth, full_key ] where value may be null	
+function TabularizeData(data,prefix='') {
 	flatdata = [];
 	let Flattener = (data,prefix='',depth=0) => {
 		for ( let k in data ) {
 			let v = data[k];
-			flatkey = prefix + (prefix ? ':' : '') + k; 
+			flatkey = prefix + (prefix ? '.' : '') + k; 
 			if ( typeof(v) === 'number' || typeof(v) === 'boolean' || typeof(v) === 'string' ) {
 				// flatdata.push([flatkey,v,depth]);
-				flatdata.push([k,v,depth]);
+				flatdata.push([k,v,depth,flatkey]);
 			}
 			else if ( Array.isArray(v) ) {
 				// skip
@@ -1384,7 +1387,7 @@ function TabularizeData(data) {
 			}
 		}
 	}
-	Flattener(data);
+	Flattener(data,prefix);
 	return flatdata;			
 }
 

@@ -1,23 +1,7 @@
 <?php
 
-define('SCORESHEET_DOWNLOAD_DIR', __DIR__ . '/scoresheets/tmp');
-define('SCORESHEET_ARCHIVE_DIR', __DIR__ . '/scoresheets/archive'); // set to NULL if you dont want to archive
+require_once('global.php');
 
-// Database setup ------------\/-----------------------------------
-function DB() {
-	static $db = null;
-	$servername = "127.0.0.1";
-	$username = "root";
-	$password = "docker";
-	$dbname = "dataminer";
-	if ( !$db ) { 
-		$db = new mysqli($servername, $username, $password, $dbname);
-		if ( $db->connect_error ) {
-			die("Connection failed: " . $db->connect_error);
-		}
-	}
-	return $db;
-}
 
 // Scan files ------------\/-----------------------------------
 $counter = 0;
@@ -26,6 +10,13 @@ foreach ( glob(SCORESHEET_DOWNLOAD_DIR . '/*.json') as $file ) {
 	print $counter++ . ": $file";
 	$str = file_get_contents($file);
 	$json = json_decode($str);
+	// remove extraneous info to save space
+	if ( $json->header->specialMode != 'SPECIAL_MODE_PLAYER2' ) { unset($json->stats->player2); }
+	if ( $json->header->specialMode != 'SPECIAL_MODE_RPGLIKE' ) { unset($json->stats->rpglike); }
+	unset($json->lastMessages);
+	unset($json->map);
+	unset($json->route);
+	// flatten it into database friendly keys
 	$data = FlattenData($json);
 	$hash = basename($file,'.json');
 	if ( AddRun( $hash, $data ) ) { 
@@ -41,11 +32,6 @@ foreach ( glob(SCORESHEET_DOWNLOAD_DIR . '/*.json') as $file ) {
 	}
 }
 print "$counter files scanned, $num_scanned runs added\n";
-
-
-
-
-
 
 
 
@@ -90,14 +76,17 @@ function AddRun( $hash, $data ) {
 	
 	// precompute some stuff:
 	
-	// dishout ratio %
+	// dishout ratio % - be careful if player took zero damage
 	$data['stats.combat.dishoutRatio'] = 100 * $data['stats.combat.damageInflicted.overall'] 
 		/ UseIfElse( $data['stats.combat.damageTaken.overall'], 1 );
+	
+	// failed hacks
+	$data['stats.hacking.failed'] = $data['stats.hacking.totalHacks.overall'] - $data['stats.hacking.totalHacks.successful'];
 	
 	// hacking skill %
 	$data['stats.hacking.hackingSkill'] = 100 * $data['stats.hacking.totalHacks.successful'] 
 		/ UseIfElse($data['stats.hacking.totalHacks.overall'], 1);
-		
+	
 	// accuracy %
 	$data['stats.combat.accuracy'] = 100 * $data['stats.combat.shotsHitRobots.overall']
 		/ UseIfElse( ($data['stats.combat.shotsFired.overall'] + $data['stats.combat.meleeAttacks.overall']), 1);
@@ -110,6 +99,7 @@ function AddRun( $hash, $data ) {
 	$data['stats.combat.criticalHitPercent'] = 100 *
 		( GetIndex($data,'stats.combat.shotsHitRobots.criticalStrikes.overall') ?? GetIndex($data,'stats.combat.shotsHitRobots.criticalHits') ?? 0 )
 		/ UseIfElse( ($data['stats.combat.meleeAttacks.overall'] + $data['stats.combat.shotsFired.overall']), 1 );						
+	
 	// overflow damage %
 	$data['stats.combat.overflowDamagePercent'] = 100 * $data['stats.combat.overflowDamage.overall']
 		/ UseIfElse($data['stats.combat.damageInflicted.overall'], 1);
@@ -117,6 +107,11 @@ function AddRun( $hash, $data ) {
 	// melee followup %
 	$data['stats.combat.meleeFollowupPercent'] = 100 * $data['stats.combat.meleeAttacks.followUpAttacks']
 		/ UseIfElse($data['stats.combat.meleeAttacks.overall'], 1);
+		
+	// cadence (actions per minute)
+	$timeParts = explode(':', $data['game.runTime'] );
+	$playtimeInMinutes = $timeParts[1] + ($timeParts[0]*60);
+	$data['stats.actions.cadence'] = ( $data['stats.actions.total.overall'] - $data['stats.actions.total.wait'] ) / $playtimeInMinutes;
 		
 	// add stats
 	foreach ( $data as $k => $v ) {
@@ -167,21 +162,4 @@ function FlattenData($data) {
 	};
 	$Flattener($data);
 	return $flatdata;			
-}
-
-// $row = $result->fetch_assoc()
-
-function DBCheckForErrors( $result, $db ) {
-	if ( $result !== true ) {
-		print $db->error . "\n";
-		exit;
-	}
-}
-
-function UseIfElse( $x, $y ) {
-	return $x ? $x : $y;
-}
-
-function GetIndex( $array, $i ) {
-	return array_key_exists($i,$array) ? $array[$i] : null;
 }

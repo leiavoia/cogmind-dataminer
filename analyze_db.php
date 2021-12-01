@@ -1,36 +1,35 @@
 <?php
 
-define('SCORESHEET_DOWNLOAD_DIR', __DIR__ . '/scoresheets/tmp');
-define('SCORESHEET_ARCHIVE_DIR', __DIR__ . '/scoresheets/archive'); // set to NULL if you dont want to archive
+require_once('global.php');
 
-// Database setup ------------\/-----------------------------------
-function DB() {
-	static $db = null;
-	$servername = "127.0.0.1";
-	$username = "root";
-	$password = "docker";
-	$dbname = "dataminer";
-	if ( !$db ) { 
-		$db = new mysqli($servername, $username, $password, $dbname);
-		if ( $db->connect_error ) {
-			die("Connection failed: " . $db->connect_error);
-		}
-	}
-	return $db;
-}
-
-function DBCheckForErrors( $result, $db ) {
-	if ( $result !== true ) {
-		print $db->error . "\n";
-		exit;
-	}
-}
+// set these if you want to limit recalculation to a subset
+$version = 'Beta 11 X8';
+$difficulty = 'DIFFICULTY_ROGUE';
+$mode = 'SPECIAL_MODE_NONE';
+$label = '';//'stats.exploration.spacesMoved.averageSpeed';
+$min_samples = 20;
+$sigmas = 5;
 
 print "Analyzing numeric stats...\n";
 
 $db = DB();
-$db->multi_query("
-	TRUNCATE analysis;
+
+// cleanup 
+if ( $version || $difficulty || $mode ) {
+	$result = $db->query("
+		DELETE FROM analysis where 1=1
+		" . ( $version ? ("AND analysis.version = '" . addslashes($version) . "'") : null ) . "
+		" . ( $difficulty ? ("AND analysis.difficulty = '" . addslashes($difficulty) . "'") : null ) . "
+		" . ( $mode ? ("AND analysis.mode = '" . addslashes($mode) . "'") : null ) . "
+		" . ( $label ? ("AND analysis.stat_id = CRC32('" . addslashes($label) . "')") : null ) . "	
+		;");
+}
+else { // nukemall
+	$result = $db->query(" TRUNCATE analysis; ");
+}
+
+// reanalyze
+$result = $db->query("
 	INSERT INTO analysis
 	SELECT
 		runstats.stat_id,
@@ -48,12 +47,13 @@ $db->multi_query("
 		runs,
 		runstats,
 		stats
-	WHERE runstats.stat_id = stats.id -- runstats.stat_id = CRC32('stats.allies.totalAllies.overall')
+	WHERE runstats.stat_id = stats.id
 		AND runstats.run_id = runs.id
 		AND stats.type IN ('float','integer')
-		-- AND runs.version = 'Beta 11 X8'
-		-- AND runs.difficulty = 'DIFFICULTY_ROGUE'
-		-- AND runs.mode = 'SPECIAL_MODE_NONE'
+		" . ( $version ? ("AND runs.version = '" . addslashes($version) . "'") : null ) . "
+		" . ( $difficulty ? ("AND runs.difficulty = '" . addslashes($difficulty) . "'") : null ) . "
+		" . ( $mode ? ("AND runs.mode = '" . addslashes($mode) . "'") : null ) . "
+		" . ( $label ? ("AND stats.id = CRC32('" . addslashes($label) . "')") : null ) . "
 	GROUP BY
 		stats.id,
 		runs.version,
@@ -65,15 +65,9 @@ $db->multi_query("
 		runs.difficulty,
 		runs.mode
 	;");
-// flush multi_queries 
-while ( $result = $db->next_result() ) { 
-	DBCheckForErrors( $result, $db );
-	;; 
-	} 
+DBCheckForErrors( $result, $db );
 
 print "Now creating sparkline graph data...\n";
-
-$min_samples = 20;
 
 $result = $db->query("
 	SELECT
@@ -81,13 +75,17 @@ $result = $db->query("
 		stats.label,
 		analysis.version,
 		analysis.difficulty,
-		analysis.mode
+		analysis.mode,
+		stats.type
 	FROM stats, analysis
 	WHERE analysis.stat_id = stats.id
 	AND stats.type IN ('float','integer')
 	AND analysis.samples >= $min_samples
-	-- AND analysis.version >= 'Beta 11 X8' --  UPDATE FOR PRODUCTION
-	");
+	" . ( $version ? ("AND analysis.version = '" . addslashes($version) . "'") : null ) . "
+	" . ( $difficulty ? ("AND analysis.difficulty = '" . addslashes($difficulty) . "'") : null ) . "
+	" . ( $mode ? ("AND analysis.mode = '" . addslashes($mode) . "'") : null ) . "
+	" . ( $label ? ("AND stats.id = CRC32('" . addslashes($label) . "')") : null ) . "
+	;");
 $records = [];
 while ( $row = $result->fetch_assoc() ) {
 	$records []= $row;
@@ -101,8 +99,7 @@ $db->query("INSERT INTO nums VALUES (0), (1), (2), (3), (4), (5), (6), (7), (8),
 $record_count = 0;
 $total = count($records);
 foreach ( $records as $record ) {
-	print "(" . $record_count++ .  "/$total): {$record['label']} {$record['version']} {$record['difficulty']} {$record['mode']} \n";
-	$sigmas = 5;
+	print "(" . ++$record_count .  "/$total): {$record['label']} {$record['version']} {$record['difficulty']} {$record['mode']} \n";
 	$db->multi_query("
 		SELECT 
 			COUNT( runstats.value ) as `samples`,
@@ -127,6 +124,11 @@ foreach ( $records as $record ) {
 		AND analysis.difficulty = runs.difficulty
 		AND analysis.mode = runs.mode;
 		
+		-- round segment length to integers if stat type is an integer
+		"
+		. ( $record['type']=='integer' ? 'SET @seglen = IF( @seglen < 1, @seglen, FLOOR(@seglen) );' : '' )
+		. ( $record['type']=='integer' ? 'SET @segments = IF( @seglen < 1, @segments, @segments+1 );' : '' ) . 
+		"
 		UPDATE analysis
 		SET chartdata = (
 			SELECT CONCAT('[', GROUP_CONCAT( CONCAT('[',sub3.val,',',sub3.num,']') ), ']') as chartdata
@@ -137,8 +139,8 @@ foreach ( $records as $record ) {
 						sub.segment,
 						COUNT( sub.segment ) as num
 					FROM (
-						SELECT 
-							FLOOR( runstats.value / @seglen ) as segment,
+						SELECT
+							FLOOR( (CAST( runstats.value as float ) - analysis.min) / @seglen ) as segment,
 							CAST( runstats.value as float ) as value
 						FROM runstats, analysis, runs
 						WHERE runs.id = runstats.run_id
