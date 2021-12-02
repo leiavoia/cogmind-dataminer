@@ -321,6 +321,40 @@ function DownloadDataminerDataAnalysis( app ) {
 	.then( data => {
 		if ( data ) { 
 			app.analysis = data;
+			// Analyze comps
+			if ( app.scoresheet.flatstats ) {
+				for ( let i of app.scoresheet.flatstats ) {
+					if ( i[3] && app.analysis[i[3]] ) {
+						// [ truncated_key, value, depth, full_key, avg, min, max, diff, formatted_diff, diffclass ]
+						let diff = (i[1] && app.analysis[i[3]].avg) ? (100* (i[1] - app.analysis[i[3]].avg) / app.analysis[i[3]].avg) : 0;
+						let diffclass = 'avg';
+						if ( diff > 400 ) { diffclass = 'plus400'; }
+						else if ( diff > 200 ) { diffclass = 'plus200'; }
+						else if ( diff > 100 ) { diffclass = 'plus100'; }
+						else if ( diff > 50 ) { diffclass = 'plus50'; }
+						else if ( diff < -90 ) { diffclass = 'minus90'; }
+						else if ( diff < -75 ) { diffclass = 'minus75'; }
+						else if ( diff < -50 ) { diffclass = 'minus50'; }
+						else if ( diff < -25 ) { diffclass = 'minus25'; }
+						i.push( (app.analysis[i[3]].avg || 0).toLocaleString(undefined, {minimumFractionDigits:0,maximumFractionDigits:(app.analysis[i[3]].avg >= 100 ? 0 : 2)}) );
+						i.push( (app.analysis[i[3]].min || 0).toLocaleString(undefined, {minimumFractionDigits:0,maximumFractionDigits:(app.analysis[i[3]].min >= 100 ? 0 : 2)}) );
+						i.push( (app.analysis[i[3]].max || 0).toLocaleString(undefined, {minimumFractionDigits:0,maximumFractionDigits:(app.analysis[i[3]].max >= 100 ? 0 : 2)}) );
+						i.push( diff );
+						i.push( (diff > 0 ? '+' : '') + diff.toLocaleString(undefined, {minimumFractionDigits:0,maximumFractionDigits:2}) + '%' );
+						i.push( diffclass );
+					}
+				}
+			}
+			// sort the comps for interesting hilites
+			let mapper = function ( arr ) {
+				return {
+					name: arr[3].split('.').slice(1).map( _ => _.Undatafy() ).join(' > '),
+					value: arr[1],
+					diff: arr[8]
+				};
+			}; 
+			app.scoresheet.hilites = app.scoresheet.flatstats.filter( i => i[7] > 0  ).sort( (a,b) => b[7] - a[7] ).slice( 0, 19 ).map( mapper );
+			app.scoresheet.lowlites = app.scoresheet.flatstats.filter( i => i[7] < 0  ).sort( (a,b) => a[7] - b[7] ).slice( 0, 19 ).map( mapper );
 		}
 	})
 	.catch(error => {
@@ -330,6 +364,10 @@ function DownloadDataminerDataAnalysis( app ) {
 
 function AnalyzeScoresheet( data ) {
 
+	// remove junk we don't need
+	if ( data.header.specialMode != 'SPECIAL_MODE_PLAYER2' ) { delete data.stats.player2; }
+	if ( data.header.specialMode != 'SPECIAL_MODE_RPGLIKE' ) { delete data.stats.rpglike; }	
+	
 	// flatten data into something we can iterate over as table rows.
 	// NOTE: this copies the format returned by the Dataminer analysis file
 	// so you can make easy 1:1 comparisons
@@ -737,11 +775,11 @@ function ChangePane(pane) {
 					app.analysis['stats.exploration.turnsPassed'].chartdata,
 					app.scoresheet.stats.exploration.turnsPassed
 					) );
-				// app.charts.push( DrawSparkChart(
-				// 	'cadenceSparkChart',
-				// 	app.analysis['stats.exploration.cadence'].chartdata,
-				// 	app.scoresheet.stats.exploration.cadence
-				// 	) );
+				app.charts.push( DrawSparkChart(
+					'cadenceSparkChart',
+					app.analysis['stats.actions.cadence'].chartdata,
+					app.scoresheet.stats.actions.cadence
+					) );
 				app.charts.push( DrawSparkChart(
 					'avgSpeedSparkChart',
 					app.analysis['stats.exploration.spacesMoved.averageSpeed'].chartdata,
@@ -1018,9 +1056,9 @@ function ChangePane(pane) {
 					app.scoresheet.stats.combat.highestTemperature.effects.overall
 					) );
 				app.charts.push( DrawSparkChart(
-					'maxGunslingSparkChart',
-					app.analysis['stats.combat.shotsFired.secondaryTargets.maxGunslingingChain'].chartdata,
-					app.scoresheet.stats.combat.shotsFired.secondaryTargets.maxGunslingingChain
+					'gunslingsSparkChart',
+					app.analysis['stats.combat.shotsFired.secondaryTargets.overall'].chartdata,
+					app.scoresheet.stats.combat.shotsFired.secondaryTargets.overall
 					) );
 				app.charts.push( DrawSparkChart(
 					'machinesDisabledSparkChart',
@@ -1146,12 +1184,12 @@ function ChangePane(pane) {
 					app.analysis['stats.hacking.totalHacks.successful'].chartdata,
 					app.scoresheet.stats.hacking.totalHacks.successful
 					) );
-				// app.charts.push( DrawSparkChart(
-				// 	'failedHacksSparkChart',
-				// 	app.analysis['stats.exploration.turnsPassed'].chartdata,
-				// 	(app.scoresheet.stats.hacking.totalHacks.overall
-				// 	- app.scoresheet.stats.hacking.totalHacks.successful)
-				// 	) );
+				app.charts.push( DrawSparkChart(
+					'failedHacksSparkChart',
+					app.analysis['stats.hacking.totalHacks.failed']?.chartdata,
+					(app.scoresheet.stats.hacking.totalHacks.overall
+					- app.scoresheet.stats.hacking.totalHacks.successful)
+					) );
 				app.charts.push( DrawSparkChart(
 					'detectionsSparkChart',
 					app.analysis['stats.hacking.hackingDetections.overall'].chartdata,
@@ -1338,28 +1376,6 @@ function CalculateBadges(data) {
 	// remove duplicates
 	data.badges = [...new Set(data.badges)]	
 }
-
-// returns a Map object
-// function FlattenData(data) {
-// 	flatdata = new Map();
-// 	let Flattener = (data,prefix='') => {
-// 		for ( let k in data ) {
-// 			let v = data[k];
-// 			flatkey = prefix + (prefix ? ':' : '') + k; 
-// 			if ( typeof(v) === 'number' || typeof(v) === 'boolean' || typeof(v) === 'string' ) {
-// 				flatdata.set(flatkey,v);
-// 			}
-// 			else if ( Array.isArray(v) ) {
-// 				// skip
-// 			}
-// 			else if ( typeof(v) === 'object' && v ) {
-// 				Flattener(v,flatkey);
-// 			}
-// 		}
-// 	}
-// 	Flattener(data);
-// 	return flatdata;			
-// }
 
 function UpdateURLWhenNewScoresheetLoaded( hash, data ) {
 	const url = new URL(window.location);

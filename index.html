@@ -77,6 +77,7 @@
 			TR.indent-4 TD { color: rgb(238, 202, 173); }
 			TR.indent-5 TH { padding-left: 10em; color: rgb(236, 204, 219); }
 			TR.indent-5 TD { color: rgb(236, 204, 219); }
+			
 			/* fix bug with Slate theme */
 			.table > :not(:first-child) {
 				border-top: 0px !important;
@@ -107,6 +108,17 @@
 			.progress-bar.good { background-color: #308030 !important; }
 			.progress-bar.excl { background-color: #3cb356 !important; }
 			.progress-bar.best { background-color: #49dd52 !important; }
+			
+			TD.avg { color: #AAA !important; }
+			TD.plus400 { color: #a4ffab !important; }
+			TD.plus200 { color: #49dd52 !important; }
+			TD.plus100 { color: #3cb356 !important; }
+			TD.plus50  { color: #539253 !important; }
+			TD.minus90 { color: #ff3e62 !important; }
+			TD.minus75 { color: #ca0b2e !important; }
+			TD.minus50 { color: #d4a300 !important; }
+			TD.minus25 { color: #e0cc32 !important; }
+										
 		</style>
 	</head>
 	
@@ -199,7 +211,7 @@
 					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='combat' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('combat')">Combat</button>
 					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='hacking' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('hacking')">Hacking</button>
 					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='stealth' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('stealth')">Stealth</button>
-					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='tables' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('tables')">Table Data</button>
+					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='tables' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('tables')">Analysis</button>
 				</nav>
 				
 				<!-- overview pane -->			
@@ -286,7 +298,7 @@
 							</div>
 						</div>
 					</div>
-
+					
 					<div class="container-fluid mt-5 mb-5 g-0">
 						<div class="row row-cols-1 row-cols-md-3 g-4">
 							<div class="col">
@@ -303,7 +315,7 @@
 									<div class="card-header">Cadence</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.actions.cadence.toFixed(0)}} APM</span>
-										<!-- <canvas id="cadenceSparkChart" v-if="analysis"></canvas> -->
+										<canvas id="cadenceSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>
@@ -710,7 +722,7 @@
 										<span class="card-text">{{
 											(scoresheet.stats.hacking.totalHacks.overall
 											- scoresheet.stats.hacking.totalHacks.successful).toLocaleString()}}</span>
-										<!-- <canvas id="failedHacksSparkChart" v-if="analysis"></canvas> -->
+										<canvas id="failedHacksSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>
@@ -1154,10 +1166,10 @@
 							</div>							
 							<div class="col">
 								<div class="card statbox h-100">
-									<div class="card-header">Max Gun-Sling</div>
+									<div class="card-header">Gun-Slings</div>
 									<div class="card-body text-success numeric">
-										<span class="card-text">{{ (scoresheet.stats.combat.shotsFired.secondaryTargets.maxGunslingingChain || 0).toLocaleString() }}</span>
-										<canvas id="maxGunslingSparkChart" v-if="analysis"></canvas>
+										<span class="card-text">{{ (scoresheet.stats.combat.shotsFired.secondaryTargets.overall || 0).toLocaleString() }}</span>
+										<canvas id="gunslingsSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>																										
@@ -1331,15 +1343,54 @@
 				
 				<!-- TABULAR DATA -->
 				<template v-if="pane=='tables'">
-					<table class="table table-sm ">
+				
+					<template v-if="scoresheet.hilites">
+						<h2>Highs</h2>
+						<table class="table ">
+							<tr v-for="row in scoresheet.hilites">
+								<td>{{row.name}}</td>
+								<td><b>{{row.value.toLocaleString()}}</b></td>
+								<td><i>{{row.diff}}</i></td>
+							</tr>
+						</table>
+					</template>
+					
+					<template v-if="scoresheet.lowlites">
+						<h2>Lows</h2>
+						<table class="table ">
+							<tr v-for="row in scoresheet.lowlites">
+								<td>{{row.name}}</td>
+								<td><b>{{row.value.toLocaleString()}}</b></td>
+								<td><i>{{row.diff}}</i></td>
+							</tr>
+						</table>
+					</template>
+						
+					<h2>Stats &amp; Analysis</h2>			
+					<table class="table table-sm data">
+						<colgroup>
+							<col class="name" />
+							<col class="value" />
+							<col class="diff" />
+							<col class="avg" />
+							<col class="min" />
+							<col class="max" >
+						</colgroup>
+						<tr>
+							<th>Name</th>
+							<th>Value</th>
+							<th>Difference</th>
+							<th>Average</th>
+							<th>Min</th>
+							<th>Max</th>
+						</tr>
 						<tr v-for="i of scoresheet.flatstats" :class.once="[`indent-${i[2]}`]">
 							<th>{{i[0].Undatafy()}}</th>
-							<td><b>{{i[1] ? i[1].toLocaleString() : ''}}</b></td>
-							<td>{{(i[1] && i[3] && analysis[i[3]] && analysis[i[3]].avg) ? ((100* (i[1] - analysis[i[3]].avg) / analysis[i[3]].avg).toFixed(0).toLocaleString()+'%') : ''}}</td>
-							<td><i>{{i[3] && analysis[i[3]] ? analysis[i[3]].avg.toLocaleString() : ''}}</i></td>
-							<td><sub>{{i[3] && analysis[i[3]] ? analysis[i[3]].min.toLocaleString() : ''}}</sub></td>
-							<td><sup>{{i[3] && analysis[i[3]] ? analysis[i[3]].max.toLocaleString() : ''}}</sup></td>
-							<!-- <td>{{i[3] && analysis[i[3]] ? analysis[i[3]].samples.toLocaleString() : ''}}</td> -->
+							<td :class="i[9]"><b>{{i[1] ? i[1].toLocaleString() : ''}}</b></td>
+							<td :class="i[9]">{{i[8] ? i[8] : ''}}</td>
+							<td :class="i[9]"><i>{{i[4]}}</i></td>
+							<td :class="i[9]"><sub>{{i[5]}}</sub></td>
+							<td :class="i[9]"><sup>{{i[6]}}</sup></td>
 						</tr>
 					</table>			
 				</template>					
@@ -1353,7 +1404,7 @@
 					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='combat' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('combat')">Combat</button>
 					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='hacking' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('hacking')">Hacking</button>
 					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='stealth' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('stealth')">Stealth</button>
-					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='tables' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('tables')">Table Data</button>
+					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='tables' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('tables')">Analysis</button>
 				</nav>
 					
 			</div><!-- end "app" div -->
@@ -1361,7 +1412,5 @@
 		
 		<script src="js/dataminer.js"></script>
 		
-		<!-- bootstrap JS stuff if you want FX -->
-		<!-- <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-kQtW33rZJAHjgefvhyyzcGF3C5TFyBQBA13V1RKPf4uH+bwyzQxZ6CmMZHmNBEfJ" crossorigin="anonymous"></script> -->
 	</body>
 </html>
