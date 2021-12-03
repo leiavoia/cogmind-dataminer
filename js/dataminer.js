@@ -556,6 +556,16 @@ function AnalyzeScoresheet( data ) {
 			})));
 		}
 
+		// history decoration - color coded messages
+		for ( row of map.historyEvents ) { 
+			if ( row.event.match(/(lost|released all parts|locked|lockdown|assault|sterilization system|crushed|destroyed by|self destr|core integrity fell|corruption reached|assimilated all)/i) ) { row.class = 'bad'; }
+			else if ( row.event.match(/(learned|destroyed|killed|installed|found|Aligned with FarCom|given|expanded rif|repaired|fabricated|Loaded intel|hub disabled)/i) ) { row.class = 'good'; }
+			else if ( row.event.match(/(discovered|identified|build established|Accompanied by)/i) ) { row.class = 'info'; }
+			else if ( row.event.match(/(entered|evolved)/i) ) { row.class = 'notice'; }
+			else if ( row.event.match(/(triggered|spotted|evacuate|Garrison activated|warn|convoy interrupted|squad dispatched|Detected by scanners)/i) ) { row.class = 'warning'; }
+			else { row.class = ''; }
+		}
+		
 		// route
 		let last_route = data.charts.route_data.length ? data.charts.route_data[ data.charts.route_data.length-1 ] : null;
 		if ( !last_route || last_route.depth != map.location.depth ) {

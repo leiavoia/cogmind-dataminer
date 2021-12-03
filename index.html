@@ -81,6 +81,12 @@
 			TR.indent-5 TH { padding-left: 10em; color: rgb(236, 204, 219); }
 			TR.indent-5 TD { color: rgb(236, 204, 219); }
 			
+			TD.good { color: rgb(136, 202, 150); }
+			TD.bad { color: rgb(221, 75, 75); }
+			TD.notice { color: #4490d6; }
+			TD.info { color: #AAA; }
+			TD.warning { color: rgb(228, 199, 72); }
+			
 			/* fix bug with Slate theme */
 			.table > :not(:first-child) {
 				border-top: 0px !important;
@@ -510,7 +516,7 @@
 							<tr v-for="row of map.historyEvents">
 								<td class="text-nowrap">{{map.location.depth}}/{{map.location.mapname}}</td>
 								<td>{{row.turn}}</td>
-								<td>{{row.event}}</td>
+								<td :class="row.class">{{row.event}}</td>
 							</tr>
 						</tbody>
 					</table>
