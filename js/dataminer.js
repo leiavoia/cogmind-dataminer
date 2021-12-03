@@ -352,8 +352,9 @@ function DownloadDataminerDataAnalysis( app ) {
 					value: arr[1],
 					diff: arr[8]
 				};
-			}; 
-			app.scoresheet.hilites = app.scoresheet.flatstats.filter( i => i[7] > 0  ).sort( (a,b) => b[7] - a[7] ).slice( 0, 19 ).map( mapper );
+			};
+			// note: filtering out single-event items that tend to be uninteresting when the average is near zero.
+			app.scoresheet.hilites = app.scoresheet.flatstats.filter( i => i[7] > 0 && i[1] > 1 ).sort( (a,b) => b[7] - a[7] ).slice( 0, 19 ).map( mapper );
 			app.scoresheet.lowlites = app.scoresheet.flatstats.filter( i => i[7] < 0  ).sort( (a,b) => a[7] - b[7] ).slice( 0, 19 ).map( mapper );
 		}
 	})
