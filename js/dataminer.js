@@ -368,12 +368,56 @@ function AnalyzeScoresheet( data ) {
 	if ( data.header.specialMode != 'SPECIAL_MODE_PLAYER2' ) { delete data.stats.player2; }
 	if ( data.header.specialMode != 'SPECIAL_MODE_RPGLIKE' ) { delete data.stats.rpglike; }	
 	
-	// flatten data into something we can iterate over as table rows.
-	// NOTE: this copies the format returned by the Dataminer analysis file
-	// so you can make easy 1:1 comparisons
-	data.flatstats = TabularizeData(data.stats, 'stats');
 	
-	// precompute some stuff
+	// precompute single values
+	
+	// digging luck
+	data.stats.exploration.diggingLuck = 100 * ( 1 - ( (data.stats.exploration.spacesMoved.caveInsTriggered || 0) 
+		/ (data.stats.exploration.spacesDug || 1) ) );
+	
+	// collateral dmg pct
+	data.stats.combat.collateralDamagePct = 100 * data.performance.valueDestroyed.count 
+		/ ( data.stats.combat.damageInflicted.overall || 1 );
+	
+	// dishout ratio % - be careful if player took zero damage
+	data.stats.combat.dishoutRatio = 100 * data.stats.combat.damageInflicted.overall 
+		/ ( data.stats.combat.damageTaken.overall || 1 );
+	
+	// failed hacks
+	data.stats.hacking.failed = data.stats.hacking.totalHacks.overall - data.stats.hacking.totalHacks.successful;
+	
+	// hacking skill %
+	data.stats.hacking.hackingSkill = 100 * data.stats.hacking.totalHacks.successful 
+		/ (data.stats.hacking.totalHacks.overall || 1);
+	
+	// accuracy %
+	data.stats.combat.accuracy = 100 * data.stats.combat.shotsHitRobots.overall
+		/ ( (data.stats.combat.shotsFired.overall + data.stats.combat.meleeAttacks.overall) || 1);
+		
+	// shots per volley						
+	data.stats.combat.shotsPerVolley = data.stats.combat.shotsFired.overall 
+		/ (data.stats.combat.volleysFired.overall|| 1);
+						
+	// critical hit %
+	data.stats.combat.criticalHitPercent = 100 *
+		( data.stats.combat.shotsHitRobots?.criticalStrikes?.overall ||
+			data.stats.combat.shotsHitRobots?.criticalHits || 0 )
+		/ ( (data.stats.combat.meleeAttacks.overall + data.stats.combat.shotsFired.overall) || 1 );						
+	
+	// overflow damage %
+	data.stats.combat.overflowDamagePercent = 100 * data.stats.combat.overflowDamage.overall
+		/ (data.stats.combat.damageInflicted.overall || 1);
+		
+	// melee followup %
+	data.stats.combat.meleeFollowupPercent = 100 * data.stats.combat.meleeAttacks.followUpAttacks
+		/ (data.stats.combat.meleeAttacks.overall || 1);
+		
+	// turn cadence (actions per minute; factor out WAITs)
+	let timeParts = data.game.runTime.split(':');
+	let playtimeInMinutes = parseInt(timeParts[1]) + (parseInt(timeParts[0])*60);
+	data.stats.actions.cadence = ( data.stats.actions.total.overall - data.stats.actions.total.wait ) / playtimeInMinutes;
+	
+	// precompute chart data
 	data.charts = {
 		turns_chart_data: [],
 		hacks_chart_data: [],
@@ -525,11 +569,6 @@ function AnalyzeScoresheet( data ) {
 									
 	}
 	
-	// dishout ratio
-	data.stats.dishoutRatio = data.stats.combat.damageTaken.overall 
-		? ( data.stats.combat.damageInflicted.overall / data.stats.combat.damageTaken.overall )
-		: -1; // indicates "perfect"
-	
 	// reverse the routes for familiarity
 	// data.charts.route_data.reverse();
 	data.charts.route_data.shift();
@@ -607,11 +646,6 @@ function AnalyzeScoresheet( data ) {
 	let final_map = data.route.entries[ data.route.entries.length-1 ].location;
 	data.game.finalMapReached = final_map.depth + '/' +
 		(typeof(final_map.map)=='string' ? final_map.map.replace('MAP_','') : (final_map.map==35 ? 'DSF' : '???'));
-		
-	// turn cadence (factor out WAITs)
-	let timeParts = data.game.runTime.split(':');
-	let playtimeInMinutes = parseInt(timeParts[1]) + (parseInt(timeParts[0])*60);
-	data.stats.actions.cadence = (data.stats.actions.total.overall - data.stats.actions.total.wait) / playtimeInMinutes;
 	
 	// parts attached
 	data.charts.parts_attached_chart_data = [
@@ -737,6 +771,17 @@ function AnalyzeScoresheet( data ) {
 								
 	// Badges
 	CalculateBadges(data);
+	
+	// flatten data into something we can iterate over as table rows.
+	// NOTE: this copies the format returned by the Dataminer analysis file
+	// so you can make easy 1:1 comparisons
+	data.flatstats = [].concat( 
+		TabularizeData(data.stats, 'stats'),
+		TabularizeData({performance: data.performance} ),
+		TabularizeData({bonus: data.bonus} ),
+		TabularizeData({bestStates: data.bestStates} ),
+		TabularizeData({classDistribution: data.classDistribution} )
+	);
 }
 
 function ChangePane(pane) {
@@ -772,57 +817,57 @@ function ChangePane(pane) {
 			if ( app.analysis ) {
 				app.charts.push( DrawSparkChart(
 					'turnsSparkChart',
-					app.analysis['stats.exploration.turnsPassed'].chartdata,
+					app.analysis['stats.exploration.turnsPassed']?.chartdata,
 					app.scoresheet.stats.exploration.turnsPassed
 					) );
 				app.charts.push( DrawSparkChart(
 					'cadenceSparkChart',
-					app.analysis['stats.actions.cadence'].chartdata,
+					app.analysis['stats.actions.cadence']?.chartdata,
 					app.scoresheet.stats.actions.cadence
 					) );
 				app.charts.push( DrawSparkChart(
 					'avgSpeedSparkChart',
-					app.analysis['stats.exploration.spacesMoved.averageSpeed'].chartdata,
+					app.analysis['stats.exploration.spacesMoved.averageSpeed']?.chartdata,
 					app.scoresheet.stats.exploration.spacesMoved.averageSpeed
 					) );
 				app.charts.push( DrawSparkChart(
 					'regionsVisitedSparkChart',
-					app.analysis['performance.regionsVisited.count'].chartdata,
+					app.analysis['performance.regionsVisited.count']?.chartdata,
 					app.scoresheet.performance.regionsVisited.count
 					) );
 				app.charts.push( DrawSparkChart(
 					'botsDestroyedSparkChart',
-					app.analysis['performance.robotsDestroyed.count'].chartdata,
+					app.analysis['performance.robotsDestroyed.count']?.chartdata,
 					app.scoresheet.performance.robotsDestroyed.count
 					) );
 				app.charts.push( DrawSparkChart(
 					'alienTechsUsedSparkChart',
-					app.analysis['performance.alienTechUsed.count'].chartdata,
+					app.analysis['performance.alienTechUsed.count']?.chartdata,
 					app.scoresheet.performance.alienTechUsed.count
 					) );
 				app.charts.push( DrawSparkChart(
 					'NPCsMurduredSparkChart',
-					app.analysis['stats.kills.uniquesNpcsDestroyed'].chartdata,
+					app.analysis['stats.kills.uniquesNpcsDestroyed']?.chartdata,
 					app.scoresheet.stats.kills.uniquesNpcsDestroyed
 					) );
 				app.charts.push( DrawSparkChart(
 					'alliesSparkChart',
-					app.analysis['stats.allies.totalAllies.overall'].chartdata,
+					app.analysis['stats.allies.totalAllies.overall']?.chartdata,
 					app.scoresheet.stats.allies.totalAllies.overall
 					) );
 				app.charts.push( DrawSparkChart(
 					'largestArmySparkChart',
-					app.analysis['stats.allies.totalAllies.largestGroup'].chartdata,
+					app.analysis['stats.allies.totalAllies.largestGroup']?.chartdata,
 					app.scoresheet.stats.allies.totalAllies.largestGroup
 					) );
 				app.charts.push( DrawSparkChart(
 					'mostCorruptionSparkChart',
-					app.analysis['stats.combat.highestCorruption.overall'].chartdata,
+					app.analysis['stats.combat.highestCorruption.overall']?.chartdata,
 					app.scoresheet.stats.combat.highestCorruption.overall
 					) );
 				app.charts.push( DrawSparkChart(
 					'peakBuildSparkChart',
-					app.analysis['peakState.rating'].chartdata,
+					app.analysis['peakState.rating']?.chartdata,
 					app.scoresheet.peakState.rating
 					) );
 			}
@@ -926,153 +971,143 @@ function ChangePane(pane) {
 			if ( app.analysis ) {
 				app.charts.push( DrawSparkChart(
 					'volleysSparkChart',
-					app.analysis['stats.combat.volleysFired.overall'].chartdata,
+					app.analysis['stats.combat.volleysFired.overall']?.chartdata,
 					app.scoresheet.stats.combat.volleysFired.overall
 					) );
 				app.charts.push( DrawSparkChart(
 					'shotsFiredSparkChart',
-					app.analysis['stats.combat.shotsFired.overall'].chartdata,
+					app.analysis['stats.combat.shotsFired.overall']?.chartdata,
 					app.scoresheet.stats.combat.shotsFired.overall
 					) );
 				app.charts.push( DrawSparkChart(
 					'accuracySparkChart',
-					app.analysis['stats.combat.accuracy'].chartdata,
-					(100 * (app.scoresheet.stats.combat.shotsHitRobots.overall / (
-							((app.scoresheet.stats.combat.shotsFired.overall
-							+ app.scoresheet.stats.combat.meleeAttacks.overall) || 1)
-						)))
+					app.analysis['stats.combat.accuracy']?.chartdata,
+					app.scoresheet.stats.combat.accuracy
 					) );
 				app.charts.push( DrawSparkChart(
 					'shotsPerVolleySparkChart',
-					app.analysis['stats.combat.shotsPerVolley'].chartdata,
-					(app.scoresheet.stats.combat.shotsFired.overall / (app.scoresheet.stats.combat.volleysFired.overall || 1 ))
+					app.analysis['stats.combat.shotsPerVolley']?.chartdata,
+					app.scoresheet.stats.combat.shotsPerVolley
 					) );
 				// NOTE: scoresheet format change in Beta11 makes this data unavailable. Provide interesting substitute.
 				if ( app.scoresheet.stats.combat.criticalHitPercent ) {
 					app.charts.push( DrawSparkChart(
 						'criticalHitPctSparkChart',
-						app.analysis['stats.combat.criticalHitPercent'].chartdata,
+						app.analysis['stats.combat.criticalHitPercent']?.chartdata,
 						app.scoresheet.stats.combat.criticalHitPercent
 						) );
 				}
 				else {
 					app.charts.push( DrawSparkChart(
 						'criticalHitPctSparkChart',
-						app.analysis['stats.combat.shotsHitRobots.criticalKills'].chartdata,
+						app.analysis['stats.combat.shotsHitRobots.criticalKills']?.chartdata,
 						app.scoresheet.stats.combat.shotsHitRobots.criticalKills
 						) );
 				}
 				app.charts.push( DrawSparkChart(
 					'overflowDamageSparkChart',
-					app.analysis['stats.combat.overflowDamagePercent'].chartdata,
-					(100*(app.scoresheet.stats.combat.overflowDamage.overall / (app.scoresheet.stats.combat.damageInflicted.overall||1)))
+					app.analysis['stats.combat.overflowDamagePercent']?.chartdata,
+					app.scoresheet.stats.combat.overflowDamagePercent
 					) );
 				app.charts.push( DrawSparkChart(
 					'totalDamageInflictedSparkChart',
-					app.analysis['stats.combat.damageInflicted.overall'].chartdata,
+					app.analysis['stats.combat.damageInflicted.overall']?.chartdata,
 					app.scoresheet.stats.combat.damageInflicted.overall
 					) );
 				app.charts.push( DrawSparkChart(
 					'totalDamageReceivedSparkChart',
-					app.analysis['stats.combat.damageTaken.overall'].chartdata,
+					app.analysis['stats.combat.damageTaken.overall']?.chartdata,
 					app.scoresheet.stats.combat.damageTaken.overall
 					) );
 				app.charts.push( DrawSparkChart(
 					'dishOutSparkChart',
-					app.analysis['stats.combat.dishoutRatio'].chartdata,
-					( app.scoresheet.stats.dishoutRatio === -1
-						? 1000 : (100*app.scoresheet.stats.dishoutRatio) )
+					app.analysis['stats.combat.dishoutRatio']?.chartdata,
+					app.scoresheet.stats.combat.dishoutRatio
 					) );
-					
 				app.charts.push( DrawSparkChart(
 					'combatBotsDestroyedSparkChart',
-					app.analysis['stats.kills.combatHostilesDestroyed.overall'].chartdata,
+					app.analysis['stats.kills.combatHostilesDestroyed.overall']?.chartdata,
 					app.scoresheet.stats.kills.combatHostilesDestroyed.overall
 					) );
 				app.charts.push( DrawSparkChart(
 					'killStreakSparkChart',
-					app.analysis['stats.kills.bestKillStreak.overall'].chartdata,
+					app.analysis['stats.kills.bestKillStreak.overall']?.chartdata,
 					app.scoresheet.stats.kills.bestKillStreak.overall
 					) );
 				app.charts.push( DrawSparkChart(
 					'mostKillsInOneTurnSparkChart',
-					app.analysis['stats.kills.maxKillsInSingleTurn.overall'].chartdata,
+					app.analysis['stats.kills.maxKillsInSingleTurn.overall']?.chartdata,
 					app.scoresheet.stats.kills.maxKillsInSingleTurn.overall
 					) );
 				app.charts.push( DrawSparkChart(
 					'botsCorruptedSparkChart',
-					app.analysis['stats.combat.robotsCorrupted.overall'].chartdata,
+					app.analysis['stats.combat.robotsCorrupted.overall']?.chartdata,
 					app.scoresheet.stats.combat.robotsCorrupted.overall
 					) );
 				app.charts.push( DrawSparkChart(
 					'botsMeltedSparkChart',
-					app.analysis['stats.combat.robotsMelted.overall'].chartdata,
+					app.analysis['stats.combat.robotsMelted.overall']?.chartdata,
 					app.scoresheet.stats.combat.robotsMelted.overall
 					) );
 				app.charts.push( DrawSparkChart(
 					'botsCrushedSparkChart',
-					app.analysis['stats.combat.targetsRammed.crushed'].chartdata,
+					app.analysis['stats.combat.targetsRammed.crushed']?.chartdata,
 					app.scoresheet.stats.combat.targetsRammed.crushed
 					) );
 					
 				app.charts.push( DrawSparkChart(
-					'caveInsSparkChart',
-					app.analysis['stats.exploration.spacesMoved.caveInsTriggered'].chartdata,
-					app.scoresheet.stats.exploration.spacesMoved.caveInsTriggered
-					) );
-				app.charts.push( DrawSparkChart(
 					'meleeFollowupSparkChart',
-					app.analysis['stats.combat.meleeFollowupPercent'].chartdata,
-					(100*(app.scoresheet.stats.combat.meleeAttacks.followUpAttacks / (app.scoresheet.stats.combat.meleeAttacks.overall || 1)))
+					app.analysis['stats.combat.meleeFollowupPercent']?.chartdata,
+					app.scoresheet.stats.combat.meleeFollowupPercent
 					) );
 				app.charts.push( DrawSparkChart(
 					'botsRammedSparkChart',
-					app.analysis['stats.combat.targetsRammed.overall'].chartdata,
+					app.analysis['stats.combat.targetsRammed.overall']?.chartdata,
 					app.scoresheet.stats.combat.targetsRammed.overall
 					) );
 				app.charts.push( DrawSparkChart(
 					'sneakAttacksSparkChart',
-					app.analysis['stats.combat.meleeAttacks.sneakAttacks.overall'].chartdata,
+					app.analysis['stats.combat.meleeAttacks.sneakAttacks.overall']?.chartdata,
 					app.scoresheet.stats.combat.meleeAttacks.sneakAttacks.overall
 					) );
 				app.charts.push( DrawSparkChart(
 					'powerChainReactionsSparkChart',
-					app.analysis['stats.combat.powerChainReactions'].chartdata,
+					app.analysis['stats.combat.powerChainReactions']?.chartdata,
 					app.scoresheet.stats.combat.powerChainReactions
 					) );
 				app.charts.push( DrawSparkChart(
 					'siegesSparkChart',
-					app.analysis['stats.combat.siegeActivations.overall'].chartdata,
+					app.analysis['stats.combat.siegeActivations.overall']?.chartdata,
 					app.scoresheet.stats.combat.siegeActivations.overall
 					) );
 				app.charts.push( DrawSparkChart(
 					'hottestTempSparkChart',
-					app.analysis['stats.combat.highestTemperature.overall'].chartdata,
+					app.analysis['stats.combat.highestTemperature.overall']?.chartdata,
 					app.scoresheet.stats.combat.highestTemperature.overall
 					) );
 				app.charts.push( DrawSparkChart(
 					'overheatingIssuesSparkChart',
-					app.analysis['stats.combat.highestTemperature.effects.overall'].chartdata,
+					app.analysis['stats.combat.highestTemperature.effects.overall']?.chartdata,
 					app.scoresheet.stats.combat.highestTemperature.effects.overall
 					) );
 				app.charts.push( DrawSparkChart(
 					'gunslingsSparkChart',
-					app.analysis['stats.combat.shotsFired.secondaryTargets.overall'].chartdata,
+					app.analysis['stats.combat.shotsFired.secondaryTargets.overall']?.chartdata,
 					app.scoresheet.stats.combat.shotsFired.secondaryTargets.overall
 					) );
 				app.charts.push( DrawSparkChart(
 					'machinesDisabledSparkChart',
-					app.analysis['stats.machines.machinesDisabled.overall'].chartdata,
+					app.analysis['stats.machines.machinesDisabled.overall']?.chartdata,
 					app.scoresheet.stats.machines.machinesDisabled.overall
 					) );
 				app.charts.push( DrawSparkChart(
 					'collateralDamageSparkChart',
-					app.analysis['performance.valueDestroyed.count'].chartdata,
+					app.analysis['performance.valueDestroyed.count']?.chartdata,
 					app.scoresheet.performance.valueDestroyed.count
 					) );
 				app.charts.push( DrawSparkChart(
 					'attacksByAlliesSparkChart',
-					app.analysis['stats.allies.allyAttacks.kills'].chartdata,
+					app.analysis['stats.allies.allyAttacks.kills']?.chartdata,
 					app.scoresheet.stats.allies.allyAttacks.kills
 					) );
 			}
@@ -1094,64 +1129,79 @@ function ChangePane(pane) {
 			if ( app.analysis ) {
 				app.charts.push( DrawSparkChart(
 					'maxAlertSparkChart',
-					app.analysis['stats.alert.peakInfluence.overall'].chartdata,
+					app.analysis['stats.alert.peakInfluence.overall']?.chartdata,
 					app.scoresheet.stats.alert.peakInfluence.overall
 					) );
 				app.charts.push( DrawSparkChart(
 					'spottedSparkChart',
-					app.analysis['stats.stealth.timesSpotted.overall'].chartdata,
+					app.analysis['stats.stealth.timesSpotted.overall']?.chartdata,
 					app.scoresheet.stats.stealth.timesSpotted.overall
 					) );
 				app.charts.push( DrawSparkChart(
 					'squadsDispatchedSparkChart',
-					app.analysis['stats.alert.squadsDispatched.overall'].chartdata,
+					app.analysis['stats.alert.squadsDispatched.overall']?.chartdata,
 					app.scoresheet.stats.alert.squadsDispatched.overall
 					) );
 				app.charts.push( DrawSparkChart(
 					'mostBotsTrackingSparkChart',
-					app.analysis['stats.stealth.timesSpotted.peakTrackingTotal'].chartdata,
+					app.analysis['stats.stealth.timesSpotted.peakTrackingTotal']?.chartdata,
 					app.scoresheet.stats.stealth.timesSpotted.peakTrackingTotal
 					) );
 				app.charts.push( DrawSparkChart(
 					'retreatsSparkChart',
-					app.analysis['stats.stealth.timesSpotted.tacticalRetreats'].chartdata,
+					app.analysis['stats.stealth.timesSpotted.tacticalRetreats']?.chartdata,
 					app.scoresheet.stats.stealth.timesSpotted.tacticalRetreats
 					) );
 				app.charts.push( DrawSparkChart(
 					'distressSignalsSparkChart',
-					app.analysis['stats.stealth.distressSignals'].chartdata,
+					app.analysis['stats.stealth.distressSignals']?.chartdata,
 					app.scoresheet.stats.stealth.distressSignals
 					) );
 				app.charts.push( DrawSparkChart(
 					'signalsJammedSparkChart',
-					app.analysis['stats.stealth.communicationsJammed.overall'].chartdata,
+					app.analysis['stats.stealth.communicationsJammed.overall']?.chartdata,
 					app.scoresheet.stats.stealth.communicationsJammed.overall
 					) );
 				app.charts.push( DrawSparkChart(
 					'haulersDistressedSparkChart',
-					app.analysis['stats.alert.haulersReinforced'].chartdata,
+					app.analysis['stats.alert.haulersReinforced']?.chartdata,
 					app.scoresheet.stats.alert.haulersReinforced
 					) );
 				app.charts.push( DrawSparkChart(
 					'engineersDistressedSparkChart',
-					app.analysis['stats.alert.constructionImpeded'].chartdata,
+					app.analysis['stats.alert.constructionImpeded']?.chartdata,
 					app.scoresheet.stats.alert.constructionImpeded
 					) );
 				app.charts.push( DrawSparkChart(
 					'trapsTriggeredSparkChart',
-					app.analysis['stats.traps.trapsTriggered.overall'].chartdata,
+					app.analysis['stats.traps.trapsTriggered.overall']?.chartdata,
 					app.scoresheet.stats.traps.trapsTriggered.overall
 					) );
 				app.charts.push( DrawSparkChart(
 					'logsRecoveredSparkChart',
-					app.analysis['stats.intel.derelictLogsRecovered'].chartdata,
+					app.analysis['stats.intel.derelictLogsRecovered']?.chartdata,
 					app.scoresheet.stats.intel.derelictLogsRecovered
 					) );
 				app.charts.push( DrawSparkChart(
 					'botsAnalyzedSparkChart',
-					app.analysis['stats.intel.robotAnalysisTotal'].chartdata,
+					app.analysis['stats.intel.robotAnalysisTotal']?.chartdata,
 					app.scoresheet.stats.intel.robotAnalysisTotal
 					) );
+				app.charts.push( DrawSparkChart(
+					'caveInsSparkChart',
+					app.analysis['stats.exploration.spacesMoved.caveInsTriggered']?.chartdata,
+					app.scoresheet.stats.exploration.spacesMoved.caveInsTriggered
+					) );					
+				app.charts.push( DrawSparkChart(
+					'spacesDugSparkChart',
+					app.analysis['stats.exploration.spacesDug']?.chartdata,
+					app.scoresheet.stats.exploration.spacesDug
+					) );					
+				app.charts.push( DrawSparkChart(
+					'diggingLuckSparkChart',
+					app.analysis['stats.exploration.diggingLuck']?.chartdata,
+					app.scoresheet.stats.exploration.diggingLuck
+					) );					
 			}		
 		}
 		
@@ -1176,12 +1226,12 @@ function ChangePane(pane) {
 			if ( app.analysis ) {
 				app.charts.push( DrawSparkChart(
 					'hackingSkillSparkChart',
-					app.analysis['stats.hacking.hackingSkill'].chartdata,
-					(((app.scoresheet.stats.hacking.totalHacks.successful / (app.scoresheet.stats.hacking.totalHacks.overall || 1)) * 100) || 0)
+					app.analysis['stats.hacking.hackingSkill']?.chartdata,
+					app.scoresheet.stats.hacking.hackingSkill
 					) );
 				app.charts.push( DrawSparkChart(
 					'successfullHacksSparkChart',
-					app.analysis['stats.hacking.totalHacks.successful'].chartdata,
+					app.analysis['stats.hacking.totalHacks.successful']?.chartdata,
 					app.scoresheet.stats.hacking.totalHacks.successful
 					) );
 				app.charts.push( DrawSparkChart(
@@ -1192,62 +1242,62 @@ function ChangePane(pane) {
 					) );
 				app.charts.push( DrawSparkChart(
 					'detectionsSparkChart',
-					app.analysis['stats.hacking.hackingDetections.overall'].chartdata,
+					app.analysis['stats.hacking.hackingDetections.overall']?.chartdata,
 					app.scoresheet.stats.hacking.hackingDetections.overall
 					) );
 				app.charts.push( DrawSparkChart(
 					'dbLockoutsSparkChart',
-					app.analysis['stats.hacking.totalHacks.databaseLockouts'].chartdata,
+					app.analysis['stats.hacking.totalHacks.databaseLockouts']?.chartdata,
 					app.scoresheet.stats.hacking.totalHacks.databaseLockouts
 					) );
 				app.charts.push( DrawSparkChart(
 					'partsRepairedSparkChart',
-					app.analysis['stats.hacking.partsRepaired.overall'].chartdata,
+					app.analysis['stats.hacking.partsRepaired.overall']?.chartdata,
 					app.scoresheet.stats.hacking.partsRepaired.overall
 					) );
 				app.charts.push( DrawSparkChart(
 					'partsRecycledSparkChart',
-					app.analysis['stats.hacking.partsRecycled.overall'].chartdata,
+					app.analysis['stats.hacking.partsRecycled.overall']?.chartdata,
 					app.scoresheet.stats.hacking.partsRecycled.overall
 					) );
 				app.charts.push( DrawSparkChart(
 					'partsScannedSparkChart',
-					app.analysis['stats.hacking.partsScanalyzed.overall'].chartdata,
+					app.analysis['stats.hacking.partsScanalyzed.overall']?.chartdata,
 					app.scoresheet.stats.hacking.partsScanalyzed.overall
 					) );
 				app.charts.push( DrawSparkChart(
 					'numPartSchematicsSparkChart',
-					app.analysis['stats.hacking.partSchematicsAcquired.overall'].chartdata,
+					app.analysis['stats.hacking.partSchematicsAcquired.overall']?.chartdata,
 					app.scoresheet.stats.hacking.partSchematicsAcquired.overall
 					) );
 				app.charts.push( DrawSparkChart(
 					'partsBuiltSparkChart',
-					app.analysis['stats.hacking.partSchematicsAcquired.partsBuilt.overall'].chartdata,
+					app.analysis['stats.hacking.partSchematicsAcquired.partsBuilt.overall']?.chartdata,
 					app.scoresheet.stats.hacking.partSchematicsAcquired.partsBuilt.overall
 					) );
 				app.charts.push( DrawSparkChart(
 					'numBotSchematicsSparkChart',
-					app.analysis['stats.hacking.robotSchematicsAcquired.overall'].chartdata,
+					app.analysis['stats.hacking.robotSchematicsAcquired.overall']?.chartdata,
 					app.scoresheet.stats.hacking.robotSchematicsAcquired.overall
 					) );
 				app.charts.push( DrawSparkChart(
 					'botsBuiltSparkChart',
-					app.analysis['stats.hacking.robotSchematicsAcquired.robotsBuilt.overall'].chartdata,
+					app.analysis['stats.hacking.robotSchematicsAcquired.robotsBuilt.overall']?.chartdata,
 					app.scoresheet.stats.hacking.robotSchematicsAcquired.robotsBuilt.overall
 					) );
 				app.charts.push( DrawSparkChart(
 					'rifInstallsSparkChart',
-					app.analysis['stats.bothacking.usedRifInstaller.overall'].chartdata,
+					app.analysis['stats.bothacking.usedRifInstaller.overall']?.chartdata,
 					app.scoresheet.stats.bothacking.usedRifInstaller.overall
 					) );
 				app.charts.push( DrawSparkChart(
 					'botsRewiredSparkChart',
-					app.analysis['stats.bothacking.robotsRewired'].chartdata,
+					app.analysis['stats.bothacking.robotsRewired']?.chartdata,
 					app.scoresheet.stats.bothacking.robotsRewired
 					) );
 				app.charts.push( DrawSparkChart(
 					'botsHackedSparkChart',
-					app.analysis['stats.bothacking.robotsHacked.overall'].chartdata,
+					app.analysis['stats.bothacking.robotsHacked.overall']?.chartdata,
 					app.scoresheet.stats.bothacking.robotsHacked.overall
 					) );
 			}			
@@ -1369,7 +1419,7 @@ function CalculateBadges(data) {
 	}
 	
 	// high damage inflicted versus received
-	if ( data.stats.dishoutRatio > 2.0 ) {
+	if ( data.stats.combat.dishoutRatio > 2.0 ) {
 		data.badges.push('Punisher');
 	}
 	
@@ -2245,7 +2295,7 @@ function DrawCoreChart( data, labels ) {
 function DrawSparkChart( canvasID, data, myval ) {
 	if ( !data ) { 
 		console.log("No data for spark chart " + canvasID); 
-		document.getElementById(canvasID).style.display = "none";
+		// document.getElementById(canvasID).style.display = "none";
 		return false; 
 		}
 	// let least = data[0][0];

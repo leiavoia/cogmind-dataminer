@@ -76,6 +76,14 @@ function AddRun( $hash, $data ) {
 	
 	// precompute some stuff:
 	
+	// digging luck
+	$data['stats.exploration.diggingLuck'] = 100 * $data['stats.exploration.spacesMoved.caveInsTriggered'] 
+		/ UseIfElse( $data['stats.exploration.spacesDug'], 1 );
+	
+	// collateral dmg pct
+	$data['stats.combat.collateralDamagePct'] = 100 * $data['performance.valueDestroyed.count'] 
+		/ UseIfElse( $data['stats.combat.damageInflicted.overall'], 1 );
+			
 	// dishout ratio % - be careful if player took zero damage
 	$data['stats.combat.dishoutRatio'] = 100 * $data['stats.combat.damageInflicted.overall'] 
 		/ UseIfElse( $data['stats.combat.damageTaken.overall'], 1 );

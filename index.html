@@ -16,6 +16,9 @@
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.5.1/chart.min.js"></script>
 		<link href="css/bootstrap.slate.min.css" rel="stylesheet"/>
 		<style>
+		
+			CANVAS { height: 1px; }
+			
 			/* TABLE { --bs-table-accent-bg: none !important; } */
 			[v-cloak] > * { display:none }
 			.statbox { text-align:center; }
@@ -701,7 +704,7 @@
 								<div class="card statbox h-100">
 									<div class="card-header">Hacking Skill</div>
 									<div class="card-body text-success numeric">
-										<span class="card-text">{{((scoresheet.stats.hacking.totalHacks.successful / (scoresheet.stats.hacking.totalHacks.overall || 1)) * 100).toFixed(1) || 0}}%</span>
+										<span class="card-text">{{scoresheet.stats.hacking.hackingSkill.toFixed(1)}}%</span>
 										<canvas id="hackingSkillSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
@@ -919,13 +922,7 @@
 								<div class="card statbox h-100">
 									<div class="card-header">Accuracy</div>
 									<div class="card-body text-success numeric">
-										<span class="card-text">{{
-											(100* (scoresheet.stats.combat.shotsHitRobots.overall / (
-												((scoresheet.stats.combat.shotsFired.overall
-												+ scoresheet.stats.combat.meleeAttacks.overall) || 1)
-											)))
-											.toFixed(1)
-											}}%</span>
+										<span class="card-text">{{ scoresheet.stats.combat.accuracy.toFixed(1) }}%</span>
 										<canvas id="accuracySparkChart"></canvas>
 									</div>
 								</div>
@@ -934,10 +931,7 @@
 								<div class="card statbox h-100">
 									<div class="card-header">Shots Per Volley</div>
 									<div class="card-body text-success numeric">
-										<span class="card-text">{{
-											(scoresheet.stats.combat.shotsFired.overall / (scoresheet.stats.combat.volleysFired.overall || 1 ))
-											.toFixed(1)
-											}}</span>
+										<span class="card-text">{{ scoresheet.stats.combat.shotsPerVolley.toFixed(1) }}</span>
 										<canvas id="shotsPerVolleySparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
@@ -965,10 +959,7 @@
 								<div class="card statbox h-100">
 									<div class="card-header">Overflow Damage</div>
 									<div class="card-body text-success numeric">
-										<span class="card-text">{{
-											(100*(scoresheet.stats.combat.overflowDamage.overall / (scoresheet.stats.combat.damageInflicted.overall||1)))
-											.toFixed(1)
-											}}%</span>
+										<span class="card-text">{{ scoresheet.stats.combat.overflowDamagePercent.toFixed(1) }}%</span>
 										<canvas id="overflowDamageSparkChart" v-if="analysis"></canvas>	
 									</div>
 								</div>
@@ -995,8 +986,8 @@
 								<div class="card statbox h-100">
 									<div class="card-header">Dish-Out Ratio</div>
 									<div class="card-body text-success numeric">
-										<span class="card-text" v-if="scoresheet.stats.dishoutRatio === -1">Perfect!</span>
-										<span class="card-text" v-else>{{(100*scoresheet.stats.dishoutRatio).toFixed(0)}}%</span>
+										<span class="card-text" v-if="scoresheet.stats.combat.dishoutRatio === -1">Perfect!</span>
+										<span class="card-text" v-else>{{scoresheet.stats.combat.dishoutRatio.toFixed(0)}}%</span>
 										<canvas id="dishOutSparkChart"></canvas>
 									</div>
 								</div>
@@ -1156,10 +1147,7 @@
 								<div class="card statbox h-100">
 									<div class="card-header">Melee Follow-Up</div>
 									<div class="card-body text-success numeric">
-										<span class="card-text">{{
-											(100*(scoresheet.stats.combat.meleeAttacks.followUpAttacks / (scoresheet.stats.combat.meleeAttacks.overall || 1)))
-											.toFixed(1)
-											}}%</span>
+										<span class="card-text">{{ scoresheet.stats.combat.meleeFollowupPercent.toFixed(1) }}%</span>
 										<canvas id="meleeFollowupSparkChart"></canvas>	
 									</div>
 								</div>
@@ -1193,22 +1181,22 @@
 							</div>
 							<div class="col">
 								<div class="card statbox h-100">
+									<div class="card-header">Collateral Damage Percent</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.combat.collateralDamagePct.toFixed(1)}}%</span>
+										<canvas id="collateralDamagePctSparkChart" v-if="analysis"></canvas>
+									</div>
+								</div>
+							</div>	
+							<div class="col">
+								<div class="card statbox h-100">
 									<div class="card-header">Attacks By Allies</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.allies.allyAttacks.kills}}</span>
 										<canvas id="attacksByAlliesSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
-							</div>															
-							<div class="col">
-								<div class="card statbox h-100">
-									<div class="card-header">Cave-Ins</div>
-									<div class="card-body text-success numeric">
-										<span class="card-text">{{scoresheet.stats.exploration.spacesMoved.caveInsTriggered}}</span>
-										<canvas id="caveInsSparkChart" v-if="analysis"></canvas>
-									</div>
-								</div>
-							</div>															
+							</div>																
 						</div>
 					</div>					
 				</template>
@@ -1328,7 +1316,34 @@
 										<canvas id="botsAnalyzedSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
-							</div>								
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Spaces Dug</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.exploration.spacesDug}}</span>
+										<canvas id="spacesDugSparkChart" v-if="analysis"></canvas>
+									</div>
+								</div>
+							</div>															
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Cave-Ins</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.exploration.spacesMoved.caveInsTriggered}}</span>
+										<canvas id="caveInsSparkChart" v-if="analysis"></canvas>
+									</div>
+								</div>
+							</div>															
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Digging Luck</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.exploration.diggingLuck.toFixed(3)}}%</span>
+										<canvas id="diggingLuckSparkChart" v-if="analysis"></canvas>
+									</div>
+								</div>
+							</div>															
 						</div>
 					</div>
 					
