@@ -225,7 +225,7 @@
 				
 				<!-- overview pane -->			
 				<template v-if="pane=='overview'" >			
-													
+										
 					<div class="container-fluid px-5 py-4 mt-3 mb-5 bg-primary text-light rounded">
 						<div class="row row-cols-lg-2 g-5">
 							<div class="col text-center">
@@ -520,6 +520,10 @@
 							</tr>
 						</tbody>
 					</table>
+					
+					<h2>Chalk Outline</h2>
+					<pre><template v-for="l of scoresheet.map.lines">{{l}}<br/></template></pre>
+					
 				</template>
 				
 				<!-- BUILD -->
