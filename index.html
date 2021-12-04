@@ -25,6 +25,7 @@
 			.statbox { font-weight: bold; }
 			.statbox .card-body .card-text { font-size: 150%;}
 			.statbox .card-body.numeric .card-text { font-size: 300%;}
+			.badges.haspopup .badge { cursor: help; }
 			.badges .badge { background-color: #666; }
 			.badges .badge[class~='Factory'] { background-color: #AAA; color: #333; }
 			.badges .badge[class~='Mines'] { background-color: #504330; }
@@ -244,8 +245,8 @@
 										<p class="display-3 mt-0 pt-0 text-info">{{scoresheet.game.finalMapReached}}</p>
 									</div>
 								</div>
-								<p class="badges text">
-									<span class="badge ms-1" :class="b" v-for="b in scoresheet.badges">{{b}}</span>
+								<p class="badges text haspopup">
+									<span class="badge ms-1" :class="b[0]" v-for="b in scoresheet.badges" :title="b[1]">{{b[0]}}</span>
 								</p>
 								<p class="badges text" v-if="scoresheet.achievements.achievements && scoresheet.achievements.achievements.length">
 									Achievements:<br/>

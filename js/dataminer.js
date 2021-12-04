@@ -1325,56 +1325,56 @@ function CalculateBadges(data) {
 		let winbadge = 'W' + data.game.winType;
 		if ( data.bonus.destroyedArchitect ) winbadge += '+';
 		if ( data.bonus.destroyedMainc ) winbadge += '+';
-		data.badges.unshift(winbadge);
+		data.badges.unshift([winbadge,'Win!']);
 		if ( data.game.winTotal === 1 ) { 
-			data.badges.push('First Win!');
+			data.badges.push(['First Win!','First win by any means. Congrats!']);
 		}
 	}
 	
 	// bonuses (that we know about)
-	if ( data.bonus.destroyedArchitect ) { data.badges.push('-Arch'); }
-	if ( data.bonus.destroyedMainc ) { data.badges.push('-MC'); }
-	if ( data.bonus.destroyedZimprinter ) { data.badges.push('-Z'); }
-	if ( data.bonus.destroyedA2 ) { data.badges.push('-A2'); }
-	if ( data.bonus.destroyedA3 ) { data.badges.push('-A3'); }
-	if ( data.bonus.destroyedA4 ) { data.badges.push('-A4'); }
-	if ( data.bonus.destroyedA5 ) { data.badges.push('-A5'); }
-	if ( data.bonus.destroyedA6 ) { data.badges.push('-A6'); }
-	if ( data.bonus.destroyedA7 ) { data.badges.push('-A7'); }
-	if ( data.bonus.destroyedA8 ) { data.badges.push('-A8'); } // are there more?
-	if ( data.bonus.destroyedRevision17 ) { data.badges.push('-R17'); }
-	if ( data.bonus.alignedWithFarcom) { data.badges.push('FarCom'); }
-	if ( data.bonus.wasImprinted) { data.badges.push('Imprinted'); }
-	if ( data.bonus.networkHubsDisabled == 800 ) { data.badges.push('404'); }
-	if ( data.bonus.networkHubsDisabled > 0 && data.bonus.networkHubsDisabled < 800 ) { data.badges.push('NetworkDown'); }
-	if ( data.bonus.builtEnhancedGrunts ) { data.badges.push('G-00'); }
-	if ( data.bonus.usedRifInstaller ) { data.badges.push('RIF'); }
-	if ( data.bonus.usedCoreResetMatrix ) { data.badges.push('CRM'); }
-	if ( data.bonus.triggeredHighSecurity ) { data.badges.push('HighSec'); }
-	if ( data.bonus.triggeredMaxSecurity ) { data.badges.push('MaxSec'); }
-	if ( data.bonus.hackedProtoVariant ) { data.badges.push('Protovariant'); }
-	if ( data.bonus.destroyedMaincGuards ) { data.badges.push('DoCo'); }
-	if ( data.bonus.noSalvage ) { data.badges.push('NoSalvage'); }
-	if ( data.bonus.pureCore ) { data.badges.push('PureCore'); }
-	if ( data.bonus.scavenger ) { data.badges.push('Scavenger'); }
-	if ( data.bonus.simpleHacker ) { data.badges.push('H4XX0R'); }
-	if ( data.bonus.pacifist ) { data.badges.push('Pacifist'); }
-	if ( data.bonus.usedDataConduit ) { data.badges.push('DC'); }
-	if ( data.bonus.exposedGolemChamber ) { data.badges.push('GOLEM'); }
-	if ( data.bonus.a7ReachedMainframe ) { data.badges.push('A7Mainframe'); }
-	if ( data.bonus.metR17AtCetus ) { data.badges.push('R17Cetus'); }
-	if ( data.bonus.readDecrypteArchives ) { data.badges.push('Decrypto'); }
-	if ( data.bonus.decryptedA0Command ) { data.badges.push('DecryptoA0'); }
-	if ( data.bonus.metR17AtResearch ) { data.badges.push('R17Research'); }
-	if ( data.bonus.metWarlordAtResearch ) { data.badges.push('WarlordResearch'); }
-	if ( data.bonus.hackedGodMode ) { data.badges.push('GodMode'); }
-	if ( data.bonus.activateExoskeleton ) { data.badges.push('Exoskeleton'); }
-	if ( data.bonus.deliveredSgemp ) { data.badges.push('SGEMP'); }
-	if ( data.bonus.escapedWithSigix ) { data.badges.push('SpaceBuddy'); }
-	if ( data.bonus.escapedWithExosigix ) { data.badges.push('SpaceBuddy'); }
-	if ( data.bonus.hackedMainc ) { data.badges.push('MCH4XX0RED'); }
-	if ( data.bonus.zhirovDestroyedMainc ) { data.badges.push('ZhirovsRevenge'); }
-	if ( data.bonus.used0b10Conduit ) { data.badges.push('ConduitH4XX0RED'); }
+	if ( data.bonus.destroyedArchitect ) { data.badges.push(['-Arch','Destroyed the Architect']); }
+	if ( data.bonus.destroyedMainc ) { data.badges.push(['-MC','Destroyed Main.C']); }
+	if ( data.bonus.destroyedZimprinter ) { data.badges.push(['-Z','Destroyed the Z-Imprinter']); }
+	if ( data.bonus.destroyedA2 ) { data.badges.push(['-A2','Destroyed A2']); }
+	if ( data.bonus.destroyedA3 ) { data.badges.push(['-A3','Destroyed A3']); }
+	if ( data.bonus.destroyedA4 ) { data.badges.push(['-A4','Destroyed A4']); }
+	if ( data.bonus.destroyedA5 ) { data.badges.push(['-A5','Destroyed A5']); }
+	if ( data.bonus.destroyedA6 ) { data.badges.push(['-A6','Destroyed A6']); }
+	if ( data.bonus.destroyedA7 ) { data.badges.push(['-A7','Destroyed A7']); }
+	if ( data.bonus.destroyedA8 ) { data.badges.push(['-A8','Destroyed A8']); } // are there more?
+	if ( data.bonus.destroyedRevision17 ) { data.badges.push(['-R17','Destroyed Revision17. Just because.']); }
+	if ( data.bonus.alignedWithFarcom) { data.badges.push(['FarCom','Aligned with FarCom from the Exiles']); }
+	if ( data.bonus.wasImprinted) { data.badges.push(['Imprinted','Got imprinted in Zion']); }
+	if ( data.bonus.networkHubsDisabled == 800 ) { data.badges.push(['404','Disabled all 4 network hubs']); }
+	if ( data.bonus.networkHubsDisabled > 0 && data.bonus.networkHubsDisabled < 800 ) { data.badges.push(['NetworkDown','Disabled a network hub']); }
+	if ( data.bonus.builtEnhancedGrunts ) { data.badges.push(['G-00','Fired up the Cetus Manufacturing Module']); }
+	if ( data.bonus.usedRifInstaller ) { data.badges.push(['RIF','Used a RIF installer inside a garrison']); }
+	if ( data.bonus.usedCoreResetMatrix ) { data.badges.push(['CRM','Ate a Core Reset Matrix']); }
+	if ( data.bonus.triggeredHighSecurity ) { data.badges.push(['HighSec','Triggered High-Security']); }
+	if ( data.bonus.triggeredMaxSecurity ) { data.badges.push(['MaxSec','Triggered Maximum-Security']); }
+	if ( data.bonus.hackedProtoVariant ) { data.badges.push(['Protovariant','Hacked a Protovariant, made a ruckus']); }
+	if ( data.bonus.destroyedMaincGuards ) { data.badges.push(['DoCo','Destroyed Main.C guards in the Doom Corridor']); }
+	if ( data.bonus.noSalvage ) { data.badges.push(['NoSalvage','Used no salvage']); }
+	if ( data.bonus.pureCore ) { data.badges.push(['PureCore','Ran naked on pure core with no parts']); }
+	if ( data.bonus.scavenger ) { data.badges.push(['Scavenger','Completed the Scavanger challenge']); }
+	if ( data.bonus.simpleHacker ) { data.badges.push(['H4XX0R','Simple hacker challenge']); }
+	if ( data.bonus.pacifist ) { data.badges.push(['Pacifist','Pacifist challenge']); }
+	if ( data.bonus.usedDataConduit ) { data.badges.push(['DC','Plugged into the Data Conduit']); }
+	if ( data.bonus.exposedGolemChamber ) { data.badges.push(['GOLEM','Exposed the GOLEM chamber']); }
+	if ( data.bonus.a7ReachedMainframe ) { data.badges.push(['A7Mainframe','Led A7 to the Cetus Mainframe alive']); }
+	if ( data.bonus.metR17AtCetus ) { data.badges.push(['R17Cetus','Met Revision17 at Cetus']); }
+	if ( data.bonus.readDecryptedArchives ) { data.badges.push(['Decrypto','Decrypted the Archives']); }
+	if ( data.bonus.decryptedA0Command ) { data.badges.push(['DecryptoA0','Decrypted the A0 command']); }
+	if ( data.bonus.metR17AtResearch ) { data.badges.push(['R17Research','Had a party in Research with Revision17']); }
+	if ( data.bonus.metWarlordAtResearch ) { data.badges.push(['WarlordResearch','Met Warlord in Research']); }
+	if ( data.bonus.hackedGodMode ) { data.badges.push(['GodMode','Hacked God Mode']); }
+	if ( data.bonus.activateExoskeleton ) { data.badges.push(['Exoskeleton','Activated the Exoskeleton']); }
+	if ( data.bonus.deliveredSgemp ) { data.badges.push(['SGEMP','Delivered the SGEMP to Zhirov']); }
+	if ( data.bonus.escapedWithSigix ) { data.badges.push(['SpaceBuddy','Escaped with the live Sigix']); }
+	if ( data.bonus.escapedWithExosigix ) { data.badges.push(['SpaceBuddy+','Escaped with the upgraded live Sigix']); }
+	if ( data.bonus.hackedMainc ) { data.badges.push(['MCH4XX0RED','Hacked Main.C']); }
+	if ( data.bonus.zhirovDestroyedMainc ) { data.badges.push(['ZhirovsRevenge','Zhirov destroyed Main.C']); }
+	if ( data.bonus.used0b10Conduit ) { data.badges.push(['ConduitH4XX0RED','Hacked the 0b10 Conduit']); }
 	
 	// places of interest
 	let regular_places = ['MAT','FAC','RES','ACC','COM'].map( m => map_names[m] || m );
@@ -1383,12 +1383,12 @@ function CalculateBadges(data) {
 		let mapname = typeof(x.location.map)=='string' ? x.location.map.replace('MAP_','') : (x.location.map==35 ? 'DSF' : 'Unknown Map');
 		let nicename = map_names[mapname] || mapname;
 		if ( ['SCR','MAT','UPP','FAC','LOW','RES','ACC','PRO','MIN','Unknown Map'].indexOf(mapname) === -1 ) {
-			data.badges.push( nicename );
+			data.badges.push([ nicename, 'Found ' + nicename]);
 		}
 		// farthest regular location
 		else if ( regular_places.indexOf(nicename) !== -1 ) {
 			data.badges = data.badges.filter( x => regular_places.indexOf(x) === -1 );
-			data.badges.push( nicename );
+			data.badges.push([ nicename, 'Made it to ' + nicename]);
 		}
 	}
 	
@@ -1398,44 +1398,51 @@ function CalculateBadges(data) {
 	let terminal_hacks = data.stats.hacking.terminalHacks?.overall || 0;
 	if ( unauthed_hacks + terminal_hacks ) { 
 		if ( botnets >= 4 && botnets / (unauthed_hacks+terminal_hacks) >= 0.20  ) {
-			data.badges.push('BotnetGood');
+			data.badges.push(['BotnetGood','Botnet fan']);
 		}
 		else if ( unauthed_hacks > 10 && botnets <= 2 && botnets / (unauthed_hacks+terminal_hacks) <= 0.05  ) {
-			data.badges.push('BotnetBad');
+			data.badges.push(['BotnetBad','Botnets as a last resort']);
 		}
 	}
 	
 	// hacking skills
 	if ( unauthed_hacks > 30 && data.stats.hacking.totalHacks.successful / (data.stats.hacking.totalHacks?.overall||1) >= 0.75 ) {
-		data.badges.push('1337H4XX0R');
+		data.badges.push(['1337H4XX0R','Hacking skill > 75%']);
 	}
 	
 	// shot accuracy
 	if ( data.stats.combat.shotsHitRobots.overall / ((data.stats.combat.shotsFired.overall + data.stats.combat.meleeAttacks.overall) || 1) >= 0.75 ) {
-		data.badges.push('CrackShot');
+		data.badges.push(['CrackShot','Weapon accuracy > 75%']);
 	}
 	
 	// hottest temp
 	if ( data.stats.combat.highestTemperature.overall >= 600 ) {
-		data.badges.push('Spicy!');
+		data.badges.push(['Spicy!','Fired a volley at over 600 heat. Chill out!']);
 	}
 	
 	// fav propulsion - tag anything over 75pct
 	let prop_threshold = 0.75 * Object.values(data.charts.prop_pie_chart_data).reduce( (a=0,x) => a+x );
 	for ( let k in data.charts.prop_pie_chart_data ) {
 		if ( data.charts.prop_pie_chart_data[k] >= prop_threshold && data.charts.prop_pie_chart_data[k] > 3000 ) {
-			data.badges.push('Team' + data.charts.prop_pie_chart_labels[k].Undatafy() + '!');
+			data.badges.push(['Team' + data.charts.prop_pie_chart_labels[k].Undatafy() + '!', data.charts.prop_pie_chart_labels[k].Undatafy() + ' propulsion fan']);
 			break;
 		}
 	}
 	
 	// high damage inflicted versus received
 	if ( data.stats.combat.dishoutRatio > 2.0 ) {
-		data.badges.push('Punisher');
+		data.badges.push(['Punisher',' DishoutRatio > 200%']);
 	}
 	
 	// remove duplicates
-	data.badges = [...new Set(data.badges)]	
+	let seen = {};
+	for ( let i = data.badges.length-1; i >= 0; i-- ) {
+		if ( seen[ data.badges[i][0] ] ) {
+			data.badges.splice(i,1);
+		}
+		seen[ data.badges[i][0] ] = 1;
+	}
+	// data.badges = [...new Set(data.badges)]	
 }
 
 function UpdateURLWhenNewScoresheetLoaded( hash, data ) {
