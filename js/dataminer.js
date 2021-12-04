@@ -1332,7 +1332,19 @@ function CalculateBadges(data) {
 		let winbadge = 'W' + data.game.winType;
 		if ( data.bonus.destroyedArchitect ) winbadge += '+';
 		if ( data.bonus.destroyedMainc ) winbadge += '+';
-		data.badges.unshift([winbadge,'Win!']);
+		let desc = 'Win!';
+		switch ( data.game.winType ) { 
+			case 0: { desc = 'Win! Took the Access surface exit'; break; }
+			case 1: { desc = 'Win! Beat MAIN.C and took the Command exit'; break; }
+			case 2: { desc = 'Win! Used a Core Reset Matrix'; break; }
+			case 3: { desc = 'Win! Escaped with Sigix or Sigix Containment Pod'; break; }
+			case 4: { desc = 'Win! Hacked the 0b10 Command Conduit'; break; }
+			case 5: { desc = 'Win! Completed A0 terminal test sequence'; break; }
+			case 6: { desc = 'Win! Escaped from the singularity in A0'; break; }
+			case 7: { desc = 'Win! Beat MAIN.C with the help of warlord'; break; }
+			case 8: { desc = 'Win! Surrendered to MAIN.C and fought off the assault'; break; }
+		}
+		data.badges.unshift([winbadge,desc]);
 		if ( data.game.winTotal === 1 ) { 
 			data.badges.push(['First Win!','First win by any means. Congrats!']);
 		}
