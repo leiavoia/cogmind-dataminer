@@ -179,12 +179,19 @@ const map_names = {
 function Undatafy() { 
 	return this
 		// .replace(/((?<!^)[A-Z](?![A-Z]))(?=\S)/g, ' $1') // doesn't work on iOS :-(
-        .replace(/[^a-zA-Z0-9]+/g, '-')
-        .replace(/([A-Z]+)([A-Z][a-z])/g, '$1-$2')
-        .replace(/([a-z])([A-Z])/g, '$1-$2')
-        .replace(/([0-9])([^0-9])/g, '$1-$2')
-        .replace(/([^0-9])([0-9])/g, '$1-$2')
-        .replace(/-+/g, ' ')
+        .replace(/[^a-zA-Z0-9]+/g, '~')
+        .replace(/([A-Z]+)([A-Z][a-z])/g, '$1~$2')
+        .replace(/([a-z])([A-Z])/g, '$1~$2')
+        .replace(/([0-9])([^0-9])/g, '$1~$2')
+        .replace(/([^0-9])([0-9])/g, '$1~$2')
+        .replace(/~+/g, ' ')
+		.replace('0 b 10','0b10')
+		.replace('Mainc','Main.C')
+		.replace(/\bTh\b/,'TH')
+		.replace(/\bKi\b/,'KI')
+		.replace(/\bEx\b/,'EX')
+		.replace(/\bEm\b/,'EM')
+        .replace(/([AR]) ([0-9])/, '$1$2')
 		.replace(/^./, s => s.toUpperCase() );
 }
 String.prototype.Undatafy = Undatafy; // you're bad for doing this
