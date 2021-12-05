@@ -1436,16 +1436,25 @@ function CalculateBadges(data) {
 		}
 	}
 	
+	// remove duplicates
+	let seen = {};
+	for ( let i = data.badges.length-1; i >= 0; i-- ) {
+		if ( seen[ data.badges[i][0] ] ) {
+			data.badges.splice(i,1);
+		}
+		seen[ data.badges[i][0] ] = 1;
+	}
+		
 	// botnets good or bad?
 	let botnets = data.stats.hacking.unauthorizedHacks?.terminals?.botnet || 0;
 	let unauthed_hacks = data.stats.hacking.unauthorizedHacks?.overall || 0;
 	let terminal_hacks = data.stats.hacking.terminalHacks?.overall || 0;
 	if ( unauthed_hacks + terminal_hacks ) { 
 		if ( botnets >= 4 && botnets / (unauthed_hacks+terminal_hacks) >= 0.20  ) {
-			data.badges.push(['BotnetGood','Botnet fan']);
+			data.badges.push(['Botnet Good','Botnet fan']);
 		}
 		else if ( unauthed_hacks > 10 && botnets <= 2 && botnets / (unauthed_hacks+terminal_hacks) <= 0.05  ) {
-			data.badges.push(['BotnetBad','Botnets as a last resort']);
+			data.badges.push(['Botnet Bad','Botnets as a last resort']);
 		}
 	}
 	
@@ -1456,7 +1465,7 @@ function CalculateBadges(data) {
 	
 	// shot accuracy
 	if ( data.stats.combat.shotsHitRobots.overall / ((data.stats.combat.shotsFired.overall + data.stats.combat.meleeAttacks.overall) || 1) >= 0.75 ) {
-		data.badges.push(['CrackShot','Weapon accuracy > 75%']);
+		data.badges.push(['Crack Shot','Weapon accuracy > 75%']);
 	}
 	
 	// hottest temp
@@ -1468,25 +1477,52 @@ function CalculateBadges(data) {
 	let prop_threshold = 0.75 * Object.values(data.charts.prop_pie_chart_data).reduce( (a=0,x) => a+x );
 	for ( let k in data.charts.prop_pie_chart_data ) {
 		if ( data.charts.prop_pie_chart_data[k] >= prop_threshold && data.charts.prop_pie_chart_data[k] > 3000 ) {
-			data.badges.push(['Team' + data.charts.prop_pie_chart_labels[k].Undatafy() + '!', data.charts.prop_pie_chart_labels[k].Undatafy() + ' propulsion fan']);
+			data.badges.push(['Team ' + data.charts.prop_pie_chart_labels[k].Undatafy() + '!', data.charts.prop_pie_chart_labels[k].Undatafy() + ' propulsion fan']);
 			break;
 		}
 	}
 	
 	// high damage inflicted versus received
-	if ( data.stats.combat.dishoutRatio > 2.0 ) {
-		data.badges.push(['Punisher',' DishoutRatio > 200%']);
+	if ( data.stats.combat.dishoutRatio > 200 ) {
+		data.badges.push(['Punisher',' DishoutRatio 200%+']);
 	}
 	
-	// remove duplicates
-	let seen = {};
-	for ( let i = data.badges.length-1; i >= 0; i-- ) {
-		if ( seen[ data.badges[i][0] ] ) {
-			data.badges.splice(i,1);
-		}
-		seen[ data.badges[i][0] ] = 1;
+	// RIF
+	if ( data.stats.bothacking.usedRifInstaller.overall >= 7 ) {
+		data.badges.push(['RIF Lord','7+ RIF installs']);
 	}
-	// data.badges = [...new Set(data.badges)]	
+	
+	// AlertMonger
+	if ( data.stats.alert.peakInfluence.overall > 1500 ) {
+		data.badges.push(['Alert Monger',' Max Alert 1500+']);
+	}
+	
+	// Bot Buster
+	if ( data.stats.kills.combatHostilesDestroyed.overall > 400 ) {
+		data.badges.push(['Bot Buster',' Destroyed 400+ combat bots.']);
+	}
+	
+	// Allies
+	if ( data.stats.allies.totalAllies.overall > 50 ) {
+		data.badges.push(['Commander','Commanded 50+ allies']);
+	}
+	
+	// Corruption
+	if ( data.stats.combat.highestCorruption.overall >= 100 ) {
+		data.badges.push(['CoRrUpTeD','Died by corruption. Bow your head in shame.']);
+	}
+	else if ( data.stats.combat.highestCorruption.overall > 50 ) {
+		data.badges.push(['Tipsy','50%+ corruption']);
+	}
+	
+	// Mole
+	if ( data.stats.exploration.diggingLuck >= 100 && data.stats.exploration.spacesDug >= 100 ) {
+		data.badges.push(['LU-1G1\'s Blessing','No cave-ins after digging 100+ spaces']);
+	}
+	else if ( data.stats.exploration.diggingLuck < 98 ) {
+		data.badges.push(['Unlucky Mole','Less than 98% digging luck']);
+	}
+	
 }
 
 function UpdateURLWhenNewScoresheetLoaded( hash, data ) {
