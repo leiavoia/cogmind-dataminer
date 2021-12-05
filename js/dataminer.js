@@ -14,6 +14,26 @@ Chart.defaults.elements.line.borderColor = '#41A34F';
 Chart.defaults.elements.bar.backgroundColor = '#41A34F';
 Chart.defaults.elements.bar.borderColor = '#41A34F';
 Chart.defaults.elements.point.radius = 0;
+// add this if you want pie chart labels
+// Chart.register(ChartDataLabels);
+// Chart.defaults.plugins.datalabels = {
+// 	// display: 'auto',
+// 	formatter: (val, ctx) => {
+// 		return ctx.chart.data.labels[ctx.dataIndex];
+// 	},
+// 	backgroundColor: function(context) {
+// 		return context.dataset.backgroundColor;
+// 	},			
+// 	color: '#fff',
+// 	// backgroundColor: '#404040',
+// 	borderRadius: 3,
+// 	borderColor: '#3A3F44',
+// 	borderWidth:1,
+// 	padding: { top:3, bottom:2, left:5, right:5 },
+// 	anchor: 'end',
+// 	// clamp:true,
+// 	// clip:false
+// 	}
 Chart.pie_colors = [ // you should not be adding stuff in like this. 
 	'#2fa533', // green
 	'#26bfc7', // cyan
@@ -375,7 +395,6 @@ function AnalyzeScoresheet( data ) {
 	// remove junk we don't need
 	if ( data.header.specialMode != 'SPECIAL_MODE_PLAYER2' ) { delete data.stats.player2; }
 	if ( data.header.specialMode != 'SPECIAL_MODE_RPGLIKE' ) { delete data.stats.rpglike; }	
-	
 	
 	// precompute single values
 	
@@ -800,6 +819,12 @@ function AnalyzeScoresheet( data ) {
 		TabularizeData({bestStates: data.bestStates} ),
 		TabularizeData({classDistribution: data.classDistribution} )
 	);
+	
+	// update window & meta description
+    document.title = `Dataminer : ${data.header.playerName} : Game #${data.game.gameNumber}`;
+	let desc = 	(data.header.win ? 'ASCENDED! ' : 'DEFEAT! ') + data.header.runResult;
+	document.querySelector('meta[name="description"]').setAttribute("content", desc);
+	
 }
 
 function ChangePane(pane) {
@@ -2163,7 +2188,7 @@ function DrawBothackingChart( data, labels ) {
 function DrawActionsChart( data, labels ) {
 	Chart.SortPieData(data,labels);
 	datasets = [ { 
-		label: 'Actions Taken', 
+		labels: 'Actions Taken', 
 		data, 
 		backgroundColor: Chart.pie_colors,
 		borderWidth: 0,
@@ -2330,11 +2355,10 @@ function DrawCoreChart( data, labels ) {
 }
 
 function DrawSparkChart( canvasID, data, myval ) {
-	if ( !data ) { 
-		console.log("No data for spark chart " + canvasID); 
-		// document.getElementById(canvasID).style.display = "none";
+	if ( !data || data.length <= 1 ) { 
+		console.log("No data for spark chart " + canvasID);
 		return false; 
-		}
+	}
 	// let least = data[0][0];
 	let seglen = data[1][0] - data[0][0];
 	// get rid of non-participating zeros that make graph hard to read
