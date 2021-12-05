@@ -1,6 +1,7 @@
 <?php
 $logfile = './request_log.txt';
 $api_url = 'https://cogmind-api.gridsagegames.com/scoresheets/';
+define('SCORESHEET_ARCHIVE_DIR', __DIR__ . '/scoresheets/archive'); // set to NULL if you dont want to archive
 
 function Download( $url ) {
 	if ( function_exists('curl_init') ) { 
@@ -23,7 +24,16 @@ try {
 	$hash = preg_replace('/\.json$/i','',$hash);
 	if ( $hash && preg_match('/^[A-Za-z0-9{12,18}$]/',$hash) ) {
 		$url = $api_url . $hash . '.json';
-		$json = Download($url);
+		$cachefile = SCORESHEET_ARCHIVE_DIR."/$hash.json";
+		$json = null;
+		// check for cached file
+		if ( is_readable($cachefile) ) {
+			$json = file_get_contents($cachefile);
+		}
+		// get from gridsagegames.com
+		else {
+			$json = Download($url);
+		}
 		if ( $json ) {
 			header("Content-type: application/json");
 			header("Content-Length: " . strlen($json) );
@@ -35,6 +45,9 @@ try {
 					$file = fopen($logfile, 'a');
 					fwrite( $file, $hash . "\t" . date('Y-m-d H:i:s') . "\t" . $_SERVER['REMOTE_ADDR'] . PHP_EOL );
 					fclose($file);
+				}
+				if ( SCORESHEET_ARCHIVE_DIR && !is_readable($cachefile) ) {
+					file_put_contents($cachefile,$json);
 				}
 			}
 			catch ( Exception $ex ) { ;; }
