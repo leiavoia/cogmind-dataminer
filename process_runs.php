@@ -127,7 +127,7 @@ function AddRun( $hash, $data ) {
 			$result = $db->query("SELECT 1 FROM stats WHERE id = CRC32('" . addslashes($k) . "') LIMIT 1;");
 			if ( $result && !$result->num_rows ) {
 				$type = is_numeric($v) ? 'integer' : 'string';
-				if ( $type == 'integer' && strpos($v,'.')!==false ) { $type = 'float'; }
+				if ( $type != 'string' ) { $type = FloatOrInt( $k, $v ); }
 				$result = $db->query("INSERT INTO stats SET 
 					id = CRC32('" . addslashes($k) . "'), 
 					label = '" . addslashes($k) . "',
@@ -170,4 +170,22 @@ function FlattenData($data) {
 	};
 	$Flattener($data);
 	return $flatdata;			
+}
+
+function FloatOrInt( $k, $v ) {
+	if ( strpos($v,'.')!==false ) { return 'float'; }
+	// certain keys should be forced into floats
+	if ( in_array( $k, [
+		'stats.combat.shotsPerVolley',
+		'stats.exploration.diggingLuck',
+		'stats.combat.collateralDamagePct',
+		'stats.combat.dishoutRatio',
+		'stats.hacking.hackingSkill',
+		'stats.combat.accuracy',
+		'stats.combat.shotsPerVolley',
+		'stats.combat.criticalHitPercent',
+		'stats.combat.overflowDamagePercent',
+		'stats.combat.meleeFollowupPercent',
+	] ) ) { return 'float'; }
+	return 'integer';
 }
