@@ -805,7 +805,84 @@ function AnalyzeScoresheet( data ) {
 	if ( data.meta.playerId == 209397991 ) {
 		data.header.playerName = 'GJ';
 	}
-								
+					
+	// map lines colorization
+	data.map.html = '';
+	for ( let l of data.map.lines ) {
+		// skip blank lines
+		if ( l.match(/^\?+$/) ) { continue; }
+		// colorize characters 
+		l = l.replace(/([<\*\+\!zIXitpAKBEblCcnxakweomru?@TFRGYS%hHygs7d#\/=\[\]])/g, (a,b) => {
+			let color = null;
+			switch ( b ) {
+				case '!': { color = 'D4D'; break; }
+				case '+': { color = 'f19700'; break; }
+				case '/': { color = 'f19700'; break; }
+				case '#': { color = 'EEE'; break; }
+				case '?': { color = '444'; break; }
+				case '@': { color = '39E'; break; }
+				case 'X': { color = '41A34F'; break; } // door terminal
+				case 'T': { color = '41A34F'; break; }
+				case 'F': { color = '314cad'; break; }
+				case 'R': { color = '972217'; break; }
+				case 'G': { color = 'dfdfdf'; break; }
+				case 'Y': { color = 'CC1'; break; }
+				case 'S': { color = 'c228bc'; break; }
+				case '%': { color = '8a1997'; break; }
+				case '[': { color = '1E66A7'; break; }
+				case ']': { color = 'FB0'; break; }
+				case '=': { color = '238628'; break; }
+				case '*': { color = 'D11'; break; }
+				case '<': { color = 'D80'; break; } // exit
+				case 'u': 
+				case 'm': 
+				case 'k': 
+				case 'a': 
+				case 'A':
+				case 't':
+				case 'r': { color = '6C6'; break; }
+				case 'E': // [E]xecutioner, not [E]xit!
+				case 'e': 
+				case '7': 
+				case 'i': 
+				case 'w': 
+				case 'y': 
+				case 'g': 
+				case 's': 
+				case 'f': 
+				case 'd': 
+				case 'f': 
+				case 'c':
+				case 'C':
+				case 'p': 
+				case 'B': 
+				case 'h': 
+				case 'K': 
+				case 'b': 
+				case 'l': 
+				case 'c': 
+				case 'x': 
+				case 'z':
+				case 'I':
+				case 'x':
+				case 'o':
+				case 'd':
+				case 'n':
+				case 'h':
+				case 'H': { color = 'ebe53e'; break; }
+			}
+			if ( color ) { 
+				// surrounding box for important icons
+				if ( b.match(/[<]/) ) { 
+					return `<span style="display:inline-block; color: #FFF; background-color:#${color};">${b}</span>`; 
+					}
+				else return `<span style="color:#${color};">${b}</span>`;
+			}
+			return b;
+		});
+		data.map.html = data.map.html + l + '<br/>';
+	}
+						
 	// Badges
 	CalculateBadges(data);
 	

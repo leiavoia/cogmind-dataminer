@@ -501,6 +501,9 @@
 						</tr>
 					</table>
 					
+					<h2>Chalk Outline</h2>
+					<div style="font-weight:bold; font-family:monospace; white-space: pre; line-height: 1.08em; letter-spacing: 0.36em;" v-html="scoresheet.map.html"></div>
+										
 					<h2>Log Tail</h2>
 					<blockquote class="text-info">
 						<span v-for="row of scoresheet.lastMessages.messages">
@@ -523,10 +526,7 @@
 							</tr>
 						</tbody>
 					</table>
-					
-					<h2>Chalk Outline</h2>
-					<pre><template v-for="l of scoresheet.map.lines">{{l}}<br/></template></pre>
-					
+
 				</template>
 				
 				<!-- BUILD -->
