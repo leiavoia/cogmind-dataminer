@@ -710,6 +710,7 @@ function GetURLs() {
 }
 
 function ScrapeURL( $url ) {
+	$db = DB();
 	$html = file_get_contents($url);
 	$matches = [];
 	preg_match_all('/\<td\>(2\d{5})\<\/td\>.*?href="(https:\/\/cogmind-api\.gridsagegames\.com\/scoresheets\/.+?)"/i', $html, $matches, PREG_SET_ORDER);
@@ -720,14 +721,17 @@ function ScrapeURL( $url ) {
 			$file = SCORESHEET_DOWNLOAD_DIR . '/' . basename($row[2],'.json') . '.json';
 			$arch_file = SCORESHEET_ARCHIVE_DIR . '/' . basename($row[2],'.json') . '.json';
 			$date = date( 'ymd', strtotime(SCORESHEET_LOOKBEHIND_DAYS . ' day ago') );
+			// check if we already have this downloaded
 			return $row[1] >= $date && !file_exists($file) && !file_exists($arch_file);
 		})
 	);
 	if ( $urls ) {
 		print "Downloading " . count($urls)  . " new scoresheets...\n";
 		foreach ( $urls as $url ) {
-			// check if we already have this downloaded
-			$hash = basename($url);
+			$hash = preg_replace( '/[^A-Za-z0-9]/', '', basename($url) );
+			// don't download anything already in DB
+			$result = $db->query("SELECT 1 FROM runs WHERE filehash = '" . addslashes($hash) . "' LIMIT 1;");
+			if ( $result && $result->num_rows ) { continue; }
 			$file = SCORESHEET_DOWNLOAD_DIR . '/' . $hash;
 			print $url . "\n";
 			Download( $url, $file );
