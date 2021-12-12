@@ -1399,26 +1399,32 @@
 						<colgroup>
 							<col class="name" />
 							<col class="value" />
-							<col class="diff" />
-							<col class="avg" />
-							<col class="min" />
-							<col class="max" >
+							<col v-if="analysis" class="diff" />
+							<col v-if="analysis" class="avg" />
+							<col v-if="analysis" class="min" />
+							<col v-if="analysis" class="max" >
 						</colgroup>
 						<tr>
 							<th>Name</th>
 							<th>Value</th>
-							<th>Difference</th>
-							<th>Average</th>
-							<th>Min</th>
-							<th>Max</th>
+							<th v-if="analysis">Difference</th>
+							<th v-if="analysis">Average</th>
+							<th v-if="analysis">Min</th>
+							<th v-if="analysis">Max</th>
 						</tr>
-						<tr v-for="i of scoresheet.flatstats" :class.once="[`indent-${i[2]}`]">
+						<!-- with analysis -->
+						<tr v-for="i of scoresheet.flatstats" :class.once="[`indent-${i[2]}`]" v-if="analysis">
 							<th>{{i[0].Undatafy()}}</th>
 							<td :class="i[9]"><b>{{i[1] ? i[1].toLocaleString() : ''}}</b></td>
 							<td :class="i[9]">{{i[8] ? i[8] : ''}}</td>
 							<td :class="i[9]"><i>{{i[4]}}</i></td>
 							<td :class="i[9]"><sub>{{i[5]}}</sub></td>
 							<td :class="i[9]"><sup>{{i[6]}}</sup></td>
+						</tr>
+						<!-- without analysis -->
+						<tr v-for="i of scoresheet.flatstats" :class.once="[`indent-${i[2]}`]" v-else>
+							<th>{{i[0].Undatafy()}}</th>
+							<td :class="i[9]"><b>{{i[1] ? i[1].toLocaleString() : ''}}</b></td>
 						</tr>
 					</table>			
 				</template>					
