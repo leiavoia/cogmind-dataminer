@@ -547,7 +547,7 @@
 						Weapon: {{scoresheet.parts.weapon.slots}}
 					</p>
 		
-					<h2 class="">Class Distribution</h2>
+					<h2 class="">Final Build: {{scoresheet.cogmind.finalBuild}}</h2>
 					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
 						<canvas id="classDistroChart"></canvas>
 					</div>
@@ -1380,28 +1380,29 @@
 				<!-- TABULAR DATA -->
 				<template v-if="pane=='tables'">
 				
-					<template v-if="scoresheet.hilites">
-						<h2>Highs</h2>
-						<table class="table ">
-							<tr v-for="row in scoresheet.hilites">
-								<td>{{row.name}}</td>
-								<td><b>{{row.value.toLocaleString()}}</b></td>
-								<td><i>{{row.diff}}</i></td>
-							</tr>
-						</table>
-					</template>
+					<div class="row row-cols-sm-2 g-5" v-if="scoresheet.hilites && scoresheet.lowlites">
+						<div class="col ">
+							<h2>Highs</h2>
+							<table class="table ">
+								<tr v-for="row in scoresheet.hilites">
+									<td>{{row.name}}</td>
+									<td><b>{{row.value.toLocaleString()}}</b></td>
+									<td><i>{{row.diff}}</i></td>
+								</tr>
+							</table>
+						</div>
+						<div class="col">
+							<h2>Lows</h2>
+							<table class="table ">
+								<tr v-for="row in scoresheet.lowlites">
+									<td>{{row.name}}</td>
+									<td><b>{{row.value.toLocaleString()}}</b></td>
+									<td><i>{{row.diff}}</i></td>
+								</tr>
+							</table>
+						</div>
+					</div>
 					
-					<template v-if="scoresheet.lowlites">
-						<h2>Lows</h2>
-						<table class="table ">
-							<tr v-for="row in scoresheet.lowlites">
-								<td>{{row.name}}</td>
-								<td><b>{{row.value.toLocaleString()}}</b></td>
-								<td><i>{{row.diff}}</i></td>
-							</tr>
-						</table>
-					</template>
-						
 					<h2>Stats &amp; Analysis</h2>			
 					<table class="table table-sm data">
 						<colgroup>

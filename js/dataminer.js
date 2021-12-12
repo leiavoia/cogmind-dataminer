@@ -464,6 +464,9 @@ function AnalyzeScoresheet( data ) {
 	let playtimeInMinutes = (parseInt(timeParts[1]) + (parseInt(timeParts[0])*60)) || 1;
 	data.stats.actions.cadence = ( data.stats.actions.total.overall - data.stats.actions.total.wait ) / playtimeInMinutes;
 	
+	// final build
+	data.cogmind.finalBuild = data.route.entries[ data.route.entries.length-1 ].dominantClass;
+	
 	// precompute chart data
 	data.charts = {
 		turns_chart_data: [],
@@ -605,11 +608,11 @@ function AnalyzeScoresheet( data ) {
 
 		// history decoration - color coded messages
 		for ( row of map.historyEvents ) { 
-			if ( row.event.match(/(lost|released all parts|locked|lockdown|assault|sterilization system|crushed|destroyed by|self destr|core integrity fell|corruption reached|assimilated all)/i) ) { row.class = 'bad'; }
-			else if ( row.event.match(/(learned|destroyed|killed|installed|found|Aligned with FarCom|given|expanded rif|repaired|fabricated|Loaded intel|hub disabled|redirected|Retrieved Zion|Zion\.+teleported in)/i) ) { row.class = 'good'; }
+			if ( row.event.match(/(lost|released all parts|locked|lockdown|assault|sterilization system|crushed|destroyed by|self destr|core integrity fell|corruption reached|assimilated all|stolen by|self-destructed|Terminal network hard line cut)/i) ) { row.class = 'bad'; }
+			else if ( row.event.match(/(learned|destroyed|killed|installed|found|Aligned with FarCom|given|expanded rif|repaired|fabricated|Loaded intel|hub disabled|redirected|Retrieved Zion|Zion.+teleported in|answering call for help)/i) ) { row.class = 'good'; }
 			else if ( row.event.match(/(discovered|identified|build established|Accompanied by)/i) ) { row.class = 'info'; }
 			else if ( row.event.match(/(entered|evolved)/i) ) { row.class = 'notice'; }
-			else if ( row.event.match(/(triggered|spotted|evacuate|Garrison activated|warn|convoy interrupted|squad dispatched|Detected by scanners)/i) ) { row.class = 'warning'; }
+			else if ( row.event.match(/(triggered|spotted|evacuate|Garrison activated|warn|convoy interrupted|squad dispatched|Detected by scanners|Attracted the attention|Encountered a Master Thief|Additional patrols routed)/i) ) { row.class = 'warning'; }
 			else { row.class = ''; }
 		}
 		
@@ -1487,6 +1490,40 @@ function CalculateBadges(data) {
 		}
 	}
 	
+	// places of interest
+	let regular_places = ['MAT','FAC','RES','ACC','COM'].map( m => map_names[m] || m );
+	for ( let x of data.route.entries ) {
+		// notable places visited
+		let mapname = typeof(x.location.map)=='string' ? x.location.map.replace('MAP_','') : (x.location.map==35 ? 'DSF' : 'Unknown Map');
+		let nicename = map_names[mapname] || mapname;
+		if ( ['SCR','MAT','UPP','FAC','LOW','RES','ACC','PRO','MIN','Unknown Map'].indexOf(mapname) === -1 ) {
+			data.badges.push([ nicename, 'Found ' + nicename]);
+		}
+		// farthest regular location
+		else if ( regular_places.indexOf(nicename) !== -1 ) {
+			data.badges = data.badges.filter( x => regular_places.indexOf(x) === -1 );
+			data.badges.push([ nicename, 'Made it to ' + nicename]);
+		}
+	}
+	
+	// history logs snooping
+	for ( row of map.historyEvents ) { 
+		if ( row.event.match(/(Garrison activated)/i) ) { data.badges.push['Hornet Nest','Activated a garrison']; }
+		else if ( row.event.match(/(convoy interrupted)/i) ) { data.badges.push['Yauler Party','Interrupted a cargo convoy']; }
+	}
+		
+	// remove duplicates
+	let seen = {};
+	for ( let i = data.badges.length-1; i >= 0; i-- ) {
+		if ( seen[ data.badges[i][0] ] ) {
+			data.badges.splice(i,1);
+		}
+		seen[ data.badges[i][0] ] = 1;
+	}
+		
+	// final build
+	data.badges.push([data.cogmind.finalBuild,'Final build']);
+			
 	// bonuses (that we know about)
 	if ( data.bonus.destroyedArchitect ) { data.badges.push(['-Arch','Destroyed the Architect']); }
 	if ( data.bonus.destroyedMainc ) { data.badges.push(['-MC','Destroyed Main.C']); }
@@ -1531,32 +1568,7 @@ function CalculateBadges(data) {
 	if ( data.bonus.hackedMainc ) { data.badges.push(['MCH4XX0RED','Hacked Main.C']); }
 	if ( data.bonus.zhirovDestroyedMainc ) { data.badges.push(['ZhirovsRevenge','Zhirov destroyed Main.C']); }
 	if ( data.bonus.used0b10Conduit ) { data.badges.push(['ConduitH4XX0RED','Hacked the 0b10 Conduit']); }
-	
-	// places of interest
-	let regular_places = ['MAT','FAC','RES','ACC','COM'].map( m => map_names[m] || m );
-	for ( let x of data.route.entries ) {
-		// notable places visited
-		let mapname = typeof(x.location.map)=='string' ? x.location.map.replace('MAP_','') : (x.location.map==35 ? 'DSF' : 'Unknown Map');
-		let nicename = map_names[mapname] || mapname;
-		if ( ['SCR','MAT','UPP','FAC','LOW','RES','ACC','PRO','MIN','Unknown Map'].indexOf(mapname) === -1 ) {
-			data.badges.push([ nicename, 'Found ' + nicename]);
-		}
-		// farthest regular location
-		else if ( regular_places.indexOf(nicename) !== -1 ) {
-			data.badges = data.badges.filter( x => regular_places.indexOf(x) === -1 );
-			data.badges.push([ nicename, 'Made it to ' + nicename]);
-		}
-	}
-	
-	// remove duplicates
-	let seen = {};
-	for ( let i = data.badges.length-1; i >= 0; i-- ) {
-		if ( seen[ data.badges[i][0] ] ) {
-			data.badges.splice(i,1);
-		}
-		seen[ data.badges[i][0] ] = 1;
-	}
-		
+			
 	// botnets good or bad?
 	let botnets = data.stats.hacking.unauthorizedHacks?.terminals?.botnet || 0;
 	let unauthed_hacks = data.stats.hacking.unauthorizedHacks?.overall || 0;
@@ -1602,11 +1614,6 @@ function CalculateBadges(data) {
 	// RIF
 	if ( data.stats.bothacking.usedRifInstaller.overall >= 7 ) {
 		data.badges.push(['RIF Lord','7+ RIF installs']);
-	}
-	
-	// AlertMonger
-	if ( data.stats.alert.peakInfluence.overall > 1500 ) {
-		data.badges.push(['Alert Monger',' Max Alert 1500+']);
 	}
 	
 	// Bot Buster
