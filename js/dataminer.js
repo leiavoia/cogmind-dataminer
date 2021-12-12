@@ -211,6 +211,8 @@ function Undatafy() {
 		.replace(/\bKi\b/,'KI')
 		.replace(/\bEx\b/,'EX')
 		.replace(/\bEm\b/,'EM')
+		.replace(/\bLe\b/,'LE')
+		.replace(/\bEn\b/,'EN')
         .replace(/([AR]) ([0-9])/, '$1$2')
 		.replace(/^./, s => s.toUpperCase() );
 }

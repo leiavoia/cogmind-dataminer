@@ -101,11 +101,6 @@ else {
 			}
 		}
 		
-		// fetch records
-		// // if only one record, objectify it
-		// if ( count($records)===1 ) {
-		// 	$records = $records[0];
-		// }
 		// JSON presto!
 		AutoCastNumbers( $records );
 		$json = json_encode($records, JSON_UNESCAPED_UNICODE /*| JSON_UNESCAPED_SLASHES | JSON_NUMERIC_CHECK*/ );
@@ -686,7 +681,6 @@ function AutoCastNumbers( &$array ) {
 		return $v;
 		});
 	}
-	
 	
 function GetURLs() {
 	$urls = [];
