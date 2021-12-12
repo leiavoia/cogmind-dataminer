@@ -374,8 +374,14 @@ function DownloadDataminerDataAnalysis( app ) {
 			}
 			// sort the comps for interesting hilites
 			let mapper = function ( arr ) {
+				// clean the name up to be more readable
+				let name = arr[3].split('.').slice(1);
+				if ( name[0].match(/(combat|build|resources|hacking|exploration|intel|machines|traps|bothacking|stealth|alert|allies)/) ) { name.shift(); }
+				if ( name[1] && name[1].match('total') ) { name.splice(1,1); } // actions.total
+				if ( name[ name.length-1 ].match('overall') ) { name.pop(); }
+				name = name.map( _ => _.Undatafy() ).join(': ');
 				return {
-					name: arr[3].split('.').slice(1).map( _ => _.Undatafy() ).join(' > '),
+					name: name,
 					value: arr[1],
 					diff: arr[8]
 				};
