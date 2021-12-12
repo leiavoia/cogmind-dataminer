@@ -837,7 +837,7 @@ function AnalyzeScoresheet( data ) {
 	data.map.html = '';
 	for ( let l of data.map.lines ) {
 		// skip blank lines
-		if ( l.match(/^\?+$/) ) { continue; }
+		if ( l.match(/^\s+$/) ) { continue; }
 		// colorize characters 
 		l = l.replace(/([<\*\+\!ZMWGDVzIXitpAKBEblCcnxakweomru?@TFRGYS%hHygs7d#\/=\[\]])/g, (a,b) => {
 			let color = null;

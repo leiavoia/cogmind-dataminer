@@ -2,13 +2,19 @@
 
 ini_set('display_errors', 1);
 
-define('SCORESHEET_DOWNLOAD_DIR', __DIR__ . '/scoresheets/tmp');
-define('SCORESHEET_ARCHIVE_DIR', __DIR__ . '/scoresheets/archive'); // set to NULL if you dont want to archive
-define('CACHE_DIR', __DIR__ . '/cache'); // set to NULL if you dont want to cache
-define('CACHE_TTL', 86400);
-define('SCRAPE_FETCH_DELAY', 2);
-define('SCORESHEET_LOOKBEHIND_DAYS', 365);
+if ( file_exists(__DIR__ . '/.dataminer.env.php') ) { include_once(__DIR__ . '/.dataminer.env.php'); }
 
+if ( !defined('SCORESHEET_DOWNLOAD_DIR') ) { define('SCORESHEET_DOWNLOAD_DIR', __DIR__ . '/scoresheets/tmp'); }
+if ( !defined('SCORESHEET_ARCHIVE_DIR') ) { define('SCORESHEET_ARCHIVE_DIR', __DIR__ . '/scoresheets/archive'); } // set to NULL if you dont want to archive
+if ( !defined('CACHE_DIR') ) { define('CACHE_DIR', __DIR__ . '/cache'); } // set to NULL if you dont want to cache
+if ( !defined('CACHE_TTL') ) { define('CACHE_TTL', 86400); }
+if ( !defined('SCRAPE_FETCH_DELAY') ) { define('SCRAPE_FETCH_DELAY', 2); }
+if ( !defined('SCORESHEET_LOOKBEHIND_DAYS') ) { define('SCORESHEET_LOOKBEHIND_DAYS', 365); }
+if ( !defined('DATAMINER_DB_SERVER') ) { define('DATAMINER_DB_SERVER', "127.0.0.1"); }
+if ( !defined('DATAMINER_DB_USERNAME') ) { define('DATAMINER_DB_USERNAME', "root"); }
+if ( !defined('DATAMINER_DB_PASSWORD') ) { define('DATAMINER_DB_PASSWORD', "docker"); }
+if ( !defined('DATAMINER_DB_DATABASE') ) { define('DATAMINER_DB_DATABASE', "dataminer"); }
+	
 $params = getopt( 'spac', [ 'scrape', 'process', 'analyze', 'chart' ] );
 
 // CLI mode
@@ -629,12 +635,8 @@ function FloatOrInt( $k, $v ) {
 // Database setup ------------\/-----------------------------------
 function DB() {
 	static $db = null;
-	$servername = "127.0.0.1";
-	$username = "root";
-	$password = "docker";
-	$dbname = "dataminer";
 	if ( !$db ) { 
-		$db = new mysqli($servername, $username, $password, $dbname);
+		$db = new mysqli(DATAMINER_DB_SERVER, DATAMINER_DB_USERNAME, DATAMINER_DB_PASSWORD, DATAMINER_DB_DATABASE);
 		if ( $db->connect_error ) {
 			die("Connection failed: " . $db->connect_error);
 		}

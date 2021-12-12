@@ -9,3 +9,4 @@ docker-compose-lamp/*
 analyzer.php
 *.min.js
 request_log.txt
+.dataminer.env.php
