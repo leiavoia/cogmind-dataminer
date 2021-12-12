@@ -944,7 +944,11 @@
 								<div class="card statbox h-100">
 									<div class="card-header">Shots Per Volley</div>
 									<div class="card-body text-success numeric">
-										<span class="card-text">{{ scoresheet.stats.combat.shotsPerVolley.toFixed(1) }}</span>
+										<span class="card-text">{{ 
+											scoresheet.stats.combat.shotsPerVolley >= 10
+											? 'AWS*'
+											: scoresheet.stats.combat.shotsPerVolley.toFixed(1) 
+										}}</span>
 										<canvas id="shotsPerVolleySparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
@@ -1151,7 +1155,7 @@
 								<div class="card statbox h-100">
 									<div class="card-header">Overheating Issues</div>
 									<div class="card-body text-success numeric">
-										<span class="card-text">{{ scoresheet.stats.combat.highestTemperature.effects.overall }}</span>
+										<span class="card-text">{{ scoresheet.stats.combat.highestTemperature.effects.overall || 0 }}</span>
 										<canvas id="overheatingIssuesSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
@@ -1196,7 +1200,11 @@
 								<div class="card statbox h-100">
 									<div class="card-header">Collateral Damage Percent</div>
 									<div class="card-body text-success numeric">
-										<span class="card-text">{{scoresheet.stats.combat.collateralDamagePct.toFixed(1)}}%</span>
+										<span class="card-text">{{
+											scoresheet.stats.combat.collateralDamagePct === 100
+											? '*'
+											: scoresheet.stats.combat.collateralDamagePct.toFixed(1)
+										}}%</span>
 										<canvas id="collateralDamagePctSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>

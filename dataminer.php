@@ -17,7 +17,6 @@ if ( php_sapi_name() == "cli" ) {
 	if ( isset($params['p']) || isset($params['process']) ) { ProcessScoresheets(); }
 	if ( isset($params['a']) || isset($params['analyze']) ) { AnalyzeDB(); }
 	if ( isset($params['c']) || isset($params['chart']) ) { CreateChartData(); }
-	
 }
 
 // web mode
@@ -137,18 +136,21 @@ else {
 // ================== MAIN FUNCTIONS =========================
 
 function ScrapeScoresheets() {
+	PrintWithTS("Scanning for new scoresheets.");
 	$urls = GetURLs();
-	foreach ( $urls as $url ) {
-		$sheets = ScrapeURL($url);
-	} 
+	foreach ( $urls as $url ) { ScrapeURL($url); }
+	PrintWithTS("Done scraping.");
 }
 
 
 function ProcessScoresheets() {
+	PrintWithTS('Starting scoresheet processing.');
 	// Scan files ------------\/-----------------------------------
 	$counter = 0;
 	$num_scanned = 0;
-	foreach ( glob(SCORESHEET_DOWNLOAD_DIR . '/*.json') as $file ) {
+	$files = glob(SCORESHEET_DOWNLOAD_DIR . '/*.json');
+	PrintWithTS(count($files) . ' files to prcoess.');
+	foreach ( $files as $file ) {
 		print $counter++ . ": $file";
 		$str = file_get_contents($file);
 		$json = json_decode($str);
@@ -173,7 +175,7 @@ function ProcessScoresheets() {
 			rename( $file, SCORESHEET_ARCHIVE_DIR . '/' . basename($file) );
 		}
 	}
-	print "$counter files scanned, $num_scanned runs added\n";
+	PrintWithTS("$counter files scanned, $num_scanned runs added");
 }
 
 
@@ -200,11 +202,10 @@ function AnalyzeDB() {
 	// $result = $db->query("CALL CreateChartData();");
 	// DBCheckForErrors( $result, $db );
 
-	print PrintTS() . "Starting analysis \n";
+	PrintWithTS("Starting DB analysis");
 
 	$result = $db->query("START TRANSACTION;");
 	DBCheckForErrors( $result, $db );
-	
 
 	// cleanup 
 	if ( $version || $difficulty || $mode ) {
@@ -265,10 +266,8 @@ function AnalyzeDB() {
 			runs.mode
 		;");
 	DBCheckForErrors( $result, $db );
-	
 
-
-	print PrintTS() . "Doing secondary-analysis ...\n";
+	PrintWithTS("Doing secondary-analysis ...");
 	$result = $db->query("
 		UPDATE analysis
 		SET 
@@ -276,13 +275,12 @@ function AnalyzeDB() {
 			stdmin = IF( `min` < `avg` + std*-$sigmas, `avg` + std*-$sigmas, `min`),
 			stdrange = IF( `max` > `avg` + std*$sigmas, `avg` + std*$sigmas, `max`) - IF( `min` < `avg` + std*-$sigmas, `avg` + std*-$sigmas, `min`),
 			-- segments = IF( LEAST( uniq, 20 ) > 0 AND seglen < 1, 1, FLOOR(LEAST( uniq, 20 )) ),
-			segments = GREATEST( 1, LEAST( uniq, IF( `max` > `avg` + std*$sigmas, `avg` + std*$sigmas, `max`) - IF( `min` < `avg` + std*-$sigmas, `avg` + std*-$sigmas, `min`), 20 ) ),
+			segments = LEAST( uniq, 20 ),
 			seglen = (IF( `max` > `avg` + std*$sigmas, `avg` + std*$sigmas, `max`) - IF( `min` < `avg` + std*-$sigmas, `avg` + std*-$sigmas, `min`))
-				/ GREATEST( 1, LEAST( uniq, IF( `max` > `avg` + std*$sigmas, `avg` + std*$sigmas, `max`) - IF( `min` < `avg` + std*-$sigmas, `avg` + std*-$sigmas, `min`), 20 ) )
+				/ LEAST( uniq, 20 )
 			;
 		");
 	DBCheckForErrors( $result, $db );
-
 	
 	$result = $db->query("
 		UPDATE analysis, stats
@@ -300,7 +298,6 @@ function AnalyzeDB() {
 		");
 	DBCheckForErrors( $result, $db );
 	
-
 	$result = $db->query("COMMIT;");
 	
 	// manual fix for `stats.intel.robotAnalysisTotal` which has 
@@ -310,8 +307,8 @@ function AnalyzeDB() {
 		SET seglen = 1, segments = LEAST(max,20)
 		WHERE stat_id = 2757541041
 		");
-		
-	print PrintTS() . "Analysis finished\n";
+			
+	PrintWithTS("Analysis finished.");
 }
 
 function CreateChartData() {
@@ -329,7 +326,7 @@ function CreateChartData() {
 
 	// // -------------- SEGMENTS -----------------------------
 	
-	print PrintTS() . "Segmenting numerical stats ...\n";
+	PrintWithTS("Segmenting numerical stats ...");
 
 	// set up temporary counting table
 	// $db->query("FLUSH TABLES WITH READ LOCK;");
@@ -340,7 +337,6 @@ function CreateChartData() {
 
 	$result = $db->query("START TRANSACTION;");
 	DBCheckForErrors( $result, $db );
-	
 
 	$result = $db->query("
 		CREATE TEMPORARY TABLE segments
@@ -385,12 +381,7 @@ function CreateChartData() {
 	$result = $db->query("ALTER TABLE segments ADD PRIMARY KEY pkey (stat_id, version, difficulty, mode, segment);");
 	DBCheckForErrors( $result, $db );
 	
-
-	// $db->query("UNLOCK TABLES;");
-	// DBCheckForErrors( $result, $db );
-
-	print PrintTS() . "Now creating sparkline graph data...\n";
-
+	PrintWithTS("Now creating sparkline graph data...");
 	$result = $db->query("
 		SELECT
 			analysis.stat_id,
@@ -417,15 +408,12 @@ function CreateChartData() {
 		$records []= $row;
 	}
 	
-
 	// create sparkline chart data for... all of them!
 	$record_count = 0;
 	$total = count($records);
 	$result = $db->query("START TRANSACTION;");
-	
-
 	foreach ( $records as $record ) {
-		print "(" . ++$record_count .  "/$total): {$record['label']} {$record['version']} {$record['difficulty']} {$record['mode']} \n";
+		// print "(" . ++$record_count .  "/$total): {$record['label']} {$record['version']} {$record['difficulty']} {$record['mode']} \n";
 		$result = $db->query("
 			UPDATE analysis
 			SET chartdata = (
@@ -450,7 +438,7 @@ function CreateChartData() {
 		DBCheckForErrors( $result, $db );
 	}
 	$db->query("COMMIT;");
-	print PrintTS() . "Charting finished.\n";
+	PrintWithTS("Charting finished.");
 }
 
 
@@ -465,6 +453,9 @@ function AddRun( $hash, $data ) {
 	// check for duplicates
 	$result = $db->query("SELECT 1 FROM runs WHERE filehash = '" . addslashes($hash) . "' LIMIT 1;");
 	if ( $result && $result->num_rows ) { return false; }
+	
+	// don't add runs that didn't make it our of scrapyard. Messes up averages.
+	if ( $data['cogmind.location.depth'] == '-11' ) { return false; }
 	
 	$result = $db->query("START TRANSACTION;");
 	DBCheckForErrors( $result, $db );
@@ -495,23 +486,27 @@ function AddRun( $hash, $data ) {
 		difficulty = '" . addslashes($data['header.difficulty']) . "'
 	;"); 
 	if ( strpos($db->error,'Duplicate entry') !== false ) { return false; }
-	// if ( $result !== true ) { print $hash;}
 	DBCheckForErrors( $result, $db );
 	
 	// precompute some stuff:
 	
 	// digging luck
-	$data['stats.exploration.diggingLuck'] = 100 * ( 1 - ( $data['stats.exploration.spacesMoved.caveInsTriggered'] 
-		/ UseIfElse( $data['stats.exploration.spacesDug'], 1 ) ) );
+	if ( $data['stats.exploration.spacesDug'] ) {
+		$data['stats.exploration.diggingLuck'] = 100 * ( 1 - ( $data['stats.exploration.spacesMoved.caveInsTriggered'] 
+			/ UseIfElse( $data['stats.exploration.spacesDug'], 1 ) ) );
+	}
 	
 	// collateral dmg pct
 	$data['stats.combat.collateralDamagePct'] = 100 * $data['performance.valueDestroyed.count'] 
 		/ UseIfElse( $data['stats.combat.damageInflicted.overall'], 1 );
-			
-	// dishout ratio % - be careful if player took zero damage
-	$data['stats.combat.dishoutRatio'] = 100 * $data['stats.combat.damageInflicted.overall'] 
-		/ UseIfElse( $data['stats.combat.damageTaken.overall'], 1 );
+	if ( $data['stats.combat.collateralDamagePct'] >= 100 ) { unset($data['stats.combat.collateralDamagePct']); }
 	
+	// dishout ratio % - be careful if player took low or zero damage
+	$data['stats.combat.dishoutRatio'] = $data['stats.combat.damageTaken.overall']
+		? min( 1000, 100 * $data['stats.combat.damageInflicted.overall'] / UseIfElse( $data['stats.combat.damageTaken.overall'], 1 ) )
+		: 100;
+	if ( $data['stats.combat.dishoutRatio'] >= 1000 ) { unset($data['stats.combat.dishoutRatio']); }
+
 	// failed hacks
 	$data['stats.hacking.failed'] = $data['stats.hacking.totalHacks.overall'] - $data['stats.hacking.totalHacks.successful'];
 	
@@ -523,9 +518,9 @@ function AddRun( $hash, $data ) {
 	$data['stats.combat.accuracy'] = 100 * $data['stats.combat.shotsHitRobots.overall']
 		/ UseIfElse( ($data['stats.combat.shotsFired.overall'] + $data['stats.combat.meleeAttacks.overall']), 1);
 		
-	// shots per volley						
-	$data['stats.combat.shotsPerVolley'] = $data['stats.combat.shotsFired.overall'] 
-		/ UseIfElse($data['stats.combat.volleysFired.overall'], 1 );
+	// shots per volley - AWS autocannons can mess up this stat because they dont count as volleys!			
+	$data['stats.combat.shotsPerVolley'] = min( 10, $data['stats.combat.shotsFired.overall'] 
+		/ UseIfElse($data['stats.combat.volleysFired.overall'], 1 ) );
 						
 	// critical hit %
 	$data['stats.combat.criticalHitPercent'] = 100 *
@@ -542,7 +537,7 @@ function AddRun( $hash, $data ) {
 		
 	// cadence (actions per minute)
 	$timeParts = explode(':', $data['game.runTime'] );
-	$playtimeInMinutes = ($timeParts[1] + ($timeParts[0]*60)) || 1;
+	$playtimeInMinutes = UseIfElse( ($timeParts[1] + ($timeParts[0]*60)), 1);
 	$data['stats.actions.cadence'] = ( $data['stats.actions.total.overall'] - $data['stats.actions.total.wait'] ) / $playtimeInMinutes;
 		
 	// cause of death
@@ -756,6 +751,10 @@ function Download( $url, $file ) {
 		}
 	}
 	
+function PrintWithTS( $msg ) {
+	print PrintTS() . $msg . "\n";
+}
+
 function PrintTS() {
 	static $start;
 	if ( !$start ) { $start = time(); }

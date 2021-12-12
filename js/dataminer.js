@@ -329,7 +329,7 @@ function LoadScoresheet( hash ) {
 
 function DownloadDataminerDataAnalysis( app ) {
 	// TODO: don't re-download if categories are the same as what we have already
-	$url = window.location.href
+	url = window.location.href
 		.replace( window.location.search, '' ) 
 		.replace( /#.*/, '' ) 
 		.replace('.html','')
@@ -338,11 +338,25 @@ function DownloadDataminerDataAnalysis( app ) {
 		+ `&difficulty=${app.scoresheet.header.difficulty}`
 		+ `&mode=${app.scoresheet.header.specialMode}`
 		;
-	return fetch( $url ).then( rsp => {
+	return fetch( url ).then( rsp => {
 		if ( !rsp.ok || !rsp.body || String(rsp.status).match(/^(4|5)/) ) {
-			app.error_msg = 'Could not get dataminer comps. Does this look right to you? ' + url;
-			return false;
+			// we couldn't download the live database version. 
+			// see if we can fall back to a local static file.
+			let static_file = 'dataminer.analysis.standard.b11.json';
+			if ( app.scoresheet.header.version.match(/beta 10/) ) {
+				static_file = 'dataminer.analysis.standard.b10.json';
+			}
+			return fetch( url ).then( rsp => {
+				if ( !rsp.ok || !rsp.body || String(rsp.status).match(/^(4|5)/) ) {
+					app.error_msg = 'Could not get dataminer analysis file. I tried, though. I really did.';
+					return false;
+				}
+				app.scoresheet.header.analysisFile = static_file;
+				app.scoresheet.header.analysisNote = 'Using standard comparison analysis file.';
+				return rsp.json();
+			});			
 		}		
+		app.scoresheet.header.analysisFile = url;
 		return rsp.json();
 	})
 	.then( data => {
@@ -405,12 +419,12 @@ function AnalyzeScoresheet( data ) {
 	// precompute single values
 	
 	// digging luck
-	data.stats.exploration.diggingLuck = 100 * ( 1 - ( (data.stats.exploration.spacesMoved.caveInsTriggered || 0) 
-		/ (data.stats.exploration.spacesDug || 1) ) );
+	data.stats.exploration.diggingLuck = Math.max( 0, 100 * ( 1 - ( (data.stats.exploration.spacesMoved.caveInsTriggered || 0) 
+		/ (data.stats.exploration.spacesDug || 1) ) ) );
 	
 	// collateral dmg pct
-	data.stats.combat.collateralDamagePct = 100 * data.performance.valueDestroyed.count 
-		/ ( data.stats.combat.damageInflicted.overall || 1 );
+	data.stats.combat.collateralDamagePct = Math.min( 100, 100 * data.performance.valueDestroyed.count 
+		/ ( data.stats.combat.damageInflicted.overall || 1 ) );
 	
 	// dishout ratio % - be careful if player took zero damage
 	data.stats.combat.dishoutRatio = 100 * data.stats.combat.damageInflicted.overall 
@@ -427,9 +441,9 @@ function AnalyzeScoresheet( data ) {
 	data.stats.combat.accuracy = 100 * data.stats.combat.shotsHitRobots.overall
 		/ ( (data.stats.combat.shotsFired.overall + data.stats.combat.meleeAttacks.overall) || 1);
 		
-	// shots per volley						
-	data.stats.combat.shotsPerVolley = data.stats.combat.shotsFired.overall 
-		/ (data.stats.combat.volleysFired.overall|| 1);
+	// shots per volley - AWS autocannons can mess up this stat because they dont count as volleys!
+	data.stats.combat.shotsPerVolley = Math.min( 10, data.stats.combat.shotsFired.overall 
+		/ (data.stats.combat.volleysFired.overall|| 1) );
 						
 	// critical hit %
 	data.stats.combat.criticalHitPercent = 100 *
@@ -447,7 +461,7 @@ function AnalyzeScoresheet( data ) {
 		
 	// turn cadence (actions per minute; factor out WAITs)
 	let timeParts = data.game.runTime.split(':');
-	let playtimeInMinutes = parseInt(timeParts[1]) + (parseInt(timeParts[0])*60);
+	let playtimeInMinutes = (parseInt(timeParts[1]) + (parseInt(timeParts[0])*60)) || 1;
 	data.stats.actions.cadence = ( data.stats.actions.total.overall - data.stats.actions.total.wait ) / playtimeInMinutes;
 	
 	// precompute chart data
@@ -619,9 +633,11 @@ function AnalyzeScoresheet( data ) {
 	// class distribution
 	data.charts.class_distro_chart_data = [];
 	data.charts.class_distro_chart_labels = [];
-	for ( let c of data.classDistribution.classes ) {
-		data.charts.class_distro_chart_data.push( c.percent );
-		data.charts.class_distro_chart_labels.push( c.name );
+	if ( data.classDistribution.classes ) {
+		for ( let c of data.classDistribution.classes ) {
+			data.charts.class_distro_chart_data.push( c.percent );
+			data.charts.class_distro_chart_labels.push( c.name );
+		}
 	}
 		
 	// propulsion pie chart
@@ -1232,6 +1248,11 @@ function ChangePane(pane) {
 					app.scoresheet.performance.valueDestroyed.count
 					) );
 				app.charts.push( DrawSparkChart(
+					'collateralDamagePctSparkChart',
+					app.analysis['stats.combat.collateralDamagePct']?.chartdata,
+					app.scoresheet.stats.combat.collateralDamagePct
+					) );
+				app.charts.push( DrawSparkChart(
 					'attacksByAlliesSparkChart',
 					app.analysis['stats.allies.allyAttacks.kills']?.chartdata,
 					app.scoresheet.stats.allies.allyAttacks.kills
@@ -1362,9 +1383,8 @@ function ChangePane(pane) {
 					) );
 				app.charts.push( DrawSparkChart(
 					'failedHacksSparkChart',
-					app.analysis['stats.hacking.totalHacks.failed']?.chartdata,
-					(app.scoresheet.stats.hacking.totalHacks.overall
-					- app.scoresheet.stats.hacking.totalHacks.successful)
+					( app.analysis['stats.hacking.failed']?.chartdata || app.analysis['stats.hacking.totalHacks.failed']?.chartdata),
+					app.scoresheet.stats.hacking.failed
 					) );
 				app.charts.push( DrawSparkChart(
 					'detectionsSparkChart',
