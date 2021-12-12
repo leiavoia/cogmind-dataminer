@@ -259,11 +259,11 @@ function AnalyzeDB() {
 			runs.version,
 			runs.difficulty,
 			runs.mode
-		ORDER BY
-			stats.label,
-			runs.version,
-			runs.difficulty,
-			runs.mode
+--		ORDER BY
+--			stats.label,
+--			runs.version,
+--			runs.difficulty,
+--			runs.mode
 		;");
 	DBCheckForErrors( $result, $db );
 
@@ -491,10 +491,9 @@ function AddRun( $hash, $data ) {
 	// precompute some stuff:
 	
 	// digging luck
-	if ( $data['stats.exploration.spacesDug'] ) {
-		$data['stats.exploration.diggingLuck'] = 100 * ( 1 - ( $data['stats.exploration.spacesMoved.caveInsTriggered'] 
-			/ UseIfElse( $data['stats.exploration.spacesDug'], 1 ) ) );
-	}
+	$data['stats.exploration.diggingLuck'] = max( 0, 100 * ( 1 - ( $data['stats.exploration.spacesMoved.caveInsTriggered'] 
+		/ UseIfElse( $data['stats.exploration.spacesDug'], 1 ) ) ) );
+	if ( $data['stats.exploration.diggingLuck'] <= 0 ) { unset($data['stats.exploration.diggingLuck']); }
 	
 	// collateral dmg pct
 	$data['stats.combat.collateralDamagePct'] = 100 * $data['performance.valueDestroyed.count'] 
