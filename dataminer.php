@@ -546,10 +546,23 @@ function AddRun( $hash, $data ) {
 	$data['stats.actions.cadence'] = ( $data['stats.actions.total.overall'] - $data['stats.actions.total.wait'] ) / $playtimeInMinutes;
 		
 	// cause of death
-	$CoD = $data['header.runResult'];
-	$matches = [];
-	if ( preg_match('/by\s(.+)?(\s+with)*/',$CoD) ) {
-		$CoD = $matches[1];
+	if ( !isset($data['header.win']) ) {
+		$WoD = null;
+		$CoD = $data['header.runResult'];
+		$CoD = preg_replace('/(smashed|destroyed)( by)* /i','',$CoD);
+		$parts = preg_split('/\s(via|with)\s/',$CoD);
+		if ( count($parts) > 1 ) { 
+			$CoD = $parts[0];
+			$WoD = $parts[1];
+			// assembled have different names
+			if ( strpos($CoD,'as-')===0 ) { $CoD = 'Assembled'; }
+			else if ( strpos($CoD,'(z)')!==false ) { $CoD = 'Zionite'; }
+			else if ( strpos($CoD,'EQ-')!==false ) { $CoD = 'Enhanced Q-Series'; }
+			else if ( preg_match('/^Q\d/',$CoD) ) { $CoD = 'Q-Series'; }
+			else if ( strpos($CoD,')')!==false ) { $CoD = 'Derelict'; }
+		}
+		if ( $CoD ) { $data['header.causeOfDeath'] = $CoD; }
+		if ( $WoD ) { $data['header.itemOfDeath'] = $WoD; }
 	}
 		
 	// add stats
