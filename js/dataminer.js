@@ -606,7 +606,7 @@ function AnalyzeScoresheet( data ) {
 		// history decoration - color coded messages
 		for ( row of map.historyEvents ) { 
 			if ( row.event.match(/(lost|released all parts|locked|lockdown|assault|sterilization system|crushed|destroyed by|self destr|core integrity fell|corruption reached|assimilated all)/i) ) { row.class = 'bad'; }
-			else if ( row.event.match(/(learned|destroyed|killed|installed|found|Aligned with FarCom|given|expanded rif|repaired|fabricated|Loaded intel|hub disabled)/i) ) { row.class = 'good'; }
+			else if ( row.event.match(/(learned|destroyed|killed|installed|found|Aligned with FarCom|given|expanded rif|repaired|fabricated|Loaded intel|hub disabled|redirected|Retrieved Zion|Zion\.+teleported in)/i) ) { row.class = 'good'; }
 			else if ( row.event.match(/(discovered|identified|build established|Accompanied by)/i) ) { row.class = 'info'; }
 			else if ( row.event.match(/(entered|evolved)/i) ) { row.class = 'notice'; }
 			else if ( row.event.match(/(triggered|spotted|evacuate|Garrison activated|warn|convoy interrupted|squad dispatched|Detected by scanners)/i) ) { row.class = 'warning'; }
@@ -834,7 +834,7 @@ function AnalyzeScoresheet( data ) {
 		// skip blank lines
 		if ( l.match(/^\?+$/) ) { continue; }
 		// colorize characters 
-		l = l.replace(/([<\*\+\!zIXitpAKBEblCcnxakweomru?@TFRGYS%hHygs7d#\/=\[\]])/g, (a,b) => {
+		l = l.replace(/([<\*\+\!ZMWGDVzIXitpAKBEblCcnxakweomru?@TFRGYS%hHygs7d#\/=\[\]])/g, (a,b) => {
 			let color = null;
 			switch ( b ) {
 				case '!': { color = 'D4D'; break; }
@@ -856,14 +856,23 @@ function AnalyzeScoresheet( data ) {
 				case '=': { color = '238628'; break; }
 				case '*': { color = 'D11'; break; }
 				case '<': { color = 'D80'; break; } // exit
+				// unique NPCs / pink bots
+				case 'Z': 
+				case 'M': 
+				case 'W': 
+				case 'G':
+				case 'D':
+				case 'V': { color = 'FF4EBA'; break; }
+				// green bots
 				case 'u': 
 				case 'm': 
 				case 'k': 
-				case 'a': 
 				case 'A':
 				case 't':
 				case 'r': { color = '6C6'; break; }
+				// combat bots
 				case 'E': // [E]xecutioner, not [E]xit!
+				case 'a': 
 				case 'e': 
 				case '7': 
 				case 'i': 
