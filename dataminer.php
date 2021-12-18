@@ -81,7 +81,18 @@ else {
 			if ( $version ) { $hooks []= " AND analysis.version = '" . addslashes($version) . "' "; }
 			if ( $label ) { $hooks []= " AND stats.label = '" . addslashes($label) . "' "; }
 			if ( $player ) { $hooks []= " AND analysis.player = '" . addslashes($player) . "' "; }
-			$q = "SELECT stats.label, analysis.* 
+			$q = "SELECT 
+					stats.label, 
+					analysis.version, 
+					analysis.difficulty, 
+					analysis.mode, 
+					analysis.samples, 
+					analysis.uniq, 
+					analysis.min, 
+					analysis.max, 
+					analysis.avg, 
+					analysis.std, 
+					analysis.chartdata 
 				FROM stats, analysis
 				WHERE stats.id = analysis.stat_id
 				" . implode(' ', $hooks);
@@ -89,7 +100,6 @@ else {
 			if ( $result->num_rows ) {
 				while( $row = $result->fetch_assoc() ) {
 					$row['chartdata'] = json_decode($row['chartdata'],true); // JSON stored as string in DB
-					unset($row['stat_id']); // probably never need this... yet
 					// set the label as the key if we won't have multiple entries
 					if ( $difficulty && $version && $mode ) {
 						$k = $row['label'];
@@ -232,12 +242,12 @@ function AnalyzeDB() {
 			runs.version,
 			runs.difficulty,
 			runs.mode,
-			COUNT( CAST(runstats.value as float) ) as `samples`,
+			COUNT( runstats.value ) as `samples`,
 			COUNT( DISTINCT runstats.value ) as `uniq`,
-			MIN( CAST(runstats.value as float) ) as `min`,
-			MAX( CAST(runstats.value as float) ) as `max`,
-			ROUND( AVG( CAST(runstats.value as float) ), 3) as `avg`,
-			ROUND( STD( CAST(runstats.value as float) ), 3) as `std`,
+			MIN( CAST(runstats.value as DECIMAL(24,5)) ) as `min`,
+			MAX( CAST(runstats.value as DECIMAL(24,5)) ) as `max`,
+			ROUND( AVG( CAST(runstats.value as DECIMAL(24,5)) ), 3) as `avg`,
+			ROUND( STD( CAST(runstats.value as DECIMAL(24,5)) ), 3) as `std`,
 			0,
 			0,
 			0,
@@ -354,11 +364,11 @@ function CreateChartData() {
 				analysis.version, 
 				analysis.difficulty, 
 				analysis.mode,						
-				FLOOR( (CAST( runstats.value as float ) - analysis.stdmin) / IF(analysis.seglen,analysis.seglen,1) ) as segment,
-				CAST( runstats.value as float ) as value
+				FLOOR( (CAST( runstats.value as DECIMAL(24,5) ) - analysis.stdmin) / IF(analysis.seglen,analysis.seglen,1) ) as segment,
+				CAST( runstats.value as DECIMAL(24,5) ) as value
 			FROM runstats, analysis, runs, stats
 			WHERE runs.id = runstats.run_id
-				AND CAST(runstats.value as float) BETWEEN analysis.stdmin AND analysis.stdmax
+				AND CAST(runstats.value as DECIMAL(24,5)) BETWEEN analysis.stdmin AND analysis.stdmax
 				AND analysis.stat_id = runstats.stat_id
 				AND analysis.version = runs.version
 				AND analysis.difficulty = runs.difficulty
