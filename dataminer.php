@@ -160,7 +160,7 @@ function ProcessScoresheets() {
 	$counter = 0;
 	$num_scanned = 0;
 	$files = glob(SCORESHEET_DOWNLOAD_DIR . '/*.json');
-	PrintWithTS(count($files) . ' files to prcoess.');
+	PrintWithTS(count($files) . ' files to process.');
 	foreach ( $files as $file ) {
 		print $counter++ . ": $file";
 		$str = file_get_contents($file);
@@ -733,11 +733,11 @@ function ScrapeURL( $url ) {
 	if ( $urls ) {
 		print "Downloading " . count($urls)  . " new scoresheets...\n";
 		foreach ( $urls as $url ) {
-			$hash = preg_replace( '/[^A-Za-z0-9]/', '', basename($url) );
+			$hash = preg_replace( '/[^A-Za-z0-9]/', '', basename($url,'.json') );
 			// don't download anything already in DB
 			$result = $db->query("SELECT 1 FROM runs WHERE filehash = '" . addslashes($hash) . "' LIMIT 1;");
 			if ( $result && $result->num_rows ) { continue; }
-			$file = SCORESHEET_DOWNLOAD_DIR . '/' . $hash;
+			$file = SCORESHEET_DOWNLOAD_DIR . '/' . $hash . '.json';
 			print $url . "\n";
 			Download( $url, $file );
 			if ( SCRAPE_FETCH_DELAY ) { sleep(SCRAPE_FETCH_DELAY); }
