@@ -148,7 +148,7 @@ const metrics = {
 	armorCoverage: 			{ min: 0,	max: 2000,	record: 7650,	ok: 0,	good: 0,	excl: 0 },
 	coreShielding: 			{ min: 0,	max: 40,	record: 40,		ok: 0,	good: 0,	excl: 0 },
 	evasion: 				{ min: 0,	max: 100,	record: 100,	ok: 0,	good: 0,	excl: 0 },
-	recoilReduction: 		{ min: 0,	max: 14,	record: 14,		ok: 0,	good: 0,	excl: 0 },
+	recoilReduction: 		{ min: 0,	max: 10,	record: 14,		ok: 0,	good: 0,	excl: 0 },
 	terrainScanRange: 		{ min: 0,	max: 30,	record: 30,		ok: 0,	good: 0,	excl: 0 },
 	powerAmplification: 	{ min: 0,	max: 150,	record: 150,	ok: 0,	good: 0,	excl: 0 },
 	additionalMassSupport: 	{ min: 0,	max: 25,	record: 25,		ok: 0,	good: 0,	excl: 0 },
