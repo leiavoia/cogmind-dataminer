@@ -290,10 +290,6 @@
 										<th>Game Version</th>
 										<td>{{scoresheet.header.version}}</td>
 									</tr>
-									<tr v-if="analysis">
-										<th>Comparisons</th>
-										<td>{{analysis['parts.inventory.slots'].samples.toLocaleString()}} runs in dataset</td>
-									</tr>
 									<tr>
 										<th>Seed</th>
 										<td><i>{{scoresheet.game.worldSeed}}</i></td>
@@ -306,6 +302,19 @@
 											<a v-bind:href="scoresheet.meta.permalink" target="_blank" v-if="scoresheet.meta.permalink">Permalink</a>
 										</td>
 									</tr>								
+									<tr v-if="analysis">
+										<th>Comparisons</th>
+										<td>
+											{{analysis['parts.inventory.slots'].samples.toLocaleString()}} runs in dataset. 
+											{{scoresheet.header.analysisNote}}
+										</td>
+									</tr>
+									<tr v-if="analysis">
+										<th><img src="img/graph_sample.png" alt="frequency graph sample" /></th>
+										<td class="text-muted">
+											Frequency graphs compare your run to community averages
+										</td>
+									</tr>
 								</table>
 							</div>
 						</div>

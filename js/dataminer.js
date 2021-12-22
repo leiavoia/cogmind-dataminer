@@ -340,29 +340,11 @@ function DownloadDataminerDataAnalysis( app ) {
 		+ `&difficulty=${app.scoresheet.header.difficulty}`
 		+ `&mode=${app.scoresheet.header.specialMode}`
 		;
-	return fetch( url ).then( rsp => {
-		if ( !rsp.ok || !rsp.body || String(rsp.status).match(/^(4|5)/) ) {
-			// we couldn't download the live database version. 
-			// see if we can fall back to a local static file.
-			let static_file = 'dataminer.analysis.standard.b11.json';
-			if ( app.scoresheet.header.version.match(/beta 10/) ) {
-				static_file = 'dataminer.analysis.standard.b10.json';
+	let fetchHandler = data => {
+		if ( data ) {
+			if ( data['parts.inventory.slots']?.samples < 10 ) {
+				throw new Error('Not enough samples in peer group.')
 			}
-			return fetch( url ).then( rsp => {
-				if ( !rsp.ok || !rsp.body || String(rsp.status).match(/^(4|5)/) ) {
-					app.error_msg = 'Could not get dataminer analysis file. I tried, though. I really did.';
-					return false;
-				}
-				app.scoresheet.header.analysisFile = static_file;
-				app.scoresheet.header.analysisNote = 'Using standard comparison analysis file.';
-				return rsp.json();
-			});			
-		}		
-		app.scoresheet.header.analysisFile = url;
-		return rsp.json();
-	})
-	.then( data => {
-		if ( data ) { 
 			app.analysis = data;
 			// Analyze comps
 			if ( app.scoresheet.flatstats ) {
@@ -406,9 +388,37 @@ function DownloadDataminerDataAnalysis( app ) {
 			app.scoresheet.hilites = app.scoresheet.flatstats.filter( i => i[7] > 0 && i[1] > 1 ).sort( (a,b) => b[7] - a[7] ).slice( 0, 19 ).map( mapper );
 			app.scoresheet.lowlites = app.scoresheet.flatstats.filter( i => i[7] < 0  ).sort( (a,b) => a[7] - b[7] ).slice( 0, 19 ).map( mapper );
 		}
+	};		
+	return fetch( url ).then( rsp => {
+		if ( !rsp.ok || !rsp.body || String(rsp.status).match(/^(4|5)/) ) {
+			throw new Error('Error when trying to get analysis file.');
+		}		
+		app.scoresheet.header.analysisFile = url;
+		return rsp.json();
 	})
-	.catch(error => {
-		app.error_msg = 'Error when trying to get file: ' + error;
+	.then( fetchHandler )
+	.catch( error => {
+		// we couldn't download the live database version. 
+		// see if we can fall back to a local static file.
+		let static_file = 'dataminer.analysis.standard.b11.json';
+		if ( app.scoresheet.header.version.match(/beta 10/) ) {
+			static_file = 'dataminer.analysis.standard.b10.json';
+		}
+		return fetch( static_file ).then( rsp => {
+			let json = rsp.json();
+			// couldnt get file
+			if ( !rsp.ok || !rsp.body || String(rsp.status).match(/^(4|5)/) ) {
+				app.error_msg = 'Could not get dataminer analysis file. I tried, though. I really did.';
+				return false;
+			}
+			app.scoresheet.header.analysisFile = static_file;
+			app.scoresheet.header.analysisNote = 'Using standard comparison analysis file. Exact peer group not available.';
+			return json;
+		})
+		.then( fetchHandler )
+		.catch( error => {
+			app.error_msg = 'Error when trying to get file: ' + error;
+		});
 	});	
 }
 

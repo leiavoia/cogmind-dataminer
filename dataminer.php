@@ -1,7 +1,5 @@
 <?php
 
-ini_set('display_errors', 1);
-
 if ( file_exists(__DIR__ . '/.dataminer.env.php') ) { include_once(__DIR__ . '/.dataminer.env.php'); }
 
 if ( !defined('SCORESHEET_DOWNLOAD_DIR') ) { define('SCORESHEET_DOWNLOAD_DIR', __DIR__ . '/scoresheets/tmp'); }
