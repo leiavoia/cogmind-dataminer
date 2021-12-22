@@ -1112,6 +1112,94 @@
 						<canvas id="killsTypesChart"></canvas>
 					</div>
 					
+
+					<h2>Allies</h2>
+					<div class="container-fluid mt-5 mb-5 g-0">
+						<div class="row row-cols-1 row-cols-md-3 g-4">						
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Total Allies</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.allies.totalAllies.overall.toLocaleString()}}</span>
+										<canvas id="alliesSparkChart" v-if="analysis"></canvas>
+									</div>
+								</div>
+							</div>			
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Largest Army</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.allies.totalAllies.largestGroup}}</span>
+										<canvas id="largestArmySparkChart" v-if="analysis"></canvas>
+									</div>
+								</div>
+							</div>	
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Best Ally Rating</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.allies.totalAllies.highestRatedAlly}}</span>
+										<canvas id="bestAllySparkChart" v-if="analysis"></canvas>
+									</div>
+								</div>
+							</div>	
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Best Group Rating</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.allies.totalAllies.highestRatedGroup.toLocaleString()}}</span>
+										<canvas id="bestArmySparkChart" v-if="analysis"></canvas>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Ally Attacks</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.allies.allyAttacks.overall.toLocaleString()}}</span>
+										<canvas id="attacksByAlliesSparkChart" v-if="analysis"></canvas>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Ally Damage Inflicted</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.allies.allyAttacks.totalDamage.toLocaleString()}}</span>
+										<canvas id="allyDamageSparkChart" v-if="analysis"></canvas>
+									</div>
+								</div>
+							</div>		
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Kills by Allies</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.allies.allyAttacks.kills.toLocaleString()}}</span>
+										<canvas id="allyKillsSparkChart" v-if="analysis"></canvas>
+									</div>
+								</div>
+							</div>			
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Zionite Dispatches</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.allies.zioniteDispatches?.overall || 0}}</span>
+										<canvas id="zioniteDispatchesSparkChart" v-if="analysis"></canvas>
+									</div>
+								</div>
+							</div>						
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Orders Given</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.allies.totalOrders.overall}}</span>
+										<canvas id="ordersGivenSparkChart" v-if="analysis"></canvas>
+									</div>
+								</div>
+							</div>							
+						</div>
+					</div>
+										
 					<h2>Miscellanea</h2>
 					<div class="container-fluid mt-5 mb-5 g-0">
 						<div class="row row-cols-1 row-cols-md-3 g-4">
@@ -1218,17 +1306,9 @@
 									</div>
 								</div>
 							</div>	
-							<div class="col">
-								<div class="card statbox h-100">
-									<div class="card-header">Attacks By Allies</div>
-									<div class="card-body text-success numeric">
-										<span class="card-text">{{scoresheet.stats.allies.allyAttacks.kills}}</span>
-										<canvas id="attacksByAlliesSparkChart" v-if="analysis"></canvas>
-									</div>
-								</div>
-							</div>																
 						</div>
-					</div>					
+					</div>
+												
 				</template>
 				
 				

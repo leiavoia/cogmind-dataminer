@@ -1223,109 +1223,159 @@ function ChangePane(pane) {
 					app.analysis['stats.combat.dishoutRatio']?.chartdata,
 					app.scoresheet.stats.combat.dishoutRatio
 					) );
-				app.charts.push( DrawSparkChart(
-					'combatBotsDestroyedSparkChart',
-					app.analysis['stats.kills.combatHostilesDestroyed.overall']?.chartdata,
-					app.scoresheet.stats.kills.combatHostilesDestroyed.overall
-					) );
-				app.charts.push( DrawSparkChart(
-					'killStreakSparkChart',
-					app.analysis['stats.kills.bestKillStreak.overall']?.chartdata,
-					app.scoresheet.stats.kills.bestKillStreak.overall
-					) );
-				app.charts.push( DrawSparkChart(
-					'mostKillsInOneTurnSparkChart',
-					app.analysis['stats.kills.maxKillsInSingleTurn.overall']?.chartdata,
-					app.scoresheet.stats.kills.maxKillsInSingleTurn.overall
-					) );
-				app.charts.push( DrawSparkChart(
-					'botsCorruptedSparkChart',
-					app.analysis['stats.combat.robotsCorrupted.overall']?.chartdata,
-					app.scoresheet.stats.combat.robotsCorrupted.overall
-					) );
-				app.charts.push( DrawSparkChart(
-					'botsMeltedSparkChart',
-					app.analysis['stats.combat.robotsMelted.overall']?.chartdata,
-					app.scoresheet.stats.combat.robotsMelted.overall
-					) );
-				app.charts.push( DrawSparkChart(
-					'botsCrushedSparkChart',
-					app.analysis['stats.combat.targetsRammed.crushed']?.chartdata,
-					app.scoresheet.stats.combat.targetsRammed.crushed
-					) );
 					
-				app.charts.push( DrawSparkChart(
-					'meleeFollowupSparkChart',
-					app.analysis['stats.combat.meleeFollowupPercent']?.chartdata,
-					app.scoresheet.stats.combat.meleeFollowupPercent
-					) );
-				app.charts.push( DrawSparkChart(
-					'botsRammedSparkChart',
-					app.analysis['stats.combat.targetsRammed.overall']?.chartdata,
-					app.scoresheet.stats.combat.targetsRammed.overall
-					) );
-				app.charts.push( DrawSparkChart(
-					'sneakAttacksSparkChart',
-					app.analysis['stats.combat.meleeAttacks.sneakAttacks.overall']?.chartdata,
-					app.scoresheet.stats.combat.meleeAttacks.sneakAttacks.overall
-					) );
-				app.charts.push( DrawSparkChart(
-					'powerChainReactionsSparkChart',
-					app.analysis['stats.combat.powerChainReactions']?.chartdata,
-					app.scoresheet.stats.combat.powerChainReactions
-					) );
-				app.charts.push( DrawSparkChart(
-					'siegesSparkChart',
-					app.analysis['stats.combat.siegeActivations.overall']?.chartdata,
-					app.scoresheet.stats.combat.siegeActivations.overall
-					) );
-				app.charts.push( DrawSparkChart(
-					'hottestTempSparkChart',
-					app.analysis['stats.combat.highestTemperature.overall']?.chartdata,
-					app.scoresheet.stats.combat.highestTemperature.overall
-					) );
-				app.charts.push( DrawSparkChart(
-					'overheatingIssuesSparkChart',
-					app.analysis['stats.combat.highestTemperature.effects.overall']?.chartdata,
-					app.scoresheet.stats.combat.highestTemperature.effects.overall
-					) );
-				app.charts.push( DrawSparkChart(
-					'gunslingsSparkChart',
-					app.analysis['stats.combat.shotsFired.secondaryTargets.overall']?.chartdata,
-					app.scoresheet.stats.combat.shotsFired.secondaryTargets.overall
-					) );
-				app.charts.push( DrawSparkChart(
-					'machinesDisabledSparkChart',
-					app.analysis['stats.machines.machinesDisabled.overall']?.chartdata,
-					app.scoresheet.stats.machines.machinesDisabled.overall
-					) );
-				app.charts.push( DrawSparkChart(
-					'collateralDamageSparkChart',
-					app.analysis['performance.valueDestroyed.count']?.chartdata,
-					app.scoresheet.performance.valueDestroyed.count
-					) );
-				app.charts.push( DrawSparkChart(
-					'collateralDamagePctSparkChart',
-					app.analysis['stats.combat.collateralDamagePct']?.chartdata,
-					app.scoresheet.stats.combat.collateralDamagePct
-					) );
-				app.charts.push( DrawSparkChart(
-					'attacksByAlliesSparkChart',
-					app.analysis['stats.allies.allyAttacks.kills']?.chartdata,
-					app.scoresheet.stats.allies.allyAttacks.kills
-					) );
+				// below the fold optimization
+				setTimeout( _ => {
+					app.charts.push( DrawSparkChart(
+						'combatBotsDestroyedSparkChart',
+						app.analysis['stats.kills.combatHostilesDestroyed.overall']?.chartdata,
+						app.scoresheet.stats.kills.combatHostilesDestroyed.overall
+						) );
+					app.charts.push( DrawSparkChart(
+						'killStreakSparkChart',
+						app.analysis['stats.kills.bestKillStreak.overall']?.chartdata,
+						app.scoresheet.stats.kills.bestKillStreak.overall
+						) );
+					app.charts.push( DrawSparkChart(
+						'mostKillsInOneTurnSparkChart',
+						app.analysis['stats.kills.maxKillsInSingleTurn.overall']?.chartdata,
+						app.scoresheet.stats.kills.maxKillsInSingleTurn.overall
+						) );
+					app.charts.push( DrawSparkChart(
+						'botsCorruptedSparkChart',
+						app.analysis['stats.combat.robotsCorrupted.overall']?.chartdata,
+						app.scoresheet.stats.combat.robotsCorrupted.overall
+						) );
+					app.charts.push( DrawSparkChart(
+						'botsMeltedSparkChart',
+						app.analysis['stats.combat.robotsMelted.overall']?.chartdata,
+						app.scoresheet.stats.combat.robotsMelted.overall
+						) );
+					app.charts.push( DrawSparkChart(
+						'botsCrushedSparkChart',
+						app.analysis['stats.combat.targetsRammed.crushed']?.chartdata,
+						app.scoresheet.stats.combat.targetsRammed.crushed
+						) );
+						
+					app.charts.push( DrawSparkChart(
+						'meleeFollowupSparkChart',
+						app.analysis['stats.combat.meleeFollowupPercent']?.chartdata,
+						app.scoresheet.stats.combat.meleeFollowupPercent
+						) );
+					app.charts.push( DrawSparkChart(
+						'botsRammedSparkChart',
+						app.analysis['stats.combat.targetsRammed.overall']?.chartdata,
+						app.scoresheet.stats.combat.targetsRammed.overall
+						) );
+					app.charts.push( DrawSparkChart(
+						'sneakAttacksSparkChart',
+						app.analysis['stats.combat.meleeAttacks.sneakAttacks.overall']?.chartdata,
+						app.scoresheet.stats.combat.meleeAttacks.sneakAttacks.overall
+						) );
+					app.charts.push( DrawSparkChart(
+						'powerChainReactionsSparkChart',
+						app.analysis['stats.combat.powerChainReactions']?.chartdata,
+						app.scoresheet.stats.combat.powerChainReactions
+						) );
+					app.charts.push( DrawSparkChart(
+						'siegesSparkChart',
+						app.analysis['stats.combat.siegeActivations.overall']?.chartdata,
+						app.scoresheet.stats.combat.siegeActivations.overall
+						) );
+					app.charts.push( DrawSparkChart(
+						'hottestTempSparkChart',
+						app.analysis['stats.combat.highestTemperature.overall']?.chartdata,
+						app.scoresheet.stats.combat.highestTemperature.overall
+						) );
+					app.charts.push( DrawSparkChart(
+						'overheatingIssuesSparkChart',
+						app.analysis['stats.combat.highestTemperature.effects.overall']?.chartdata,
+						app.scoresheet.stats.combat.highestTemperature.effects.overall
+						) );
+					app.charts.push( DrawSparkChart(
+						'gunslingsSparkChart',
+						app.analysis['stats.combat.shotsFired.secondaryTargets.overall']?.chartdata,
+						app.scoresheet.stats.combat.shotsFired.secondaryTargets.overall
+						) );
+					app.charts.push( DrawSparkChart(
+						'machinesDisabledSparkChart',
+						app.analysis['stats.machines.machinesDisabled.overall']?.chartdata,
+						app.scoresheet.stats.machines.machinesDisabled.overall
+						) );
+					app.charts.push( DrawSparkChart(
+						'collateralDamageSparkChart',
+						app.analysis['performance.valueDestroyed.count']?.chartdata,
+						app.scoresheet.performance.valueDestroyed.count
+						) );
+					app.charts.push( DrawSparkChart(
+						'collateralDamagePctSparkChart',
+						app.analysis['stats.combat.collateralDamagePct']?.chartdata,
+						app.scoresheet.stats.combat.collateralDamagePct
+						) );
+						
+					app.charts.push( DrawSparkChart(
+						'alliesSparkChart',
+						app.analysis['stats.allies.totalAllies.overall']?.chartdata,
+						app.scoresheet.stats.allies.totalAllies.overall
+						) );
+					app.charts.push( DrawSparkChart(
+						'largestArmySparkChart',
+						app.analysis['stats.allies.totalAllies.largestGroup']?.chartdata,
+						app.scoresheet.stats.allies.totalAllies.largestGroup
+						) );
+					app.charts.push( DrawSparkChart(
+						'bestAllySparkChart',
+						app.analysis['stats.allies.totalAllies.highestRatedAlly']?.chartdata,
+						app.scoresheet.stats.allies.totalAllies.highestRatedAlly
+						) );
+					app.charts.push( DrawSparkChart(
+						'bestArmySparkChart',
+						app.analysis['stats.allies.totalAllies.highestRatedGroup']?.chartdata,
+						app.scoresheet.stats.allies.totalAllies.highestRatedGroup
+						) );
+					app.charts.push( DrawSparkChart(
+						'attacksByAlliesSparkChart',
+						app.analysis['stats.allies.allyAttacks.overall']?.chartdata,
+						app.scoresheet.stats.allies.allyAttacks.overall
+						) );
+					app.charts.push( DrawSparkChart(
+						'allyDamageSparkChart',
+						app.analysis['stats.allies.allyAttacks.totalDamage']?.chartdata,
+						app.scoresheet.stats.allies.allyAttacks.totalDamage
+						) );
+					app.charts.push( DrawSparkChart(
+						'zioniteDispatchesSparkChart',
+						app.analysis['stats.allies.zioniteDispatches.overall']?.chartdata,
+						app.scoresheet.stats.allies.zioniteDispatches?.overall || 0
+						) );
+					app.charts.push( DrawSparkChart(
+						'ordersGivenSparkChart',
+						app.analysis['stats.allies.totalOrders.overall']?.chartdata,
+						app.scoresheet.stats.allies.totalOrders.overall
+						) );
+					app.charts.push( DrawSparkChart(
+						'allyKillsSparkChart',
+						app.analysis['stats.allies.allyAttacks.kills']?.chartdata,
+						app.scoresheet.stats.allies.allyAttacks.kills
+						) );	
+				}, 2000);				
 			}
 		
-			app.charts.push( DrawKillTypesChart(app.scoresheet.charts.kill_types_chart_data, app.scoresheet.charts.kill_types_chart_labels) );
-			app.charts.push( DrawDamageInflictedChart(app.scoresheet.charts.damage_chart_data, app.scoresheet.charts.chart_map_labels) );
+			// below the fold optimization
+			setTimeout( _ => {
+				app.charts.push( DrawKillTypesChart(app.scoresheet.charts.kill_types_chart_data, app.scoresheet.charts.kill_types_chart_labels) );
+				app.charts.push( DrawDamageInflictedChart(app.scoresheet.charts.damage_chart_data, app.scoresheet.charts.chart_map_labels) );
+				app.charts.push( DrawDamageReceivedChart(app.scoresheet.charts.damage_received_chart_data, app.scoresheet.charts.chart_map_labels) );
+				app.charts.push( DrawKillsChart( {
+					combatbots: app.scoresheet.charts.kills_chart_data,
+					greenbots: app.scoresheet.charts.greenbot_kills_chart_data,
+					other: app.scoresheet.charts.neutral_kills_chart_data,
+				}, app.scoresheet.charts.chart_map_labels) );
+			}, 1000);
+			
+			// above the fold charts render first
 			app.charts.push( DrawDamageTypesChart(app.scoresheet.charts.overall_damage_data) );
 			app.charts.push( DrawWeaponTypesChart(app.scoresheet.charts.overall_damage_data) );	
-			app.charts.push( DrawDamageReceivedChart(app.scoresheet.charts.damage_received_chart_data, app.scoresheet.charts.chart_map_labels) );
-			app.charts.push( DrawKillsChart( {
-				combatbots: app.scoresheet.charts.kills_chart_data,
-				greenbots: app.scoresheet.charts.greenbot_kills_chart_data,
-				other: app.scoresheet.charts.neutral_kills_chart_data,
-			}, app.scoresheet.charts.chart_map_labels) );			
 		}
 		
 		else if ( pane === 'stealth' ) {
