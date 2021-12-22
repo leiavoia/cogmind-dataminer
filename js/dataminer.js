@@ -79,8 +79,41 @@ Chart.colors_by_key = {
 	flight: '#ffbfc0',
 	hover: '#8a1997',
 	legs: '#1E66A7',
+	leg: '#1E66A7',
 	wheels: '#238628',
+	wheel: '#238628',
 	treads: '#f19700',
+	reactor: '#7810B3',
+	core: '#105EB3',
+	engine: '#418d4f',
+	device: '#AAA',
+	processor: '#54BBE4',
+	artifact: '#42D484',
+	storage: '#145583',
+	hackware: '#F590DE',
+	protection: '#222',
+	thermal: 'rgba(255,158,0,1)', 
+	energyGun: 'rgb(255,158,0)',
+	energyCannon: 'rgb(255,100,0)',
+	kinetic: 'rgba(55,123,196,1)', 
+	ballisticCannon: 'rgb(20,80,135)',
+	ballisticGun: 'rgb(55,123,196)',
+	launcher: 'rgb(219,41,41)',
+	slashing: 'rgba(214,221,17,1)', 
+	slashingWeapon: 'rgba(214,221,17,1)',
+	piercing: 'rgba(192,55,196,1)', 
+	piercingWeapon: 'rgba(192,55,196,1)',
+	impact: 'rgba(240,240,240,1)',
+	impactWeapon: 'rgba(240,240,240,1)',
+	specialWeapon: '#999',
+	specialMeleeWeapon: '#42D484',
+	phasic: '#00744a',
+	phasicWeapon: '#DD4499',
+	entropic: '#ff6ab6', 
+	entropicWeapon: '#ff6ab6',
+	electromagnetic: 'rgba(59,221,17,1)', 
+	explosive: 'rgba(219,41,41,1)', 
+	allies: '#73d0ff',
 };
 
 Chart.SortPieData = function ( data, labels, colors=null ) { // coupled arrays
@@ -2152,7 +2185,7 @@ function DrawPartsAttachedPieChart( data, labels ) {
 			
 function DrawPowerAttachedPieChart( data, labels ) {
 	Chart.SortPieData(data,labels);
-	let colors = Chart.pie_colors;
+	let colors = labels.map( x => Chart.colors_by_key[x] );
 	datasets = [ { 
 		label: 'Power Attached', 
 		data, 
@@ -2179,7 +2212,7 @@ function DrawPowerAttachedPieChart( data, labels ) {
 			
 function DrawPropulsionAttachedPieChart( data, labels ) {
 	Chart.SortPieData(data,labels);
-	let colors = Chart.pie_colors;
+	let colors = labels.map( x => Chart.colors_by_key[x] );
 	datasets = [ { 
 		label: 'Propulsion Attached', 
 		data, 
@@ -2206,7 +2239,7 @@ function DrawPropulsionAttachedPieChart( data, labels ) {
 			
 function DrawUtilityAttachedPieChart( data, labels ) {
 	Chart.SortPieData(data,labels);
-	let colors = Chart.pie_colors;
+	let colors = labels.map( x => Chart.colors_by_key[x] );
 	datasets = [ { 
 		label: 'Utilities Attached', 
 		data, 
@@ -2233,7 +2266,7 @@ function DrawUtilityAttachedPieChart( data, labels ) {
 			
 function DrawWeaponAttachedPieChart( data, labels ) {
 	Chart.SortPieData(data,labels);
-	let colors = Chart.pie_colors;
+	let colors = labels.map( x => Chart.colors_by_key[x] );
 	datasets = [ { 
 		label: 'Weapons Attached', 
 		data, 
