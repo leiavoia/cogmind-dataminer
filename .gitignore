@@ -1,9 +1,10 @@
 *.code-workspace
+local/
 data/
 data/*
 cache/*
-scoresheets/
-scoresheets/*
+scoresheets/tmp/*
+scoresheets/archive/*
 docker-compose-lamp/
 docker-compose-lamp/*
 analyzer.php
