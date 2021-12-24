@@ -84,7 +84,6 @@ Chart.colors_by_key = {
 	wheel: '#238628',
 	treads: '#f19700',
 	reactor: '#7810B3',
-	core: '#105EB3',
 	engine: '#418d4f',
 	device: '#AAA',
 	processor: '#54BBE4',
@@ -423,7 +422,7 @@ function DownloadDataminerDataAnalysis( app ) {
 		}
 	};		
 	return fetch( url ).then( rsp => {
-		if ( !rsp.ok || !rsp.body || String(rsp.status).match(/^(4|5)/) ) {
+		if ( !rsp.ok || !rsp.body || String(rsp.status).match(/^(4|5|204)/) ) {
 			throw new Error('Error when trying to get analysis file.');
 		}		
 		app.scoresheet.header.analysisFile = url;
@@ -440,7 +439,7 @@ function DownloadDataminerDataAnalysis( app ) {
 		return fetch( static_file ).then( rsp => {
 			let json = rsp.json();
 			// couldnt get file
-			if ( !rsp.ok || !rsp.body || String(rsp.status).match(/^(4|5)/) ) {
+			if ( !rsp.ok || !rsp.body || String(rsp.status).match(/^(4|5|204)/) ) {
 				app.error_msg = 'Could not get dataminer analysis file. I tried, though. I really did.';
 				return false;
 			}

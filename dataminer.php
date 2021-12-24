@@ -121,7 +121,7 @@ else {
 	}
 
 	// print output
-	if ( $json ) {
+	if ( $records ) {
 		header('Content-Type: application/json');
 		header('Content-Security-Policy: upgrade-insecure-requests;');
 		header("X-XSS-Protection: 1");
