@@ -2,8 +2,8 @@
 <html lang="en">
 	<!-- what kind of idiot would build the entire app in one file? -->
 	<head>
-		<title>Cogmind Dataminer</title>
-		<meta name="description" content="Interactive scoresheet viewer for the game Cogmind." />
+		<title>Dataminer : Cogmind Scoresheet Viewer</title>
+		<meta name="description" content="Interactive scoresheet viewer for Cogmind." />
 		<meta name="keywords" content="cogmind,scoresheet,graph,run,morgue file,roguelike" />
 		<meta name="author" content="leiavoia" />
 		<meta charset="UTF-8" />
@@ -139,7 +139,13 @@
 			
 			<div id="app" v-cloak>
 			
-				<h1 class="mb-3" :class="scoresheet && pane!='input' && pane!='loading' ? '' : 'text-center'">
+				<!-- This extra H1 is here specifically to help google title-rewriting issues -->
+				<h1 class="mb-3" :class="scoresheet && pane!='input' && pane!='loading' ? '' : 'text-center'" v-if="!scoresheet">
+					<img src="img/dataminer_icon.png" style="height:1em; width: 1em; background-color: #000;" />
+					Cogmind Dataminer : Scoresheet Viewer
+				</h1>
+				
+				<h1 class="mb-3" :class="scoresheet && pane!='input' && pane!='loading' ? '' : 'text-center'" v-else>
 					<img src="img/dataminer_icon.png" style="height:1em; width: 1em; background-color: #000;" />
 					Cogmind Dataminer
 					<span class="text-muted" v-if="scoresheet"> : {{scoresheet.header.playerName}} : Game #{{scoresheet.game.gameNumber}}</span>	
