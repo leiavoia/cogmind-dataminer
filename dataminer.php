@@ -181,7 +181,9 @@ function ProcessScoresheets() {
 		}
 		// archive the file
 		if ( SCORESHEET_ARCHIVE_DIR ) {
-			rename( $file, SCORESHEET_ARCHIVE_DIR . '/' . basename($file) );
+			$fileto = SCORESHEET_ARCHIVE_DIR . '/' . basename($file);
+			if ( file_exists($fileto) ) { unlink( $file ); }
+			else { rename( $file, $fileto ); }
 		}
 	}
 	PrintWithTS("$counter files scanned, $num_scanned runs added");
@@ -722,10 +724,10 @@ function ScrapeURL( $url ) {
 		function( $row ) { return $row[2] . '.json'; },
 		array_filter( $matches, function($row){
 			$file = SCORESHEET_DOWNLOAD_DIR . '/' . basename($row[2],'.json') . '.json';
-			$arch_file = SCORESHEET_ARCHIVE_DIR . '/' . basename($row[2],'.json') . '.json';
+			// $arch_file = SCORESHEET_ARCHIVE_DIR . '/' . basename($row[2],'.json') . '.json';
 			$date = date( 'ymd', strtotime(SCORESHEET_LOOKBEHIND_DAYS . ' day ago') );
 			// check if we already have this downloaded
-			return $row[1] >= $date && !file_exists($file) && !file_exists($arch_file);
+			return $row[1] >= $date && !file_exists($file); // && !file_exists($arch_file);
 		})
 	);
 	if ( $urls ) {
