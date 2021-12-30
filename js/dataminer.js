@@ -245,6 +245,7 @@ function Undatafy() {
 		.replace(/\bEm\b/,'EM')
 		.replace(/\bLe\b/,'LE')
 		.replace(/\bEn\b/,'EN')
+		.replace(/\bRif\b/,'RIF')
         .replace(/([AR]) ([0-9])/, '$1$2')
 		.replace(/^./, s => s.toUpperCase() );
 }
@@ -652,8 +653,8 @@ function AnalyzeScoresheet( data ) {
 
 		// history decoration - color coded messages
 		for ( row of map.historyEvents ) { 
-			if ( row.event.match(/(lost|released all parts|locked|lockdown|assault|sterilization system|crushed|destroyed by|self destr|core integrity fell|corruption reached|assimilated all|stolen by|self-destructed|Terminal network hard line cut|core destroyed)/i) ) { row.class = 'bad'; }
-			else if ( row.event.match(/(learned|destroyed|killed|installed|found|Aligned with FarCom|given|expanded rif|repaired|fabricated|Loaded intel|hub disabled|redirected|Retrieved Zion|Zion.+teleported in|answering call for help)/i) ) { row.class = 'good'; }
+			if ( row.event.match(/(lost|released all parts|locked|lockdown|assault|sterilization system|crushed|destroyed by|self destr|core integrity fell|corruption reached|assimilated all|stolen by|self-destructed|Destroyed self|Terminal network hard line cut|core destroyed|activated Command garrisons)/i) ) { row.class = 'bad'; }
+			else if ( row.event.match(/(learned|destroyed|killed|installed|found|Aligned with FarCom|given|expanded rif|repaired|fabricated|Loaded intel|hub disabled|redirected|Retrieved Zion|Zion.+teleported in|answering call for help|Disengaged cave|squad redirected)/i) ) { row.class = 'good'; }
 			else if ( row.event.match(/(discovered|identified|build established|Accompanied by)/i) ) { row.class = 'info'; }
 			else if ( row.event.match(/(entered|evolved)/i) ) { row.class = 'notice'; }
 			else if ( row.event.match(/(triggered|spotted|evacuate|Garrison activated|warn|convoy interrupted|squad dispatched|Detected by scanners|Attracted the attention|Encountered a Master Thief|Additional patrols routed)/i) ) { row.class = 'warning'; }
