@@ -948,15 +948,6 @@
 							</div>
 							<div class="col">
 								<div class="card statbox h-100">
-									<div class="card-header">Accuracy</div>
-									<div class="card-body text-success numeric">
-										<span class="card-text">{{ scoresheet.stats.combat.accuracy.toFixed(1) }}%</span>
-										<canvas id="accuracySparkChart"></canvas>
-									</div>
-								</div>
-							</div>
-							<div class="col">
-								<div class="card statbox h-100">
 									<div class="card-header">Shots Per Volley</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{ 
@@ -965,34 +956,6 @@
 											: scoresheet.stats.combat.shotsPerVolley.toFixed(1) 
 										}}</span>
 										<canvas id="shotsPerVolleySparkChart" v-if="analysis"></canvas>
-									</div>
-								</div>
-							</div>
-							<!-- this info not available in Beta 11 so substitute something else of interest -->
-							<div class="col" v-if="scoresheet.stats.combat.criticalHitPercent">
-								<div class="card statbox h-100">
-									<div class="card-header">Critical Hits</div>
-									<div class="card-body text-success numeric">
-										<span class="card-text">{{ scoresheet.stats.combat.criticalHitPercent.toFixed(1) }}%</span>
-										<canvas id="criticalHitPctSparkChart" v-if="analysis"></canvas>
-									</div>
-								</div>
-							</div>
-							<div class="col" v-else>
-								<div class="card statbox h-100">
-									<div class="card-header">Critical Kills</div>
-									<div class="card-body text-success numeric">
-										<span class="card-text">{{ scoresheet.stats.combat.shotsHitRobots.criticalKills }}</span>
-										<canvas id="criticalHitPctSparkChart" v-if="analysis"></canvas>
-									</div>
-								</div>
-							</div>
-							<div class="col">
-								<div class="card statbox h-100">
-									<div class="card-header">Overflow Damage</div>
-									<div class="card-body text-success numeric">
-										<span class="card-text">{{ scoresheet.stats.combat.overflowDamagePercent.toFixed(1) }}%</span>
-										<canvas id="overflowDamageSparkChart" v-if="analysis"></canvas>	
 									</div>
 								</div>
 							</div>
@@ -1023,7 +986,61 @@
 										<canvas id="dishOutSparkChart"></canvas>
 									</div>
 								</div>
-							</div>														
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Melee Attacks</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.combat.meleeAttacks.overall.toLocaleString()}}</span>
+										<canvas id="meleeAttacksSparkChart" v-if="analysis"></canvas>
+									</div>
+								</div>
+							</div>									
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Melee Sneak Attacks</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.stats.combat.meleeAttacks.sneakAttacks.overall.toLocaleString()}}</span>
+										<canvas id="sneakAttacksSparkChart" v-if="analysis"></canvas>
+									</div>
+								</div>
+							</div>									
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Melee Follow-Ups</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{ scoresheet.stats.combat.meleeFollowupPercent.toFixed(1) }}%</span>
+										<canvas id="meleeFollowupSparkChart"></canvas>	
+									</div>
+								</div>
+							</div>		
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Core Hits</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{ scoresheet.stats.combat.shotsHitRobots.coreHits.toLocaleString() }}</span>
+										<canvas id="coreHitsSparkChart" v-if="analysis"></canvas>
+									</div>
+								</div>
+							</div>																										
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Overflow Damage</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{ scoresheet.stats.combat.overflowDamagePercent.toFixed(1) }}%</span>
+										<canvas id="overflowDamageSparkChart" v-if="analysis"></canvas>	
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Accuracy</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{ scoresheet.stats.combat.accuracy.toFixed(1) }}%</span>
+										<canvas id="accuracySparkChart"></canvas>
+									</div>
+								</div>
+							</div>
 						</div>
 					</div>
 											
@@ -1049,6 +1066,47 @@
 						<canvas id="damageReceivedChart"></canvas>
 					</div>
 					
+					<!-- this info not available in pre-release Beta 11 versions because scoresheet format not updated -->
+					<template v-if="scoresheet.stats.combat.shotsHitRobots.criticalStrikes">
+						<h2>Critical Hits</h2>
+						<div class="container-fluid mt-5 mb-5 g-0">
+							<div class="row row-cols-1 row-cols-md-3 g-4">
+								<div class="col">
+									<div class="card statbox h-100">
+										<div class="card-header">Critical Hits</div>
+										<div class="card-body text-success numeric">
+											<span class="card-text">{{ scoresheet.stats.combat.shotsHitRobots.criticalStrikes?.overall || scoresheet.stats.combat.shotsHitRobots?.criticalHits || 0 }}</span>
+											<canvas id="criticalHitsSparkChart" v-if="analysis"></canvas>
+										</div>
+									</div>
+								</div>
+								<div class="col">
+									<div class="card statbox h-100">
+										<div class="card-header">Critical Kills</div>
+										<div class="card-body text-success numeric">
+											<span class="card-text">{{ scoresheet.stats.combat.shotsHitRobots.criticalKills }}</span>
+											<canvas id="criticalKillsSparkChart" v-if="analysis"></canvas>
+										</div>
+									</div>
+								</div>
+								<div class="col">
+									<div class="card statbox h-100">
+										<div class="card-header">Critical Hit Ratio</div>
+										<div class="card-body text-success numeric">
+											<span class="card-text" v-if="scoresheet.stats.combat.criticalHitPercent">{{ scoresheet.stats.combat.criticalHitPercent.toFixed(1) }}%</span>
+											<span v-else>N/A</span>
+											<canvas id="criticalHitPctSparkChart" v-if="analysis"></canvas>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+							<p class="text-sm text-center text-muted">(click a label to show/hide category)</p>
+							<canvas id="criticalHitsPieChart"></canvas>
+						</div>
+					</template>
+									
 					<h2 class="">Bots Destroyed</h2>
 					<div class="container-fluid mt-5 mb-5 g-0">
 						<div class="row row-cols-1 row-cols-md-3 g-4">
@@ -1220,15 +1278,6 @@
 							</div>
 							<div class="col">
 								<div class="card statbox h-100">
-									<div class="card-header">Melee Sneak Attacks</div>
-									<div class="card-body text-success numeric">
-										<span class="card-text">{{scoresheet.stats.combat.meleeAttacks.sneakAttacks.overall.toLocaleString()}}</span>
-										<canvas id="sneakAttacksSparkChart" v-if="analysis"></canvas>
-									</div>
-								</div>
-							</div>
-							<div class="col">
-								<div class="card statbox h-100">
 									<div class="card-header">Power Chain Reactions</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.combat.powerChainReactions.toLocaleString()}}</span>
@@ -1260,15 +1309,6 @@
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{ scoresheet.stats.combat.highestTemperature.effects.overall || 0 }}</span>
 										<canvas id="overheatingIssuesSparkChart" v-if="analysis"></canvas>
-									</div>
-								</div>
-							</div>			
-							<div class="col">
-								<div class="card statbox h-100">
-									<div class="card-header">Melee Follow-Up</div>
-									<div class="card-body text-success numeric">
-										<span class="card-text">{{ scoresheet.stats.combat.meleeFollowupPercent.toFixed(1) }}%</span>
-										<canvas id="meleeFollowupSparkChart"></canvas>	
 									</div>
 								</div>
 							</div>							

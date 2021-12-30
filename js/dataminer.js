@@ -716,6 +716,16 @@ function AnalyzeScoresheet( data ) {
 		}
 	}
 	
+	// critical hits
+	data.charts.criticals_pie_chart_labels = [];
+	data.charts.criticals_pie_chart_data = [];
+	for ( let k in data.stats.combat.shotsHitRobots.criticalStrikes ) {
+		if ( k != 'overall' ) { 
+			data.charts.criticals_pie_chart_labels.push(k.Undatafy());
+			data.charts.criticals_pie_chart_data.push( data.stats.combat.shotsHitRobots.criticalStrikes[k] );
+		}
+	}
+	
 	// bothacks
 	data.charts.bothacks_chart_labels = [];
 	data.charts.bothacks_chart_data = [];
@@ -1188,21 +1198,6 @@ function ChangePane(pane) {
 					app.analysis['stats.combat.shotsPerVolley']?.chartdata,
 					app.scoresheet.stats.combat.shotsPerVolley
 					) );
-				// NOTE: scoresheet format change in Beta11 makes this data unavailable. Provide interesting substitute.
-				if ( app.scoresheet.stats.combat.criticalHitPercent ) {
-					app.charts.push( DrawSparkChart(
-						'criticalHitPctSparkChart',
-						app.analysis['stats.combat.criticalHitPercent']?.chartdata,
-						app.scoresheet.stats.combat.criticalHitPercent
-						) );
-				}
-				else {
-					app.charts.push( DrawSparkChart(
-						'criticalHitPctSparkChart',
-						app.analysis['stats.combat.shotsHitRobots.criticalKills']?.chartdata,
-						app.scoresheet.stats.combat.shotsHitRobots.criticalKills
-						) );
-				}
 				app.charts.push( DrawSparkChart(
 					'overflowDamageSparkChart',
 					app.analysis['stats.combat.overflowDamagePercent']?.chartdata,
@@ -1223,6 +1218,26 @@ function ChangePane(pane) {
 					app.analysis['stats.combat.dishoutRatio']?.chartdata,
 					app.scoresheet.stats.combat.dishoutRatio
 					) );
+				app.charts.push( DrawSparkChart(
+					'coreHitsSparkChart',
+					app.analysis['stats.combat.shotsHitRobots.coreHits']?.chartdata,
+					app.scoresheet.stats.combat.shotsHitRobots.coreHits
+					) );
+				app.charts.push( DrawSparkChart(
+					'meleeFollowupSparkChart',
+					app.analysis['stats.combat.meleeFollowupPercent']?.chartdata,
+					app.scoresheet.stats.combat.meleeFollowupPercent
+					) );
+				app.charts.push( DrawSparkChart(
+					'sneakAttacksSparkChart',
+					app.analysis['stats.combat.meleeAttacks.sneakAttacks.overall']?.chartdata,
+					app.scoresheet.stats.combat.meleeAttacks.sneakAttacks.overall
+					) );					
+				app.charts.push( DrawSparkChart(
+					'meleeAttacksSparkChart',
+					app.analysis['stats.combat.meleeAttacks.overall']?.chartdata,
+					app.scoresheet.stats.combat.meleeAttacks.overall
+					) );					
 					
 				// below the fold optimization
 				setTimeout( _ => {
@@ -1258,19 +1273,9 @@ function ChangePane(pane) {
 						) );
 						
 					app.charts.push( DrawSparkChart(
-						'meleeFollowupSparkChart',
-						app.analysis['stats.combat.meleeFollowupPercent']?.chartdata,
-						app.scoresheet.stats.combat.meleeFollowupPercent
-						) );
-					app.charts.push( DrawSparkChart(
 						'botsRammedSparkChart',
 						app.analysis['stats.combat.targetsRammed.overall']?.chartdata,
 						app.scoresheet.stats.combat.targetsRammed.overall
-						) );
-					app.charts.push( DrawSparkChart(
-						'sneakAttacksSparkChart',
-						app.analysis['stats.combat.meleeAttacks.sneakAttacks.overall']?.chartdata,
-						app.scoresheet.stats.combat.meleeAttacks.sneakAttacks.overall
 						) );
 					app.charts.push( DrawSparkChart(
 						'powerChainReactionsSparkChart',
@@ -1358,6 +1363,37 @@ function ChangePane(pane) {
 						app.analysis['stats.allies.allyAttacks.kills']?.chartdata,
 						app.scoresheet.stats.allies.allyAttacks.kills
 						) );	
+						
+					// NOTE: scoresheet format change in Beta11 makes this data unavailable.
+					if ( app.scoresheet.stats.combat.shotsHitRobots.criticalStrikes ) {
+						if ( app.scoresheet.stats.combat.criticalHitPercent ) {
+							app.charts.push( DrawSparkChart(
+								'criticalHitPctSparkChart',
+								app.analysis['stats.combat.criticalHitPercent']?.chartdata,
+								app.scoresheet.stats.combat.criticalHitPercent
+								) );
+						}
+						if ( app.scoresheet.stats.combat.shotsHitRobots.criticalStrikes ) {
+							app.charts.push( DrawSparkChart(
+								'criticalHitsSparkChart',
+								app.analysis['stats.combat.shotsHitRobots.criticalStrikes.overall']?.chartdata,
+								app.scoresheet.stats.combat.shotsHitRobots.criticalStrikes.overall
+								) );
+						}					
+						else {
+							app.charts.push( DrawSparkChart(
+								'criticalHitsSparkChart',
+								app.analysis['stats.combat.shotsHitRobots.criticalHits']?.chartdata,
+								app.scoresheet.stats.combat.shotsHitRobots.criticalHits
+								) );
+						}					
+						app.charts.push( DrawSparkChart(
+							'criticalKillsSparkChart',
+							app.analysis['stats.combat.shotsHitRobots.criticalKills']?.chartdata,
+							app.scoresheet.stats.combat.shotsHitRobots.criticalKills
+							) );
+					}
+						
 				}, 2000);				
 			}
 		
@@ -1365,6 +1401,9 @@ function ChangePane(pane) {
 			setTimeout( _ => {
 				app.charts.push( DrawKillTypesChart(app.scoresheet.charts.kill_types_chart_data, app.scoresheet.charts.kill_types_chart_labels) );
 				app.charts.push( DrawDamageInflictedChart(app.scoresheet.charts.damage_chart_data, app.scoresheet.charts.chart_map_labels) );
+				if ( app.scoresheet.stats.combat.shotsHitRobots.criticalStrikes ) {
+					app.charts.push( DrawCriticalHitsPieChart(app.scoresheet.charts.criticals_pie_chart_data, app.scoresheet.charts.criticals_pie_chart_labels) );
+				}
 				app.charts.push( DrawDamageReceivedChart(app.scoresheet.charts.damage_received_chart_data, app.scoresheet.charts.chart_map_labels) );
 				app.charts.push( DrawKillsChart( {
 					combatbots: app.scoresheet.charts.kills_chart_data,
@@ -2433,6 +2472,38 @@ function DrawBothackingChart( data, labels ) {
 		},
 	};
 	return new Chart( document.getElementById('botHacksChart'), config );
+}
+			
+function DrawCriticalHitsPieChart( data, labels ) {
+	Chart.SortPieData(data,labels);
+	datasets = [ { 
+		label: 'Critical Hit Types', 
+		data, 
+		backgroundColor: Chart.pie_colors,
+		borderWidth: 0,
+		fill: true,
+	}];
+	const config = {
+		type: 'pie',
+		data: { labels, datasets },
+		options: {
+			responsive: true,	
+			aspectRatio: 1.75,		
+			interaction: {
+				intersect: false,
+			},					
+			plugins: {
+				legend: {
+					position: 'left',
+					display: true,
+				},
+				title: {
+					display: false,
+				}
+			}
+		},
+	};
+	return new Chart( document.getElementById('criticalHitsPieChart'), config );
 }
 			
 function DrawActionsChart( data, labels ) {
