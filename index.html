@@ -73,6 +73,44 @@
 			.badges .badge[class*='W8'],
 			.badges .badge[class*='W9'] { background-color: #169205; }
 	
+					
+			TABLE.heatmap.tiny TD { 
+				padding: .15rem .15rem;
+			}
+			
+			TABLE.heatmap.tiny {
+				font-size: 8pt;
+			}
+				
+			th.rotate {
+				height: 100px;
+				white-space: nowrap;
+			}
+
+			th.rotate > div {
+				transform: translate(-50%, 80px) rotate(290deg);
+				width: 1em;
+			}
+			
+			TABLE.heatmap TD { color: #FFF !important; text-align:center; }
+			TABLE.heatmap TD.n { color: #666 !important; }
+			TABLE.heatmap TD.c0 { background-color: #333; color: #BBB !important; }
+			TABLE.heatmap TD.c1 { background-color: #444; color: #FFF !important; }
+			TABLE.heatmap TD.c2 { background-color: #555; color: #FFF !important; }
+			TABLE.heatmap TD.c3 { background-color: #666; color: #FFF !important; }
+			TABLE.heatmap TD.c4 { background-color: #777; color: #FFF !important; }
+			TABLE.heatmap TD.c5 { background-color: #888; color: #FFF !important; }
+			TABLE.heatmap TD:last-child  { width:inherit; }
+			
+			/* TABLE.heatmap TD { color: #FFF !important; text-align:center; }
+			TABLE.heatmap TD.n { color: #666 !important; }
+			TABLE.heatmap TD.c0 { background-color: #26324B; color: #EEE !important; }
+			TABLE.heatmap TD.c1 { background-color: #2C473F; color: #EEE !important; }
+			TABLE.heatmap TD.c2 { background-color: #2C5E38; color: #EEE !important; }
+			TABLE.heatmap TD.c3 { background-color: #55662B; color: #EEE !important; }
+			TABLE.heatmap TD.c4 { background-color: #665A2B; color: #EEE !important; }
+			TABLE.heatmap TD.c5 { background-color: #662F2B; color: #EEE !important; } */
+				
 			TR.indent-1 TH { padding-left: 2em; color: rgb(140, 185, 199); }
 			TR.indent-1 TD { color: rgb(140, 185, 199); }
 			TR.indent-2 TH { padding-left: 4em; color: rgb(136, 202, 150); }
@@ -130,7 +168,7 @@
 			TD.minus75 { color: #ca0b2e !important; }
 			TD.minus50 { color: #d4a300 !important; }
 			TD.minus25 { color: #e0cc32 !important; }
-										
+								
 		</style>
 	</head>
 	
@@ -230,6 +268,7 @@
 					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='hacking' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('hacking')">Hacking</button>
 					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='stealth' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('stealth')">Stealth</button>
 					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='tables' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('tables')">Analysis</button>
+					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='heatmap' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('heatmap')">Heat Map</button>
 				</nav>
 				
 				<!-- overview pane -->			
@@ -1572,7 +1611,29 @@
 						</tr>
 					</table>			
 				</template>					
-		
+
+				
+				<!-- HEAT MAP TABLE -->
+				<template v-if="pane=='heatmap'">
+									
+					
+					<div class="table-responsive" v-for="heatmap of scoresheet.heatmap">
+						<h2>{{heatmap[0].name.Undatafy()}}</h2>
+						<table class="table table-sm heatmap table-borderless" :class="{tiny: (scoresheet.charts.chart_map_labels.length > 22)}"><!-- table-borderless -->
+							<th></th>
+							<th class="rotate"><div><span>Total</span></div></th>
+							<th class="rotate" v-for="m of scoresheet.charts.chart_map_labels"><div><span>{{m}}</span></div></th>
+							<tr v-for="i of heatmap" :class.once="[`indent-${i.depth}`]">
+								<th>{{i.name.Undatafy()}}</th>
+								<td>{{i.total ? i.total.toLocaleString() : null}}</td>
+								<td v-for="(m,index) of i.run" :class="i.colors[index]">{{m || '.'}}</td>
+							</tr>
+						</table>
+					</div>
+					
+				</template>					
+
+
 				<!-- pane nav bar -->
 				<nav class="nav nav-pills nav-justified my-5" v-if="scoresheet && pane!='input' && pane!='loading' ">
 					<button type="button" class="btn nav-item mx-1 text-nowrap btn-primary" v-on:click="ChangePane('input')">◄</button>
@@ -1583,6 +1644,7 @@
 					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='hacking' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('hacking')">Hacking</button>
 					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='stealth' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('stealth')">Stealth</button>
 					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='tables' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('tables')">Analysis</button>
+					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='heatmap' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('heatmap')">Heat Map</button>
 				</nav>
 					
 			</div><!-- end "app" div -->

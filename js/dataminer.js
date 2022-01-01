@@ -545,17 +545,32 @@ function AnalyzeScoresheet( data ) {
 		schematics: [], // [{ map, name }]
 		route_data: [], // { depth: int, maps: [strings] }
 		}
+		
+		
+	// create run heat map  [ truncated_key, value, depth, full_key ]
+	// populates with per-map data in the next block...
+	data.heatmap = TabularizeData(data.stats, 'stats').map( x => ({
+		name: x[0],
+		depth: x[2],
+		total: x[1],
+		k: x[3],
+		run: []
+	}));
+	
 	for ( map of data.route.entries ) {
 		// map labels
 		map.location.mapname = typeof(map.location.map)=='string' ? map.location.map.replace('MAP_','') : (map.location.map==35 ? 'DSF' : 'Unknown Map');
 		map.location.mapname = (map_names[map.location.mapname] || map.location.mapname);
-		data.charts.chart_map_labels.push( map.location.depth + '/' + map.location.mapname );
-		
-		// critical hits changed in Beta 11 and don't use the old stat.
-		data.stats.combat.criticalHitPercent = 100*(
-			( data.stats.combat.shotsHitRobots?.criticalHits || data.stats.combat.shotsHitRobots?.criticalStrikes?.overall || 0 )
-			/ ( (data.stats.combat.meleeAttacks.overall + data.stats.combat.shotsFired.overall) || 1 ) );						
-														
+		data.charts.chart_map_labels.push( map.location.depth + '/' + map.location.mapname );					
+				
+		// heatmap data
+		let heatdata = TabularizeData(map.stats, 'stats');
+		// create a temporary dictionary
+		let heatdict = {};
+		for ( let x of heatdata ) { heatdict[x[3]] = x[1]; }
+		// load into heatmap
+		for ( let x of data.heatmap ) { x.run.push( heatdict[x.k] || null ); }
+												
 		// influence
 		data.charts.alert_chart_data.push(map.stats.alert.peakInfluence.overall);
 		
@@ -673,6 +688,38 @@ function AnalyzeScoresheet( data ) {
 		last_route.maps.push( map.location.mapname );
 									
 	}
+	
+	// normalize and colorize heatmap data
+	for ( let x of data.heatmap ) {
+		x.colors = [];
+		let max = 0;
+		let min = 100000000;
+		for ( let r of x.run ) {
+			// r = parseInt(r||0);
+			if ( r > max ) { max = r; } 
+			if ( r < min && r !== null ) { min = r; } 
+		}
+		let range = max - min;
+		let steps = Math.min( range + 1, 6 );
+		let stepsize = (range / steps) || 1;
+		for ( let r of x.run ) {
+			r = parseInt(r||0);
+			let step = null;
+			if ( r ) {
+				step = Math.trunc( (r - min) / stepsize ); // css classname c1 .. c5
+				step = 'c' + Math.min(step,r,5);
+			}
+			else { step = 'n'; } // "null"
+			x.colors.push(step); 
+		}
+	}
+	// break heatmap up into sections
+	let heatmapSections = [];
+	for ( x of data.heatmap ) {
+		if ( x.depth==0 ) { heatmapSections.push([]); }
+		heatmapSections[  heatmapSections.length-1 ].push( x );
+	}
+	data.heatmap = heatmapSections;
 	
 	// reverse the routes for familiarity
 	// data.charts.route_data.reverse();
