@@ -1686,13 +1686,46 @@ function CalculateBadges(data) {
 			data.badges.push([ nicename, 'Made it to ' + nicename]);
 		}
 	}
-	
+
 	// history logs snooping
-	for ( row of map.historyEvents ) { 
-		if ( row.event.match(/(Garrison activated)/i) ) { data.badges.push['Hornet Nest','Activated a garrison']; }
-		else if ( row.event.match(/(convoy interrupted)/i) ) { data.badges.push['Yauler Party','Interrupted a cargo convoy']; }
+	for ( let map of data.route.entries ) {
+		for ( row of map.historyEvents ) { 
+			if ( row.event.match(/convoy interrupted/i) ) { data.badges.push(['Yauled','Interrupted a cargo convoy']); }
+			else if ( row.event.match(/stolen by Master Thief/i) ) { data.badges.push(['Robbed','Got robbed by a master thief']); }
+			else if ( row.event.match(/Stole (three|two) prototypes/i) ) { data.badges.push(['Thief','Stole from Exiles']); }
+			else if ( row.event.match(/Assembled infested the area/i) ) { data.badges.push(['Infestation','Encountered assembled infestation in the mines']); }
+			else if ( row.event.match(/Assembled emerged from beneath/i) ) { data.badges.push(['Ping','The Assembled came to the rescue']); }
+			else if ( row.event.match(/Revealed the true nature of CR-A16/i) ) { data.badges.push(['Stick++','Transformed CR-A16\'s pointy stick']); }
+			else if ( row.event.match(/^Warped through subspace/i) ) { data.badges.push(['Teleport','Found a way to teleport through subspace']); }
+			else if ( row.event.match(/Opened Warlord's prototype stash/i) ) { data.badges.push(['Stash','Opened Warlord\s stash']); }
+			else if ( row.event.match(/Fired Supercharged Sigix Terminator/i) ) { data.badges.push(['SST','Nuked the entire screen']); }
+			else if ( row.event.match(/Rescued A7/i) ) { data.badges.push(['A7','Rescued A7']); }
+			else if ( row.event.match(/Attacked by the Exiles/i) ) { data.badges.push(['Jerk','Attacked the Exiles']); }
+			else if ( row.event.match(/Destroyed Zhirov/i) ) { data.badges.push(['-Zh','Destroyed Zhirov']); }
+			else if ( row.event.match(/Destroyed Fortress/i) ) { data.badges.push(['-FFF','Destroyed Fortress']); }
+			else if ( row.event.match(/Destroyed YI-UF0/i) ) { data.badges.push(['-YI-UF0','Destroyed YI-UF0']); }
+			else if ( row.event.match(/Destroyed 8R-AWN/i) ) { data.badges.push(['-8R-AWN','Destroyed 8R-AWN']); }
+			else if ( row.event.match(/Destroyed Data Miner/i) ) { data.badges.push(['-DM','Destroyed Data Miner']); }
+			else if ( row.event.match(/Destroyed Fake God Mode/i) ) { data.badges.push(['-FGM','Destroyed Fake God Mode']); }
+			else if ( row.event.match(/Destroyed God Mode/i) ) { data.badges.push(['-GM','Destroyed God Mode']); }
+			else if ( row.event.match(/Destroyed Warlord/i) ) { data.badges.push(['-W','Destroyed Warlord']); }
+			else if ( row.event.match(/Destroyed EX-DEC/i) ) { data.badges.push(['-DEC','Destroyed EX-DEC']); }
+			else if ( row.event.match(/Destroyed EX-BIN/i) ) { data.badges.push(['-BIN','Destroyed EX-BIN']); }
+			else if ( row.event.match(/Destroyed EX-HEX/i) ) { data.badges.push(['-HEX','Destroyed EX-HEX']); }
+			else if ( row.event.match(/Identified Megatreads/i) ) { data.badges.push(['Megatreads','Wore Megatreads']); }
+			else if ( row.event.match(/Sterilization system engaged/i) && map.location.map !== 'MAP_DSF' && map.location.map != 35 ) { // DSF doesnt count!
+				data.badges.push(['Sterilized','Activated floor sterilization system']); 
+			}
+			else if ( row.event.match(/Zion hero teleported in \((.+)\)/i) ) {
+				let matches = [ ...row.event.matchAll(/Zion hero teleported in \((.+)\)/gi) ];
+				let hero = matches[1] || 'Z-Hero';
+				data.badges.push([hero,'Hero of Zion came to the rescue']);
+				// worth storing for later
+				data.stats.allies.zHero = hero;
+			}
+		}	
 	}
-		
+	
 	// remove duplicates
 	let seen = {};
 	for ( let i = data.badges.length-1; i >= 0; i-- ) {
@@ -1736,20 +1769,25 @@ function CalculateBadges(data) {
 	if ( data.bonus.usedDataConduit ) { data.badges.push(['DC','Plugged into the Data Conduit']); }
 	if ( data.bonus.exposedGolemChamber ) { data.badges.push(['GOLEM','Exposed the GOLEM chamber']); }
 	if ( data.bonus.a7ReachedMainframe ) { data.badges.push(['A7Mainframe','Led A7 to the Cetus Mainframe alive']); }
-	if ( data.bonus.metR17AtCetus ) { data.badges.push(['R17Cetus','Met Revision17 at Cetus']); }
+	if ( data.bonus.metR17AtCetus ) { data.badges.push(['R17','Met Revision17 at Cetus']); }
 	if ( data.bonus.readDecryptedArchives ) { data.badges.push(['Decrypto','Decrypted the Archives']); }
 	if ( data.bonus.decryptedA0Command ) { data.badges.push(['DecryptoA0','Decrypted the A0 command']); }
-	if ( data.bonus.metR17AtResearch ) { data.badges.push(['R17Research','Had a party in Research with Revision17']); }
-	if ( data.bonus.metWarlordAtResearch ) { data.badges.push(['WarlordResearch','Met Warlord in Research']); }
-	if ( data.bonus.hackedGodMode ) { data.badges.push(['GodMode','Hacked God Mode']); }
+	if ( data.bonus.metR17AtResearch ) { data.badges.push(['R17 Incursion','Had a party in Research with Revision17']); }
+	if ( data.bonus.metWarlordAtResearch ) { data.badges.push(['Warlord Raid','Met Warlord in Research']); }
+	if ( data.bonus.hackedGodMode ) { data.badges.push(['God Mode','Hacked God Mode']); }
 	if ( data.bonus.activateExoskeleton ) { data.badges.push(['Exoskeleton','Activated the Exoskeleton']); }
 	if ( data.bonus.deliveredSgemp ) { data.badges.push(['SGEMP','Delivered the SGEMP to Zhirov']); }
 	if ( data.bonus.escapedWithSigix ) { data.badges.push(['SpaceBuddy','Escaped with the live Sigix']); }
 	if ( data.bonus.escapedWithExosigix ) { data.badges.push(['SpaceBuddy+','Escaped with the upgraded live Sigix']); }
-	if ( data.bonus.hackedMainc ) { data.badges.push(['MCH4XX0RED','Hacked Main.C']); }
-	if ( data.bonus.zhirovDestroyedMainc ) { data.badges.push(['ZhirovsRevenge','Zhirov destroyed Main.C']); }
-	if ( data.bonus.used0b10Conduit ) { data.badges.push(['ConduitH4XX0RED','Hacked the 0b10 Conduit']); }
+	if ( data.bonus.hackedMainc ) { data.badges.push(['McHacked','Hacked Main.C']); }
+	if ( data.bonus.zhirovDestroyedMainc ) { data.badges.push(['Zhirov\'s Revenge','Zhirov destroyed Main.C']); }
+	if ( data.bonus.used0b10Conduit ) { data.badges.push(['Conduit','Hacked the 0b10 Conduit']); }
 			
+	// behemoth killer
+	if ( data.stats.kills?.classesDestroyed?.behemoth > 5 ) {
+		data.badges.push(['Moth Master','Destroyed 5+ behemoths'])
+	}	
+				
 	// botnets good or bad?
 	let botnets = data.stats.hacking.unauthorizedHacks?.terminals?.botnet || 0;
 	let unauthed_hacks = data.stats.hacking.unauthorizedHacks?.overall || 0;
@@ -1819,8 +1857,8 @@ function CalculateBadges(data) {
 	if ( data.stats.exploration.diggingLuck >= 100 && data.stats.exploration.spacesDug >= 100 ) {
 		data.badges.push(['LU-1G1\'s Blessing','No cave-ins after digging 100+ spaces']);
 	}
-	else if ( data.stats.exploration.diggingLuck < 98 ) {
-		data.badges.push(['Unlucky Mole','Less than 98% digging luck']);
+	else if ( data.stats.exploration.diggingLuck < 96 ) {
+		data.badges.push(['Unlucky Mole','Less than 96% digging luck']);
 	}
 	
 }
