@@ -1671,6 +1671,11 @@ function CalculateBadges(data) {
 		}
 	}
 	
+	// millionaire
+	if ( data.performance.totalScore > 1000000 ) {
+		data.badges.push(['Millionaire','Scored over 1,000,000 points']);
+	}
+	
 	// places of interest
 	let regular_places = ['MAT','FAC','RES','ACC','COM'].map( m => map_names[m] || m );
 	for ( let x of data.route.entries ) {
@@ -3040,9 +3045,14 @@ function SaveScoresheetToList( hash, json ) {
 	if ( list.length > 10 ) { 
 		localStorage.removeItem( list.pop().hash );
 	}
-	localStorage.setItem("scoresheet_list",JSON.stringify(list));
-	// save file itself
-	localStorage.setItem(hash,JSON.stringify(json));
+	try {
+		localStorage.setItem("scoresheet_list",JSON.stringify(list));
+		// save file itself
+		localStorage.setItem(hash,JSON.stringify(json));
+		}
+	catch {
+		ClearScoresheetList();
+	}
 }
 
 function ClearScoresheetList() {
