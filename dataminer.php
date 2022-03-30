@@ -1,5 +1,7 @@
 <?php
 
+set_time_limit(600);
+
 if ( file_exists(__DIR__ . '/.dataminer.env.php') ) { include_once(__DIR__ . '/.dataminer.env.php'); }
 
 if ( !defined('SCORESHEET_DOWNLOAD_DIR') ) { define('SCORESHEET_DOWNLOAD_DIR', __DIR__ . '/scoresheets/tmp'); }
@@ -12,15 +14,17 @@ if ( !defined('DATAMINER_DB_SERVER') ) { define('DATAMINER_DB_SERVER', "127.0.0.
 if ( !defined('DATAMINER_DB_USERNAME') ) { define('DATAMINER_DB_USERNAME', "root"); }
 if ( !defined('DATAMINER_DB_PASSWORD') ) { define('DATAMINER_DB_PASSWORD', "docker"); }
 if ( !defined('DATAMINER_DB_DATABASE') ) { define('DATAMINER_DB_DATABASE', "dataminer"); }
+if ( !defined('DATAMINER_IP_WHITELIST') ) { define('DATAMINER_IP_WHITELIST', []); }
 	
-$params = getopt( 'spac', [ 'scrape', 'process', 'analyze', 'chart' ] );
+$force_webmode = isset($_REQUEST['force']) && DATAMINER_IP_WHITELIST && in_array($_SERVER['REMOTE_ADDR'],DATAMINER_IP_WHITELIST);
 
 // CLI mode
-if ( php_sapi_name() == "cli" ) {
-	if ( isset($params['s']) || isset($params['scrape']) ) { ScrapeScoresheets(); }
-	if ( isset($params['p']) || isset($params['process']) ) { ProcessScoresheets(); }
-	if ( isset($params['a']) || isset($params['analyze']) ) { AnalyzeDB(); }
-	if ( isset($params['c']) || isset($params['chart']) ) { CreateChartData(); }
+if ( php_sapi_name() == "cli" || $force_webmode ) {
+	$params = getopt( 'spac', [ 'scrape', 'process', 'analyze', 'chart' ] );
+	if ( isset($params['s']) || isset($params['scrape']) || isset($_REQUEST['scrape']) ) { ScrapeScoresheets(); }
+	if ( isset($params['p']) || isset($params['process']) || isset($_REQUEST['process']) ) { ProcessScoresheets(); }
+	if ( isset($params['a']) || isset($params['analyze']) || isset($_REQUEST['analyze']) ) { AnalyzeDB(); }
+	if ( isset($params['c']) || isset($params['chart']) || isset($_REQUEST['chart']) ) { CreateChartData(); }
 }
 
 // web mode
