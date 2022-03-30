@@ -668,8 +668,8 @@ function AnalyzeScoresheet( data ) {
 
 		// history decoration - color coded messages
 		for ( row of map.historyEvents ) { 
-			if ( row.event.match(/(lost|released all parts|locked|lockdown|assault|sterilization system|crushed|destroyed by|self destr|core integrity fell|corruption reached|assimilated all|stolen by|self-destructed|Destroyed self|Terminal network hard line cut|core destroyed|activated Command garrisons)/i) ) { row.class = 'bad'; }
-			else if ( row.event.match(/(learned|destroyed|killed|installed|found|Aligned with FarCom|given|expanded rif|repaired|fabricated|Loaded intel|hub disabled|redirected|Retrieved Zion|Zion.+teleported in|answering call for help|Disengaged cave|squad redirected)/i) ) { row.class = 'good'; }
+			if ( row.event.match(/(lost|released all parts|locked|lockdown|assault|sterilization system|crushed|destroyed by|self destr|core integrity fell|corruption reached|assimilated all|stolen by|self-destructed|Destroyed self|Terminal network hard line cut|core destroyed|activated Command garrisons|Derelicts to an unsafe place|Attacked by the|came to Exiles' defense)/i) ) { row.class = 'bad'; }
+			else if ( row.event.match(/(learned|destroyed|killed|installed|found|Aligned with FarCom|given|expanded rif|repaired|fabricated|Loaded intel|hub disabled|Gained derelict followers|Revealed the true nature|received the|redirected|Retrieved Zion|Zion.+teleported in|answering call for help|Disengaged cave|squad redirected|Derelicts to a safe place)/i) ) { row.class = 'good'; }
 			else if ( row.event.match(/(discovered|identified|build established|Accompanied by)/i) ) { row.class = 'info'; }
 			else if ( row.event.match(/(entered|evolved)/i) ) { row.class = 'notice'; }
 			else if ( row.event.match(/(triggered|spotted|evacuate|Garrison activated|warn|convoy interrupted|squad dispatched|Detected by scanners|Attracted the attention|Encountered a Master Thief|Additional patrols routed)/i) ) { row.class = 'warning'; }
@@ -1701,11 +1701,20 @@ function CalculateBadges(data) {
 			else if ( row.event.match(/Assembled infested the area/i) ) { data.badges.push(['Infestation','Encountered assembled infestation in the mines']); }
 			else if ( row.event.match(/Assembled emerged from beneath/i) ) { data.badges.push(['Ping','The Assembled came to the rescue']); }
 			else if ( row.event.match(/Revealed the true nature of CR-A16/i) ) { data.badges.push(['Stick++','Transformed CR-A16\'s pointy stick']); }
-			else if ( row.event.match(/^Warped through subspace/i) ) { data.badges.push(['Teleport','Found a way to teleport through subspace']); }
+			else if ( row.event.match(/^Warped through subspace/i) ) { 
+				if ( row.event.match(/to slip node/i) && map.location.map === 'MAP_ARM' ) {
+					data.badges.push(['TeleSkip','Took the Armory magic carpet shortcut']);
+				}
+				else {		
+					data.badges.push(['Teleport','Found a way to teleport through subspace']); 
+				}
+			}
 			else if ( row.event.match(/Opened Warlord's prototype stash/i) ) { data.badges.push(['Stash','Opened Warlord\s stash']); }
 			else if ( row.event.match(/Fired Supercharged Sigix Terminator/i) ) { data.badges.push(['SST','Nuked the entire screen']); }
 			else if ( row.event.match(/Rescued A7/i) ) { data.badges.push(['A7','Rescued A7']); }
 			else if ( row.event.match(/Attacked by the Exiles/i) ) { data.badges.push(['Jerk','Attacked the Exiles']); }
+			else if ( row.event.match(/Attacked by Warlord forces/i) ) { data.badges.push(['Traitor','Attacked Warlord']); }
+			else if ( row.event.match(/Attacked by Zionites/i) ) { data.badges.push(['Monster','Attacked Zion']); }
 			else if ( row.event.match(/Destroyed Zhirov/i) ) { data.badges.push(['-Zh','Destroyed Zhirov']); }
 			else if ( row.event.match(/Destroyed Fortress/i) ) { data.badges.push(['-FFF','Destroyed Fortress']); }
 			else if ( row.event.match(/Destroyed YI-UF0/i) ) { data.badges.push(['-YI-UF0','Destroyed YI-UF0']); }
@@ -1717,16 +1726,23 @@ function CalculateBadges(data) {
 			else if ( row.event.match(/Destroyed EX-DEC/i) ) { data.badges.push(['-DEC','Destroyed EX-DEC']); }
 			else if ( row.event.match(/Destroyed EX-BIN/i) ) { data.badges.push(['-BIN','Destroyed EX-BIN']); }
 			else if ( row.event.match(/Destroyed EX-HEX/i) ) { data.badges.push(['-HEX','Destroyed EX-HEX']); }
-			else if ( row.event.match(/Identified Megatreads/i) ) { data.badges.push(['Megatreads','Wore Megatreads']); }
+			else if ( row.event.match(/(Found|Identified) Megatreads/i) ) { data.badges.push(['Megatreads','Wore Megatreads']); }
 			else if ( row.event.match(/Sterilization system engaged/i) && map.location.map !== 'MAP_DSF' && map.location.map != 35 ) { // DSF doesnt count!
 				data.badges.push(['Sterilized','Activated floor sterilization system']); 
 			}
 			else if ( row.event.match(/Zion hero teleported in \((.+)\)/i) ) {
 				let matches = [ ...row.event.matchAll(/Zion hero teleported in \((.+)\)/gi) ];
-				let hero = matches[1] || 'Z-Hero';
+				let hero = matches[0][1] || 'Z-Hero';
 				data.badges.push([hero,'Hero of Zion came to the rescue']);
 				// worth storing for later
 				data.stats.allies.zHero = hero;
+			}
+			else if ( row.event.match(/^(.+) came to Exiles' defense/i) ) {
+				let matches = [ ...row.event.matchAll(/^(.+) came to Exiles' defense/gi) ];
+				let hero = matches[0][1] || 'Z-Hero';
+				data.badges.push([hero,'Hero of Zion came to the to Exiles defense']);
+				// not technically an ally, but whatever
+				data.stats.allies.zHero = hero; 
 			}
 		}	
 	}
@@ -1775,12 +1791,12 @@ function CalculateBadges(data) {
 	if ( data.bonus.exposedGolemChamber ) { data.badges.push(['GOLEM','Exposed the GOLEM chamber']); }
 	if ( data.bonus.a7ReachedMainframe ) { data.badges.push(['A7Mainframe','Led A7 to the Cetus Mainframe alive']); }
 	if ( data.bonus.metR17AtCetus ) { data.badges.push(['R17','Met Revision17 at Cetus']); }
-	if ( data.bonus.readDecryptedArchives ) { data.badges.push(['Decrypto','Decrypted the Archives']); }
-	if ( data.bonus.decryptedA0Command ) { data.badges.push(['DecryptoA0','Decrypted the A0 command']); }
+	if ( data.bonus.readDecryptedArchives ) { data.badges.push(['Decrypted','Decrypted the Archives']); }
+	if ( data.bonus.decryptedA0Command ) { data.badges.push(['Decrypted Lab','Decrypted the A0 command']); }
 	if ( data.bonus.metR17AtResearch ) { data.badges.push(['R17 Incursion','Had a party in Research with Revision17']); }
 	if ( data.bonus.metWarlordAtResearch ) { data.badges.push(['Warlord Raid','Met Warlord in Research']); }
 	if ( data.bonus.hackedGodMode ) { data.badges.push(['God Mode','Hacked God Mode']); }
-	if ( data.bonus.activateExoskeleton ) { data.badges.push(['Exoskeleton','Activated the Exoskeleton']); }
+	if ( data.bonus.activateExoskeleton ) { data.badges.push(['Exoskelly','Activated the Exoskeleton']); }
 	if ( data.bonus.deliveredSgemp ) { data.badges.push(['SGEMP','Delivered the SGEMP to Zhirov']); }
 	if ( data.bonus.escapedWithSigix ) { data.badges.push(['SpaceBuddy','Escaped with the live Sigix']); }
 	if ( data.bonus.escapedWithExosigix ) { data.badges.push(['SpaceBuddy+','Escaped with the upgraded live Sigix']); }
