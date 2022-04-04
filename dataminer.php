@@ -31,18 +31,26 @@ if ( php_sapi_name() == "cli" || $force_webmode ) {
 else {
 
 	$mode = Sanitize( isset($_REQUEST['mode']) ? $_REQUEST['mode'] : null );
-	$difficulty = Sanitize( isset($_REQUEST['difficulty']) ? $_REQUEST['difficulty'] : null );
-	$version = Sanitize( isset($_REQUEST['version']) ? $_REQUEST['version'] : null );
-	$label = Sanitize( isset($_REQUEST['label']) ? $_REQUEST['label'] : null );
-	$player = SanitizeInt( isset($_REQUEST['player']) ? $_REQUEST['player'] : null );
-	$skipcache = SanitizeInt( isset($_REQUEST['skipcache']) ? $_REQUEST['skipcache'] : null );
-	$f = Sanitize( isset($_REQUEST['f']) ? $_REQUEST['f'] : 'stats' );
+	$difficulty = Sanitize( isset($_REQUEST['difficulty']) && $_REQUEST['difficulty'] ? $_REQUEST['difficulty'] : null );
+	$version = Sanitize( isset($_REQUEST['version']) && $_REQUEST['version'] ? $_REQUEST['version'] : null );
+	$label = Sanitize( isset($_REQUEST['label']) && $_REQUEST['label'] ? $_REQUEST['label'] : null );
+	$player = Sanitize( isset($_REQUEST['player']) && $_REQUEST['player'] ? $_REQUEST['player'] : null );
+	$num = SanitizeInt( isset($_REQUEST['num']) && $_REQUEST['num'] ? $_REQUEST['num'] : 30 );
+	$winsonly = SanitizeInt( isset($_REQUEST['winsonly']) && $_REQUEST['winsonly'] ? true : false );
+	$skipcache = SanitizeInt( isset($_REQUEST['skipcache']) && $_REQUEST['skipcache'] ? true : false );
+	$f = Sanitize( isset($_REQUEST['f']) && $_REQUEST['f'] ? $_REQUEST['f'] : 'stats' );
 
-	$cache_hash = md5( implode(':',[$mode,$difficulty,$version,$label,$player] ) );
+	$cache_hash = md5( implode(':',[$f,$mode,$difficulty,$version,$label,$player,$winsonly] ) );
 	$cache_file = CACHE_DIR . '/' . $cache_hash . '.json';
 
 	$json = null;
 
+	//  $records = GetCommunityStats(  ); 
+	// $records = GetOnTheFlyNumericalStats('stats.exploration.spacesMoved.overall');
+	// header('Content-Type: application/json');
+	// print json_encode( $records); 
+	// exit;
+	
 	// look for a cached file
 	if ( !$skipcache ) {
 		if ( is_readable($cache_file) && filemtime($cache_file) < CACHE_TTL ) {
@@ -57,66 +65,32 @@ else {
 		
 		// graph data	
 		if ( $f == 'graph' && $label ) {
-			if ( $mode ) { $hooks []= " AND runs.mode = '" . addslashes($mode) . "' "; }
-			if ( $difficulty ) { $hooks []= " AND runs.difficulty = '" . addslashes($difficulty) . "' "; }
-			if ( $version ) { $hooks []= " AND runs.version = '" . addslashes($version) . "' "; }
-			if ( $player ) { $hooks []= " AND runs.player = '" . addslashes($player) . "' "; }
-			$q = "SELECT runstats.value 
-				FROM runstats, runs
-				WHERE runstats.run_id = runs.id
-				AND runstats.stat_id = CRC32('" . addslashes($label) . "') "
-				. implode(' ', $hooks)
-				; // . ' ORDER BY runstats.value ASC';
-			$result = $db->query($q);
-			if ( $result->num_rows ) {
-				while( $row = $result->fetch_row() ) {
-					$records []= $row[0];
-				}
-				sort($records);
-			}
+			$records = GetGraphData( $label, $mode, $difficulty, $version, $player, $winsonly );
+		}
+		
+		// topX data	
+		else if ( $f == 'topx' && $label ) {
+			$records = GetTopX( $label, $mode, $difficulty, $version, $player, $winsonly, 30 );
+		}
+		
+		// String statistics frequency. Used for things like cause-of-death frequency chart	
+		else if ( $f == 'strfreq' && $label ) {
+			$records = GetStringCounts( $label, $mode, $difficulty, $version, $player, $winsonly, 30 );
+		}
+		
+		// Community stats - a compilation of many other stats into one big glob
+		else if ( $f == 'community' ) {
+			$records = GetCommunityStats( $mode, $difficulty, $version, $player, $winsonly, 30 );
+		}
+		
+		// list all stats for future reference	
+		else if ( $f == 'list_stats' ) {
+			$records = ListAllStats();
 		}
 		
 		// default numerical stats mode
 		else {
-			if ( $mode ) { $hooks []= " AND analysis.mode = '" . addslashes($mode) . "' "; }
-			if ( $difficulty ) { $hooks []= " AND analysis.difficulty = '" . addslashes($difficulty) . "' "; }
-			if ( $version ) { $hooks []= " AND analysis.version = '" . addslashes($version) . "' "; }
-			if ( $label ) { $hooks []= " AND stats.label = '" . addslashes($label) . "' "; }
-			if ( $player ) { $hooks []= " AND analysis.player = '" . addslashes($player) . "' "; }
-			$q = "SELECT 
-					stats.label, 
-					analysis.version, 
-					analysis.difficulty, 
-					analysis.mode, 
-					analysis.samples, 
-					analysis.uniq, 
-					analysis.min, 
-					analysis.max, 
-					analysis.avg, 
-					analysis.std, 
-					analysis.chartdata 
-				FROM stats, analysis
-				WHERE stats.id = analysis.stat_id
-				" . implode(' ', $hooks);
-			$result = $db->query($q);
-			if ( $result->num_rows ) {
-				while( $row = $result->fetch_assoc() ) {
-					$row['chartdata'] = json_decode($row['chartdata'],true); // JSON stored as string in DB
-					// set the label as the key if we won't have multiple entries
-					if ( $difficulty && $version && $mode ) {
-						$k = $row['label'];
-						unset($row['label']);
-						unset($row['difficulty']);
-						unset($row['mode']);
-						unset($row['version']);
-						$records[$k] = $row;
-					}
-					// otherwise leave it the way it is
-					else {
-						$records []= $row;
-					}
-				}
-			}
+			$records = GetNumericalStats( $label, $mode, $difficulty, $version, $player, $winsonly, 30 );
 		}
 		
 		// JSON presto!
@@ -461,6 +435,384 @@ function CreateChartData() {
 
 // ================== UTILITY FUNCTIONS =========================
 
+		
+// graph data	
+function GetGraphData( $label, $mode=null, $difficulty=null, $version=null, $player=null, $winsonly=false ) {
+	$hooks = [];
+	if ( $mode ) { $hooks []= " AND runs.mode = '" . addslashes($mode) . "' "; }
+	if ( $difficulty ) { $hooks []= " AND runs.difficulty = '" . addslashes($difficulty) . "' "; }
+	if ( $version ) { $hooks []= " AND runs.version = '" . addslashes($version) . "' "; }
+	if ( $player ) { $hooks []= " AND runs.player_name = '" . addslashes($player) . "' "; }
+	if ( $winsonly ) { $hooks []= " AND runs.win = 1"; }
+	$records = [];
+	$db = DB();
+	$q = "SELECT runstats.value 
+		FROM runstats, runs
+		WHERE runstats.run_id = runs.id
+		AND runstats.stat_id = CRC32('" . addslashes($label) . "') "
+		. implode(' ', $hooks)
+		; // . ' ORDER BY runstats.value ASC';
+	$result = $db->query($q);
+	if ( $result->num_rows ) {
+		while( $row = $result->fetch_row() ) {
+			$records []= $row[0];
+		}
+		sort($records);
+	}
+	return $records;
+}
+
+// topX data	
+function GetTopX( $label, $mode=null, $difficulty=null, $version=null, $player=null, $winsonly=false, $num=30 ) {
+	$hooks = [];
+	if ( $mode ) { $hooks []= " AND runs.mode = '" . addslashes($mode) . "' "; }
+	if ( $difficulty ) { $hooks []= " AND runs.difficulty = '" . addslashes($difficulty) . "' "; }
+	if ( $version ) { $hooks []= " AND runs.version = '" . addslashes($version) . "' "; }
+	if ( $player ) { $hooks []= " AND runs.player_name = '" . addslashes($player) . "' "; }
+	if ( $winsonly ) { $hooks []= " AND runs.win = 1 "; }
+	$sort = 'DESC';
+	$limit = $num ? " LIMIT $num " : NULL ;
+	$hooks = implode(' ', $hooks);
+	$records = [];
+	$db = DB();
+	$q = "
+		SELECT 
+			runstats.value as value, 
+			runs.filehash, 
+			runs.player_name, 
+			runs.version, 
+			runs.mode, 
+			runs.difficulty 
+		FROM runstats, runs 
+		WHERE runstats.run_id = runs.id
+			AND runstats.stat_id = CRC32('" . addslashes($label) . "') 
+			$hooks
+		ORDER BY CAST(runstats.value as DECIMAL(24,5)) $sort
+		$limit
+		";
+		// print $q; exit;
+	$result = $db->query($q);
+	if ( $result->num_rows ) {
+		while( $row = $result->fetch_assoc() ) {
+			$records []= $row;
+		}
+		// sort($records);
+	}
+	return $records;
+}
+
+// String statistics frequency. Used for things like cause-of-death frequency chart	
+function GetStringCounts( $label, $mode=null, $difficulty=null, $version=null, $player=null, $winsonly=false, $num=30 ) {
+	$hooks = [];
+	if ( $mode ) { $hooks []= " AND runs.mode = '" . addslashes($mode) . "' "; }
+	if ( $difficulty ) { $hooks []= " AND runs.difficulty = '" . addslashes($difficulty) . "' "; }
+	if ( $version ) { $hooks []= " AND runs.version = '" . addslashes($version) . "' "; }
+	if ( $player ) { $hooks []= " AND runs.player_name = '" . addslashes($player) . "' "; }
+	if ( $winsonly ) { $hooks []= " AND runs.win = 1"; }
+	$sort = 'DESC';
+	$limit = $num ? " LIMIT $num " : NULL ;
+	$hooks = implode(' ', $hooks);
+	$records = [];
+	$db = DB();
+	$q = "
+		SELECT 
+			runstats.value as value,
+			COUNT(runstats.value) as num
+		FROM runstats, runs 
+		WHERE runstats.run_id = runs.id
+			AND runstats.stat_id = CRC32('" . addslashes($label) . "')
+			$hooks
+		GROUP BY runstats.value
+		ORDER BY num $sort
+		$limit
+		";
+		// print $q; exit;
+	$result = $db->query($q);
+	if ( $result->num_rows ) {
+		while( $row = $result->fetch_assoc() ) {
+			$records []= $row;
+		}
+		// sort($records);
+	}
+	return $records;
+}
+
+function GetRunTimesGraphData( $mode=null, $difficulty=null, $version=null, $player=null, $winsonly=false ) {
+	$hooks = [];
+	if ( $mode ) { $hooks []= " AND runs.mode = '" . addslashes($mode) . "' "; }
+	if ( $difficulty ) { $hooks []= " AND runs.difficulty = '" . addslashes($difficulty) . "' "; }
+	if ( $version ) { $hooks []= " AND runs.version = '" . addslashes($version) . "' "; }
+	if ( $player ) { $hooks []= " AND runs.player_name = '" . addslashes($player) . "' "; }
+	if ( $winsonly ) { $hooks []= " AND runs.win = 1"; }
+	$hooks = implode(' ', $hooks);
+	$records = [];
+	$db = DB();
+	$q = "
+		SELECT
+			ROUND( TIME_TO_SEC(runstats.value) / 60 ) as minutes,
+			COUNT( ROUND( TIME_TO_SEC(runstats.value) / 60 ) ) as num
+		FROM runstats, runs 
+		WHERE runstats.run_id = runs.id
+			AND runstats.stat_id = CRC32('game.runTime')
+			$hooks
+		GROUP BY ROUND( TIME_TO_SEC(runstats.value) / 60 )
+		ORDER BY minutes ASC
+		";
+	$result = $db->query($q);
+	if ( $result->num_rows ) {
+		while( $row = $result->fetch_assoc() ) {
+			$records []= $row;
+		}
+	}
+	return $records;
+}
+
+function GetWinLoss( $mode=null, $difficulty=null, $version=null, $player=null ) {
+	$hooks = [];
+	if ( $mode ) { $hooks []= " runs.mode = '" . addslashes($mode) . "' "; }
+	if ( $difficulty ) { $hooks []= " runs.difficulty = '" . addslashes($difficulty) . "' "; }
+	if ( $version ) { $hooks []= " runs.version = '" . addslashes($version) . "' "; }
+	if ( $player ) { $hooks []= " runs.player_name = '" . addslashes($player) . "' "; }
+	$hooks = $hooks ? (' WHERE ' . implode(' AND ', $hooks) ) : NULL;
+	$records = [];
+	$db = DB();
+	$q = "
+		SELECT 
+			COUNT(runs.id) as total,
+			SUM(runs.win) as wins,
+			COUNT(runs.id) - SUM(runs.win) as losses,
+			SUM( IF(runs.win = 0 AND runs.final_depth < -7, 1, 0) ) as materials,
+			SUM( IF(runs.win = 0 AND runs.final_depth >= -7 AND runs.final_depth < -3, 1, 0) ) as factory,
+			SUM( IF(runs.win = 0 AND runs.final_depth >= -3 AND runs.final_depth < -1, 1, 0) ) as research,
+			SUM( IF(runs.win = 0 AND runs.final_depth >= -1, 1, 0) ) access
+		FROM runs 
+		$hooks
+		";
+	$result = $db->query($q);
+	if ( $result->num_rows ) {
+		while( $row = $result->fetch_assoc() ) {
+			$records []= $row;
+		}
+	}
+	return $records[0];
+}
+
+// function GetWinTypes( $mode=null, $difficulty=null, $version=null, $player=null ) {
+// 	if ( $mode ) { $hooks []= " runs.mode = '" . addslashes($mode) . "' "; }
+// 	if ( $difficulty ) { $hooks []= " runs.difficulty = '" . addslashes($difficulty) . "' "; }
+// 	if ( $version ) { $hooks []= " runs.version = '" . addslashes($version) . "' "; }
+// 	if ( $player ) { $hooks []= " runs.player = '" . addslashes($player) . "' "; }
+// 	$hooks []= 'runs.win = 1';
+// 	$hooks = $hooks ? (' WHERE ' . implode(' AND ', $hooks) ) : NULL;
+// 	$records = [];
+// 	$db = DB();
+// 	$q = "
+// 		SELECT 
+// 			runs.final_map as wintype,
+// 			COUNT( runs.final_map ) as num
+// 		FROM runs 
+// 		$hooks
+// 		GROUP BY runs.final_map
+// 		";
+// 	$result = $db->query($q);
+// 	if ( $result->num_rows ) {
+// 		while( $row = $result->fetch_assoc() ) {
+// 			$records []= $row;
+// 		}
+// 	}
+// 	return $records;
+// }
+
+function GetNumericalStats( $label=null, $mode=null, $difficulty=null, $version=null, $player=null, $winsonly=false ) {
+	$hooks = [];
+	if ( $mode ) { $hooks []= " AND analysis.mode = '" . addslashes($mode) . "' "; }
+	if ( $difficulty ) { $hooks []= " AND analysis.difficulty = '" . addslashes($difficulty) . "' "; }
+	if ( $version ) { $hooks []= " AND analysis.version = '" . addslashes($version) . "' "; }
+	if ( $label ) { $hooks []= " AND stats.label = '" . addslashes($label) . "' "; }
+	if ( $player ) { $hooks []= " AND analysis.player = '" . addslashes($player) . "' "; }
+	if ( $winsonly ) { $hooks []= " AND runs.win = 1"; }
+	$records = [];
+	$db = DB();
+	$q = "SELECT 
+			stats.label, 
+			analysis.version, 
+			analysis.difficulty, 
+			analysis.mode, 
+			analysis.samples, 
+			analysis.uniq, 
+			analysis.min, 
+			analysis.max, 
+			analysis.avg, 
+			analysis.std, 
+			analysis.chartdata 
+		FROM stats, analysis
+		WHERE stats.id = analysis.stat_id
+		" . implode(' ', $hooks);
+	$result = $db->query($q);
+	if ( $result->num_rows ) {
+		while( $row = $result->fetch_assoc() ) {
+			$row['chartdata'] = json_decode($row['chartdata'],true); // JSON stored as string in DB
+			// set the label as the key if we won't have multiple entries
+			if ( $difficulty && $version && $mode ) {
+				$k = $row['label'];
+				unset($row['label']);
+				unset($row['difficulty']);
+				unset($row['mode']);
+				unset($row['version']);
+				$records[$k] = $row;
+			}
+			// otherwise leave it the way it is
+			else {
+				$records []= $row;
+			}
+		}
+	}
+	return $records;
+}
+
+function GetOnTheFlyNumericalStats( $label=null, $mode=null, $difficulty=null, $version=null, $player=null, $winsonly=false ) {
+	$hooks = [];
+	if ( $mode ) { $hooks []= " AND runs.mode = '" . addslashes($mode) . "' "; }
+	if ( $difficulty ) { $hooks []= " AND runs.difficulty = '" . addslashes($difficulty) . "' "; }
+	if ( $version ) { $hooks []= " AND runs.version = '" . addslashes($version) . "' "; }
+	if ( $label ) { 
+		if ( is_array($label) ) {
+			$labels = array_map( function($x){ return sprintf('%u', crc32($x)); }, $label ); // mysql compatible CRC32
+			$hooks []= " AND runstats.stat_id IN (" . implode(',',$labels) . ") ";
+		}	
+		else {
+			$hooks []= " AND runstats.stat_id = CRC32('" . addslashes($label) . "')";
+		}
+	}
+	if ( $player ) { $hooks []= " AND runs.player_name = '" . addslashes($player) . "' "; }
+	if ( $winsonly ) { $hooks []= " AND runs.win = 1"; }
+	
+	$records = [];
+	$db = DB();
+	$q = "
+		SELECT
+			stats.label,
+			runstats.stat_id,
+			SUM( runstats.value ) as `sum`,
+			COUNT( runstats.value ) as `samples`,
+			COUNT( DISTINCT runstats.value ) as `uniq`,
+			MIN( CAST(runstats.value as DECIMAL(24,5)) ) as `min`,
+			MAX( CAST(runstats.value as DECIMAL(24,5)) ) as `max`,
+			ROUND( AVG( CAST(runstats.value as DECIMAL(24,5)) ), 3) as `avg`,
+			ROUND( STD( CAST(runstats.value as DECIMAL(24,5)) ), 3) as `std`
+		FROM runs, runstats, stats
+		WHERE runstats.stat_id = stats.id
+			AND runstats.run_id = runs.id
+			AND stats.type IN ('float','integer')
+			" . implode(' ', $hooks) . "
+		GROUP BY runstats.stat_id;
+		"; 
+	$result = $db->query($q);
+	if ( $result && $result->num_rows ) {
+		while( $row = $result->fetch_assoc() ) {
+			// set the label as the key if we won't have multiple entries
+			if ( !is_array($label) ) {
+				$k = $row['label'];
+				unset($row['label']);
+				$records[$k] = $row;
+			}
+			// otherwise leave it the way it is
+			else {
+				$records []= $row;
+			}
+		}
+	}
+	return $records;
+}
+
+// list all stats for future reference
+function ListAllStats() {
+	$db = DB();
+	$q = "SELECT * FROM stats ORDER BY label;";
+	$result = $db->query($q);
+	$records = [];
+	if ( $result->num_rows ) {
+		while( $row = $result->fetch_assoc() ) {
+			$records []= $row;
+		}
+	}
+	return $records;
+}
+		
+function GetCommunityStats( $mode=null, $difficulty=null, $version=null, $player=null, $winsonly=false, $num=30 ) {
+	$data = [
+		'request' => [
+			'mode' => $mode,
+			'difficulty' => $difficulty,
+			'version' => $version,
+			'player' => $player,
+			'winsonly' => $winsonly,
+			'limit' => $num,
+		],
+		'data' => [
+			'stat_labels' => ListAllStats(),
+			'wintypes' => GetStringCounts('game.winType', $mode, $difficulty, $version, $player, true ),
+			'winloss' => GetWinLoss( $mode, $difficulty, $version, $player ),
+			'highscores' => GetTopX( 'performance.totalScore', $mode, $difficulty, $version, $player, $winsonly, $num ),
+			'runtimesChartData' => GetRunTimesGraphData( $mode, $difficulty, $version, $player, $winsonly ),
+			'causeOfDeath' => GetStringCounts('header.causeOfDeath', $mode, $difficulty, $version, $player, false, $num ),
+			'itemOfDeath' => GetStringCounts('header.itemOfDeath', $mode, $difficulty, $version, $player, false, $num ),
+			'favorites.power.overall' => GetStringCounts('favorites.power.overall', $mode, $difficulty, $version, $player, $winsonly, 10 ),
+			'favorites.power.engine' => GetStringCounts('favorites.power.engine', $mode, $difficulty, $version, $player, $winsonly, 10 ),
+			'favorites.power.powerCore' => GetStringCounts('favorites.power.powerCore', $mode, $difficulty, $version, $player, $winsonly, 10 ),
+			'favorites.power.reactor' => GetStringCounts('favorites.power.reactor', $mode, $difficulty, $version, $player, $winsonly, 10 ),
+			'favorites.propulsion.overall' => GetStringCounts('favorites.propulsion.overall', $mode, $difficulty, $version, $player, $winsonly, 10 ),
+			'favorites.propulsion.treads' => GetStringCounts('favorites.propulsion.treads', $mode, $difficulty, $version, $player, $winsonly, 10 ),
+			'favorites.propulsion.leg' => GetStringCounts('favorites.propulsion.leg', $mode, $difficulty, $version, $player, $winsonly, 10 ),
+			'favorites.propulsion.wheel' => GetStringCounts('favorites.propulsion.wheel', $mode, $difficulty, $version, $player, $winsonly, 10 ),
+			'favorites.propulsion.hoverUnit' => GetStringCounts('favorites.propulsion.hoverUnit', $mode, $difficulty, $version, $player, $winsonly, 10 ),
+			'favorites.propulsion.flightUnit' => GetStringCounts('favorites.propulsion.flightUnit', $mode, $difficulty, $version, $player, $winsonly, 10 ),
+			'favorites.utility.overall' => GetStringCounts('favorites.utility.overall', $mode, $difficulty, $version, $player, $winsonly, 10 ),
+			'favorites.utility.device' => GetStringCounts('favorites.utility.device', $mode, $difficulty, $version, $player, $winsonly, 10 ),
+			'favorites.utility.storage' => GetStringCounts('favorites.utility.storage', $mode, $difficulty, $version, $player, $winsonly, 10 ),
+			'favorites.utility.processor' => GetStringCounts('favorites.utility.processor', $mode, $difficulty, $version, $player, $winsonly, 10 ),
+			'favorites.utility.hackware' => GetStringCounts('favorites.utility.hackware', $mode, $difficulty, $version, $player, $winsonly, 10 ),
+			'favorites.utility.protection' => GetStringCounts('favorites.utility.protection', $mode, $difficulty, $version, $player, $winsonly, 10 ),
+			'favorites.utility.artifact' => GetStringCounts('favorites.utility.artifact', $mode, $difficulty, $version, $player, $winsonly, 10 ),
+			'favorites.weapon.overall' => GetStringCounts('favorites.weapon.overall', $mode, $difficulty, $version, $player, $winsonly, 10 ),
+			'favorites.weapon.energyGun' => GetStringCounts('favorites.weapon.energyGun', $mode, $difficulty, $version, $player, $winsonly, 10 ),
+			'favorites.weapon.energyCannon' => GetStringCounts('favorites.weapon.energyCannon', $mode, $difficulty, $version, $player, $winsonly, 10 ),
+			'favorites.weapon.ballisticGun' => GetStringCounts('favorites.weapon.ballisticGun', $mode, $difficulty, $version, $player, $winsonly, 10 ),
+			'favorites.weapon.ballisticCannon' => GetStringCounts('favorites.weapon.ballisticCannon', $mode, $difficulty, $version, $player, $winsonly, 10 ),
+			'favorites.weapon.launcher' => GetStringCounts('favorites.weapon.launcher', $mode, $difficulty, $version, $player, $winsonly, 10 ),
+			'favorites.weapon.specialWeapon' => GetStringCounts('favorites.weapon.specialWeapon', $mode, $difficulty, $version, $player, $winsonly, 10 ),
+			'favorites.weapon.impactWeapon' => GetStringCounts('favorites.weapon.impactWeapon', $mode, $difficulty, $version, $player, $winsonly, 10 ),
+			'favorites.weapon.slashingWeapon' => GetStringCounts('favorites.weapon.slashingWeapon', $mode, $difficulty, $version, $player, $winsonly, 10 ),
+			'favorites.weapon.piercingWeapon' => GetStringCounts('favorites.weapon.piercingWeapon', $mode, $difficulty, $version, $player, $winsonly, 10 ),
+			'favorites.weapon.specialMeleeWeapon' => GetStringCounts('favorites.weapon.specialMeleeWeapon', $mode, $difficulty, $version, $player, $winsonly, 10 ),
+			
+			'spacesMoved' => GetOnTheFlyNumericalStats( [
+				'stats.exploration.spacesMoved.treads',
+				'stats.exploration.spacesMoved.legs',
+				'stats.exploration.spacesMoved.wheels',
+				'stats.exploration.spacesMoved.hover',
+				'stats.exploration.spacesMoved.flight',
+				'stats.exploration.spacesMoved.core',
+				'stats.exploration.spacesMoved.overall',
+				], $mode, $difficulty, $version, $player, $winsonly ),
+
+			
+			
+		]
+	];
+	
+	// play time averages
+	$playtime_total_minutes = 0;
+	$playtime_total_runs = 0;
+	foreach ( $data['data']['runtimesChartData'] as $r ) {
+		$playtime_total_minutes += $r['minutes'] * $r['num'];
+		$playtime_total_runs += $r['num'];
+	}
+	$data['data']['runtimeAvg'] = $playtime_total_runs ? round( $playtime_total_minutes / $playtime_total_runs ) : 0;
+	
+	return $data;
+}
+		
 function AddRun( $hash, $data ) {
 	static $known_stats = []; // caches results when running large batches
 	$db = DB();

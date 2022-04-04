@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="en">
+	<!-- what kind of idiot would build the entire app in one file? -->
+	<head>
+		<title>Dataminer : Community Cogmind Stats</title>
+		<meta name="description" content="Community statistics for Cogmind." />
+		<meta name="keywords" content="cogmind,community,statistics,graph,runs,roguelike" />
+		<meta name="author" content="leiavoia" />
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<link rel="icon" type="image/x-icon" href="img/favicon.ico" sizes="16x16" />
+		<!-- dev version -->
+		<!-- <script src="https://unpkg.com/vue"></script> -->
+		<!-- prod version -->
+		<script src="https://unpkg.com/vue@2.6.14/dist/vue.min.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.5.1/chart.min.js"></script>
+		<!-- add this if you want chart labels -->
+		<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+		<link href="css/bootstrap.slate.min.css" rel="stylesheet"/>
+		<style>
+		
+			CANVAS { height: 1px; }
+			
+			/* TABLE { --bs-table-accent-bg: none !important; } */
+			[v-cloak] > * { display:none }
+			.statbox { text-align:center; }
+			.statbox { font-weight: bold; }
+			.statbox .card-body .card-text { font-size: 150%;}
+			.statbox .card-body.numeric .card-text { font-size: 300%;}
+			
+			TR.indent-1 TH { padding-left: 2em; color: rgb(140, 185, 199); }
+			TR.indent-1 TD { color: rgb(140, 185, 199); }
+			TR.indent-2 TH { padding-left: 4em; color: rgb(136, 202, 150); }
+			TR.indent-2 TD { color: rgb(136, 202, 150); }
+			TR.indent-3 TH { padding-left: 6em; color: #AAA; }
+			TR.indent-3 TD { color: #AAA; }
+			TR.indent-4 TH { padding-left: 8em; color: rgb(238, 202, 173); }
+			TR.indent-4 TD { color: rgb(238, 202, 173); }
+			TR.indent-5 TH { padding-left: 10em; color: rgb(236, 204, 219); }
+			TR.indent-5 TD { color: rgb(236, 204, 219); }
+			
+			TD.good { color: rgb(136, 202, 150); }
+			TD.bad { color: rgb(221, 75, 75); }
+			TD.notice { color: #4490d6; }
+			TD.info { color: #AAA; }
+			TD.warning { color: rgb(228, 199, 72); }
+			
+			/* fix bug with Slate theme */
+			.table > :not(:first-child) {
+				border-top: 0px !important;
+			}
+			/* general alignment prettiness */
+			th:first-child , td:first-child  {
+				width:20%;
+				white-space: nowrap !important;
+			} 
+			td:last-child  {
+				width:80%;
+			}
+			H2,H3,H4,H5,H6 { margin-top: 1.5em; margin-bottom: 0.5em; }
+
+			.progress-bar.poor { background-color: #aa1b36 !important; }
+			.progress-bar.avg { background-color: #e0cc32 !important; }
+			.progress-bar.good { background-color: #308030 !important; }
+			.progress-bar.excl { background-color: #3cb356 !important; }
+			.progress-bar.best { background-color: #49dd52 !important; }
+							
+		</style>
+	</head>
+	
+	<body >
+		<div class="container-lg pt-4">
+			
+			<div id="app" v-cloak>
+			
+				<h1 class="mb-3">
+					<img src="img/dataminer_icon.png" style="height:1em; width: 1em; background-color: #000;" />
+					Dataminer : Community Cogmind Stats
+				</h1>
+				
+				<!-- loading page -->
+				<div v-if="pane=='loading'" class=" pt-5 text-center" style="font-size: 200%">
+					<p>Loading Statistics ...</p>
+					<progress style="height: 2em;" ></progress>
+				</div>
+				
+				<!-- pane nav bar -->
+				<nav class="nav nav-pills nav-justified my-3">
+					<!-- <button type="button" class="btn nav-item mx-1 text-nowrap btn-primary" v-on:click="ChangePane('input')">◄</button> -->
+					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='overview' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('overview')">Overview</button>
+					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='build' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('build')">Build</button>
+					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='combat' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('combat')">Combat</button>
+					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='hacking' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('hacking')">Hacking</button>
+					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='lookup' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('lookup')">Lookup</button>
+				</nav>
+				
+				<!-- overview pane -->			
+				<template v-if="pane=='overview'" >		
+
+					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+						<div class="row row-cols-sm-2 g-5">
+							<div class="col">
+								<h3 class="text-center">Wins / Losses</h3>
+								<canvas id="winlossPieChart"></canvas>
+							</div>
+							<div class="col">
+								<h3 class="text-center">Win Types</h3>
+								<canvas id="wintypePieChart"></canvas>
+							</div>
+						</div>
+					</div>
+					
+					<h2>Game Play Time (Minutes)</h2>
+					<p>Average Play Time: <b>{{stats.data.runtimeAvg.toLocaleString()}} minutes</b></p>
+					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+						<canvas id="playtimeChart"></canvas>
+					</div>
+					<!-- <div class="container-fluid mt-5 mb-5 g-0">
+						<div class="row row-cols-1 row-cols-md-3 g-4">
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Average Play Time</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{stats.data.runtimeAvg.toLocaleString()}}m</span>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div> -->
+										
+					<h2>High Scores</h2>
+					<table class="table text-nowrap">
+						<tr>
+							<th>Score</th>
+							<th>Player</th>
+							<th>Version</th>
+							<th>Mode</th>
+							<th>Difficulty</th>
+							<th>Scoresheet</th>
+						</tr>
+						<tr v-for="r of stats.data.highscores">
+							<td>{{r.value.toLocaleString()}}</td>
+							<td>{{r.player_name}}</td>
+							<td>{{r.version}}</td>
+							<td>{{r.mode.toString().replace('SPECIAL_MODE_','')}}</td>
+							<td>{{r.difficulty.replace('DIFFICULTY_','')}}</td>
+							<td><a :href="'index.html?' + r.filehash" target="_blank" >{{r.filehash}}</a></td>
+						</tr>
+					</table>
+					
+					<h2>Top Causes of Death</h2>
+					<div class="row row-cols-sm-2 g-5">
+						<div class="col ">
+							<h3>Killed By</h3>
+							<table class="table ">
+								<tr v-for="r in stats.data.causeOfDeath">
+									<td><b>{{r.num.toLocaleString()}}</b></td>
+									<td>{{r.value}}</td>
+								</tr>
+							</table>
+						</div>
+						<div class="col">
+							<h3>Killed With</h3>
+							<table class="table ">
+								<tr v-for="r in stats.data.itemOfDeath">
+									<td><b>{{r.num.toLocaleString()}}</b></td>
+									<td>{{r.value}}</td>
+								</tr>
+							</table>
+						</div>
+					</div>
+							
+				</template>	
+				
+				<!-- combat pane -->			
+				<template v-if="pane=='combat'" >		
+				
+				</template>
+				
+				<!-- build pane -->			
+				<template v-if="pane=='build'" >		
+				
+					<h1>Mobility</h1>
+					<p>Propulsion parts are frequently attached just for protection. This chart shows which propulsion types players use to actually move.</p>
+					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+						<canvas id="spacesMovedPieChart"></canvas>
+					</div>					
+
+				
+					
+					<h1>Favorite Parts</h1>
+					<p>These are the parts that players keep attached the longest. Each game registers one "favorite part" per category.</p>
+					
+					<h2 class="mb-0 text-info">Propulsion</h2>
+					
+					<div class="container-fluid mt-3 mb-5 g-0 px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+						<div class="row row-cols-1 row-cols-md-3 g-4">
+							<div class="col">				
+								<h3>Overall</h3>
+								<ol>
+									<li v-for="r in stats.data['favorites.propulsion.overall']">
+										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+									</li>
+								</ol>
+							</div>
+							<div class="col">				
+								<h3>Treads</h3>
+								<ol>
+									<li v-for="r in stats.data['favorites.propulsion.treads']">
+										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+									</li>
+								</ol>
+							</div>
+							<div class="col">
+								<h3>Legs</h3>
+								<ol>
+									<li v-for="r in stats.data['favorites.propulsion.leg']">
+										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+									</li>
+								</ol>
+							</div>
+							<div class="col">
+								<h3>Wheels</h3>
+								<ol>
+									<li v-for="r in stats.data['favorites.propulsion.wheel']">
+										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+									</li>
+								</ol>
+							</div>
+							<div class="col">
+								<h3>Hover</h3>
+								<ol>
+									<li v-for="r in stats.data['favorites.propulsion.hoverUnit']">
+										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+									</li>
+								</ol>
+							</div>
+							<div class="col">
+								<h3>Flight</h3>
+								<ol>
+									<li v-for="r in stats.data['favorites.propulsion.flightUnit']">
+										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+									</li>
+								</ol>
+							</div>
+						</div>
+					</div>
+					
+					<h2 class="mb-0 text-info">Weapons</h2>
+					<div class="container-fluid mt-3 mb-5 g-0 px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+						<div class="row row-cols-1 row-cols-md-3 g-4">
+							<div class="col">
+								<h3>Overall</h3>
+								<ol>
+									<li v-for="r in stats.data['favorites.weapon.overall']">
+										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+									</li>
+								</ol>
+							</div>
+							<div class="col">
+								<h3>Energy Gun</h3>
+								<ol>
+									<li v-for="r in stats.data['favorites.weapon.energyGun']">
+										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+									</li>
+								</ol>
+							</div>
+							<div class="col">
+								<h3>Energy Cannon</h3>
+								<ol>
+									<li v-for="r in stats.data['favorites.weapon.energyCannon']">
+										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+									</li>
+								</ol>
+							</div>
+							<div class="col">
+								<h3>Ballistic Gun</h3>
+								<ol>
+									<li v-for="r in stats.data['favorites.weapon.ballisticGun']">
+										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+									</li>
+								</ol>
+							</div>
+							<div class="col">
+								<h3>Ballistic Cannon</h3>
+								<ol>
+									<li v-for="r in stats.data['favorites.weapon.ballisticCannon']">
+										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+									</li>
+								</ol>
+							</div>
+							<div class="col">
+								<h3>Launchers</h3>
+								<ol>
+									<li v-for="r in stats.data['favorites.weapon.launcher']">
+										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+									</li>
+								</ol>
+							</div>
+							<div class="col">
+								<h3>Impact</h3>
+								<ol>
+									<li v-for="r in stats.data['favorites.weapon.impactWeapon']">
+										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+									</li>
+								</ol>
+							</div>
+							<div class="col">
+								<h3>Slashing</h3>
+								<ol>
+									<li v-for="r in stats.data['favorites.weapon.slashingWeapon']">
+										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+									</li>
+								</ol>
+							</div>
+							<div class="col">
+								<h3>Piercing</h3>
+								<ol>
+									<li v-for="r in stats.data['favorites.weapon.piercingWeapon']">
+										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+									</li>
+								</ol>
+							</div>
+							<div class="col">
+								<h3>Special Weapons</h3>
+								<ol>
+									<li v-for="r in stats.data['favorites.weapon.specialWeapon']">
+										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+									</li>
+								</ol>
+							</div>
+							<div class="col">
+								<h3>Special Melee</h3>
+								<ol>
+									<li v-for="r in stats.data['favorites.weapon.specialMeleeWeapon']">
+										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+									</li>
+								</ol>
+							</div>
+						</div>
+					</div>
+								
+					<h2 class="mb-0 text-info">Power</h2>
+					<div class="container-fluid mt-3 mb-5 g-0 px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+						<div class="row row-cols-1 row-cols-md-3 g-4">
+							<div class="col">
+								<h3>Overall</h3>
+								<ol>
+									<li v-for="r in stats.data['favorites.power.overall']">
+										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+									</li>
+								</ol>
+							</div>
+							<div class="col">
+								<h3>Engines</h3>
+								<ol>
+									<li v-for="r in stats.data['favorites.power.engine']">
+										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+									</li>
+								</ol>
+							</div>
+							<div class="col">
+								<h3>Cores</h3>
+								<ol>
+									<li v-for="r in stats.data['favorites.power.powerCore']">
+										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+									</li>
+								</ol>
+							</div>
+							<div class="col">
+								<h3>Reactors</h3>
+								<ol>
+									<li v-for="r in stats.data['favorites.power.reactor']">
+										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+									</li>
+								</ol>
+							</div>
+						</div>
+					</div>
+					
+					<h2 class="mb-0 text-info">Utilities</h2>
+					<div class="container-fluid mt-3 mb-5 g-0 px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+						<div class="row row-cols-1 row-cols-md-3 g-4">
+							<div class="col">
+								<h3>Overall</h3>
+								<ol>
+									<li v-for="r in stats.data['favorites.utility.overall']">
+										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+									</li>
+								</ol>
+							</div>
+							<div class="col">
+								<h3>Devices</h3>
+								<ol>
+									<li v-for="r in stats.data['favorites.utility.device']">
+										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+									</li>
+								</ol>
+							</div>
+							<div class="col">
+								<h3>Storage</h3>
+								<ol>
+									<li v-for="r in stats.data['favorites.utility.storage']">
+										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+									</li>
+								</ol>
+							</div>
+							<div class="col">
+								<h3>Processors</h3>
+								<ol>
+									<li v-for="r in stats.data['favorites.utility.processor']">
+										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+									</li>
+								</ol>
+							</div>
+							<div class="col">
+								<h3>Hackware</h3>
+								<ol>
+									<li v-for="r in stats.data['favorites.utility.hackware']">
+										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+									</li>
+								</ol>
+							</div>
+							<div class="col">
+								<h3>Protection / Armor</h3>
+								<ol>
+									<li v-for="r in stats.data['favorites.utility.protection']">
+										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+									</li>
+								</ol>
+							</div>
+							<div class="col">
+								<h3>Artifacts</h3>
+								<ol>
+									<li v-for="r in stats.data['favorites.utility.artifact']">
+										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+									</li>
+								</ol>
+							</div>
+						</div>
+					</div>
+					
+					
+				</template>
+								
+				<!-- pane nav bar -->
+				<nav class="nav nav-pills nav-justified my-3">
+					<!-- <button type="button" class="btn nav-item mx-1 text-nowrap btn-primary" v-on:click="ChangePane('input')">◄</button> -->
+					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='overview' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('overview')">Overview</button>
+					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='build' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('build')">Build</button>
+					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='combat' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('combat')">Combat</button>
+					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='hacking' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('hacking')">Hacking</button>
+					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='lookup' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('lookup')">Lookup</button>
+				</nav>
+					
+			</div><!-- end "app" div -->
+		</div><!-- end page container -->
+		
+		<script src="js/dataminer-community.js"></script>
+		
+	</body>
+</html>
