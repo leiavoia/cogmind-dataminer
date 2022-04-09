@@ -680,6 +680,9 @@ function GetOnTheFlyNumericalStats( $label=null, $mode=null, $difficulty=null, $
 			$labels = array_map( function($x){ return sprintf('%u', crc32($x)); }, $label ); // mysql compatible CRC32
 			$hooks []= " AND runstats.stat_id IN (" . implode(',',$labels) . ") ";
 		}	
+		else if ( strpos($label,'%') !== false ) {
+			$hooks []= " AND stats.label LIKE '" . addslashes($label) . "' ";
+		}
 		else {
 			$hooks []= " AND runstats.stat_id = CRC32('" . addslashes($label) . "')";
 		}
@@ -711,15 +714,43 @@ function GetOnTheFlyNumericalStats( $label=null, $mode=null, $difficulty=null, $
 	if ( $result && $result->num_rows ) {
 		while( $row = $result->fetch_assoc() ) {
 			// set the label as the key if we won't have multiple entries
-			if ( !is_array($label) ) {
-				$k = $row['label'];
-				unset($row['label']);
-				$records[$k] = $row;
-			}
-			// otherwise leave it the way it is
-			else {
+			// if ( !is_array($label) ) {
+			// 	$k = $row['label'];
+			// 	unset($row['label']);
+			// 	$records[$k] = $row;
+			// }
+			// // otherwise leave it the way it is
+			// else {
 				$records []= $row;
-			}
+			// }
+		}
+	}
+	return $records;
+}
+
+function GetRunsByPlayer( $mode=null, $difficulty=null, $version=null, $player=null, $winsonly=false ) {
+	$hooks = [];
+	if ( $mode ) { $hooks []= " AND runs.mode = '" . addslashes($mode) . "' "; }
+	if ( $difficulty ) { $hooks []= " AND runs.difficulty = '" . addslashes($difficulty) . "' "; }
+	if ( $version ) { $hooks []= " AND runs.version = '" . addslashes($version) . "' "; }
+	if ( $player ) { $hooks []= " AND runs.player_name = '" . addslashes($player) . "' "; }
+	if ( $winsonly ) { $hooks []= " AND runs.win = 1"; }
+	
+	$records = [];
+	$db = DB();
+	$q = "
+		SELECT
+			*
+		FROM runs
+		WHERE 1=1
+			" . implode(' ', $hooks) . "
+		ORDER BY date ASC
+		;
+		"; 
+	$result = $db->query($q);
+	if ( $result && $result->num_rows ) {
+		while( $row = $result->fetch_assoc() ) {
+			$records []= $row;
 		}
 	}
 	return $records;
@@ -729,6 +760,55 @@ function GetOnTheFlyNumericalStats( $label=null, $mode=null, $difficulty=null, $
 function ListAllStats() {
 	$db = DB();
 	$q = "SELECT * FROM stats ORDER BY label;";
+	$result = $db->query($q);
+	$records = [];
+	if ( $result->num_rows ) {
+		while( $row = $result->fetch_assoc() ) {
+			$records []= $row;
+		}
+	}
+	return $records;
+}
+
+function ListAllModes() {
+	$db = DB();
+	$q = "SELECT DISTINCT mode FROM runs ORDER BY mode;";
+	$result = $db->query($q);
+	$records = [];
+	if ( $result->num_rows ) {
+		while( $row = $result->fetch_assoc() ) {
+			$records []= $row;
+		}
+	}
+	return $records;
+}
+
+// Players can have multiple label identities, so group by player ID instead
+function ListAllPlayers() {
+	$db = DB();
+	$q = "
+		SELECT -- IF( player_id = 209397991, 'GJ', player_name) as name, id
+			DISTINCT 
+			player_name, player_id
+		FROM runs 
+		-- GROUP BY player_id
+		ORDER BY player_name ASC;
+		";
+	$result = $db->query($q);
+	$records = [];
+	if ( $result->num_rows ) {
+		while( $row = $result->fetch_assoc() ) {
+			$records[ $row['player_id'] ] = $row; // remove duplicates with different names, i.e. GJ
+		}
+	}
+	// GJ hack
+	$records[209397991] = ['player_name'=>'GJ', 'player_id'=>209397991];
+	return array_values($records);
+}
+
+function ListAllVersions() {
+	$db = DB();
+	$q = "SELECT DISTINCT version FROM runs ORDER BY version DESC;";
 	$result = $db->query($q);
 	$records = [];
 	if ( $result->num_rows ) {
@@ -751,6 +831,11 @@ function GetCommunityStats( $mode=null, $difficulty=null, $version=null, $player
 		],
 		'data' => [
 			'stat_labels' => ListAllStats(),
+			'difficulties' => ['DIFFICULTY_ROGUE', 'DIFFICULTY_ADVENTURER', 'DIFFICULTY_EXPLORER'],
+			'versions' => ListAllVersions(),
+			'players' => ListAllPlayers(),
+			'modes' => ListAllModes(),
+			
 			'wintypes' => GetStringCounts('game.winType', $mode, $difficulty, $version, $player, true ),
 			'winloss' => GetWinLoss( $mode, $difficulty, $version, $player ),
 			'highscores' => GetTopX( 'performance.totalScore', $mode, $difficulty, $version, $player, $winsonly, $num ),
@@ -786,6 +871,34 @@ function GetCommunityStats( $mode=null, $difficulty=null, $version=null, $player
 			'favorites.weapon.piercingWeapon' => GetStringCounts('favorites.weapon.piercingWeapon', $mode, $difficulty, $version, $player, $winsonly, 10 ),
 			'favorites.weapon.specialMeleeWeapon' => GetStringCounts('favorites.weapon.specialMeleeWeapon', $mode, $difficulty, $version, $player, $winsonly, 10 ),
 			
+			'machinesAccessed' => GetOnTheFlyNumericalStats( 'stats.hacking.machinesAccessed.%', $mode, $difficulty, $version, $player, $winsonly ),
+			'terminalHacks' => GetOnTheFlyNumericalStats( 'stats.hacking.terminalHacks.%', $mode, $difficulty, $version, $player, $winsonly ),
+			'fabricatorHacks' => GetOnTheFlyNumericalStats( 'stats.hacking.fabricatorHacks.%', $mode, $difficulty, $version, $player, $winsonly ),
+			'repairStationHacks' => GetOnTheFlyNumericalStats( 'stats.hacking.repairStationHacks.%', $mode, $difficulty, $version, $player, $winsonly ),
+			'recyclingUnitHacks' => GetOnTheFlyNumericalStats( 'stats.hacking.recyclingUnitHacks.%', $mode, $difficulty, $version, $player, $winsonly ),
+			'scanalyzerHacks' => GetOnTheFlyNumericalStats( 'stats.hacking.scanalyzer%', $mode, $difficulty, $version, $player, $winsonly ),
+			'garrisonAccessHacks' => GetOnTheFlyNumericalStats( 'stats.hacking.garrisonAccessHacks.%', $mode, $difficulty, $version, $player, $winsonly ),
+			'unauthorizedHacks' => GetOnTheFlyNumericalStats( 'stats.hacking.unauthorizedHacks.%', $mode, $difficulty, $version, $player, $winsonly ),
+			
+			'classesDestroyed' => GetOnTheFlyNumericalStats( 'stats.kills.classesDestroyed.%', $mode, $difficulty, $version, $player, $winsonly ),
+			
+			'alertLevels' => GetOnTheFlyNumericalStats( 'stats.alert.maximumAlertLevel.%', $mode, $difficulty, $version, $player, $winsonly ),
+			
+			'squadsDispatched' => GetOnTheFlyNumericalStats( 'stats.alert.squadsDispatched.%', $mode, $difficulty, $version, $player, $winsonly ),
+			
+			'bothacks' => GetOnTheFlyNumericalStats( 'stats.bothacking.robotHacksApplied.%', $mode, $difficulty, $version, $player, $winsonly ),
+			'robotsHacked' => GetOnTheFlyNumericalStats( 'stats.bothacking.robotsHacked.%', $mode, $difficulty, $version, $player, $winsonly ),
+					
+				
+			'machinesHacked' => GetOnTheFlyNumericalStats( [
+				'stats.hacking.totalHacks.fabricators',
+				'stats.hacking.totalHacks.repairStations',
+				'stats.hacking.totalHacks.scanalyzers',
+				'stats.hacking.totalHacks.recyclingUnits',
+				'stats.hacking.totalHacks.terminals',
+				'stats.hacking.totalHacks.garrisonAccess',
+				], $mode, $difficulty, $version, $player, $winsonly ),
+			
 			'spacesMoved' => GetOnTheFlyNumericalStats( [
 				'stats.exploration.spacesMoved.treads',
 				'stats.exploration.spacesMoved.legs',
@@ -795,9 +908,48 @@ function GetCommunityStats( $mode=null, $difficulty=null, $version=null, $player
 				'stats.exploration.spacesMoved.core',
 				'stats.exploration.spacesMoved.overall',
 				], $mode, $difficulty, $version, $player, $winsonly ),
+			
+			'attacksByWeaponType' => GetOnTheFlyNumericalStats( [
+				'stats.combat.shotsFired.gun',
+				'stats.combat.shotsFired.cannon',
+				'stats.combat.shotsFired.launcher',
+				'stats.combat.shotsFired.special',
+				'stats.combat.meleeAttacks.overall',
+				], $mode, $difficulty, $version, $player, $winsonly ),
+				
+			'attacksByDamageType' => GetOnTheFlyNumericalStats( [
+				'stats.combat.shotsFired.phasic',
+				'stats.combat.shotsFired.kinetic',
+				'stats.combat.shotsFired.entropic',
+				'stats.combat.shotsFired.thermal',
+				'stats.combat.shotsFired.electromagnetic',
+				'stats.combat.shotsFired.explosive',
+				// 'stats.combat.shotsFired.slashing', // Runia's throwing claymores technically a slashing type
+				'stats.combat.meleeAttacks.slashing',
+				'stats.combat.meleeAttacks.piercing',
+				'stats.combat.meleeAttacks.impact',
+				], $mode, $difficulty, $version, $player, $winsonly ),
+			
+			'damageByWeaponType' => GetOnTheFlyNumericalStats( [
+				'stats.combat.damageInflicted.guns',
+				'stats.combat.damageInflicted.cannons',
+				'stats.combat.damageInflicted.explosions',
+				'stats.combat.damageInflicted.melee',
+				'stats.combat.damageInflicted.ramming',
+				], $mode, $difficulty, $version, $player, $winsonly ),
+				
+			'damageByDamageType' => GetOnTheFlyNumericalStats( [
+				'stats.combat.damageInflicted.phasic',
+				'stats.combat.damageInflicted.kinetic',
+				'stats.combat.damageInflicted.entropic',
+				'stats.combat.damageInflicted.thermal',
+				'stats.combat.damageInflicted.electromagnetic',
+				'stats.combat.damageInflicted.explosive',
+				'stats.combat.damageInflicted.slashing',
+				'stats.combat.damageInflicted.piercing',
+				'stats.combat.damageInflicted.impact',
+				], $mode, $difficulty, $version, $player, $winsonly ),
 
-			
-			
 		]
 	];
 	
@@ -809,6 +961,11 @@ function GetCommunityStats( $mode=null, $difficulty=null, $version=null, $player
 		$playtime_total_runs += $r['num'];
 	}
 	$data['data']['runtimeAvg'] = $playtime_total_runs ? round( $playtime_total_minutes / $playtime_total_runs ) : 0;
+	
+	// special runs list if you ask for a specific player
+	if ( $player ) {
+		$data['data']['playerRuns'] = GetRunsByPlayer( $mode, $difficulty, $version, $player, $winsonly );
+	}
 	
 	return $data;
 }

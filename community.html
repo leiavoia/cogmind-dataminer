@@ -17,6 +17,12 @@
 		<!-- add this if you want chart labels -->
 		<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
 		<link href="css/bootstrap.slate.min.css" rel="stylesheet"/>
+		
+		<!-- add this if you want datetime charts -->
+		<script src="https://cdn.jsdelivr.net/npm/moment@2.29.2"></script>
+		<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@1.0.0"></script></link>
+
+		
 		<style>
 		
 			CANVAS { height: 1px; }
@@ -82,10 +88,75 @@
 				<div v-if="pane=='loading'" class=" pt-5 text-center" style="font-size: 200%">
 					<p>Loading Statistics ...</p>
 					<progress style="height: 2em;" ></progress>
+					<p class="text-secondary">( Usually takes about 30 seconds )</p>
 				</div>
 				
+				<!-- filers menu -->
+				<div class="container-fluid px-3 py-3 mt-3 mb-3 bg-primary text-light rounded" v-if="pane!='loading'">
+					<template v-if="!showSettingsMenu" class="text-center m-0">
+						Version: <b>{{settings.version || 'All'}}</b>, 
+						Difficulty: <b>{{settings.difficulty.replace('DIFFICULTY_','') || 'All'}}</b>, 
+						Mode: <b>{{settings.mode.replace('SPECIAL_MODE_','') || 'All'}}</b>, 
+						Player: <b>{{settings.player || 'All'}}</b>, 
+						Wins Only: <b>{{settings.winsonly ? 'YES' : 'NO'}}</b>
+						<button type="button" class="btn btn-secondary rounded-pill btn-sm px-2 py-0 m-2" @click="showSettingsMenu = !showSettingsMenu" >Change</button>
+					</template>
+					<template v-else-if="stats">
+						<form>
+							<div class="row mb-3">
+								<label for="inputEmail3" class="col-sm-2 col-form-label">Version:</label>
+								<div class="col-sm-10">
+									<select v-model="settings.version" class="form-select">
+										<option value="">All</option>
+										<option v-for="r in stats.data.versions" :value="r.version">{{r.version}}</option>
+									</select>
+								</div>
+							</div>
+							<div class="row mb-3">
+								<label for="inputEmail3" class="col-sm-2 col-form-label">Difficulty:</label>
+								<div class="col-sm-10">
+									<select v-model="settings.difficulty" class="form-select">
+										<option value="">All</option>
+										<option v-for="r in stats.data.difficulties" :value="r">{{r.replace('DIFFICULTY_','')}}</option>
+									</select>
+								</div>
+							</div>
+							<div class="row mb-3">
+								<label for="inputEmail3" class="col-sm-2 col-form-label">Mode:</label>
+								<div class="col-sm-10">
+									<select v-model="settings.mode" class="form-select">
+										<option value="">All</option>
+										<option v-for="r in stats.data.modes" :value="r.mode">{{r.mode.toString().replace('SPECIAL_MODE_','')}}</option>
+									</select>
+								</div>
+							</div>
+							<div class="row mb-3">
+								<label for="inputEmail3" class="col-sm-2 col-form-label">Player:</label>
+								<div class="col-sm-10">
+									<select v-model="settings.player" class="form-select">
+										<option value="">All</option>
+										<option v-for="r in stats.data.players" :value="r.player_name.toString()">{{r.player_name.toString()}}</option>
+									</select>
+								</div>
+							</div>
+							<div class="row mb-3">
+								<label for="inputEmail3" class="col-sm-2 col-form-label">Wins:</label>
+								<div class="col-sm-10">
+									<select v-model="settings.winsonly" class="form-select">
+										<option value="0">All Runs</option>
+										<option value="1">Wins Only</option>
+									</select>
+								</div>
+							</div>
+							<button class="btn btn-primary" @click="showSettingsMenu = !showSettingsMenu">Cancel</button>
+							<button class="btn btn-success" @click="UpdateStats()">Update</button>
+						</form>
+					</template>
+				</div>
+				
+
 				<!-- pane nav bar -->
-				<nav class="nav nav-pills nav-justified my-3">
+				<nav class="nav nav-pills nav-justified my-3" v-if="pane!='loading'">
 					<!-- <button type="button" class="btn nav-item mx-1 text-nowrap btn-primary" v-on:click="ChangePane('input')">◄</button> -->
 					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='overview' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('overview')">Overview</button>
 					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='build' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('build')">Build</button>
@@ -94,27 +165,37 @@
 					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='lookup' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('lookup')">Lookup</button>
 				</nav>
 				
+								
 				<!-- overview pane -->			
 				<template v-if="pane=='overview'" >		
 
 					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
 						<div class="row row-cols-sm-2 g-5">
 							<div class="col">
-								<h3 class="text-center">Wins / Losses</h3>
+								<h3 class="text-center mt-0">Wins / Losses</h3>
 								<canvas id="winlossPieChart"></canvas>
 							</div>
 							<div class="col">
-								<h3 class="text-center">Win Types</h3>
+								<h3 class="text-center mt-0">Win Types</h3>
 								<canvas id="wintypePieChart"></canvas>
 							</div>
 						</div>
 					</div>
 					
-					<h2>Game Play Time (Minutes)</h2>
+					<template v-if="settings.player && stats.data.playerRuns && stats.data.playerRuns.length">
+						<h2>Player Runs <span class="text-secondary">({{settings.player}})</span></h2>
+						<p>Runs on Record: <b>{{stats.data.playerRuns.length}}</b></p>
+						<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+							<canvas id="playerRunsChart"></canvas>
+						</div>
+					</template>
+					
+					<h2>Game Play Time <span class="text-secondary">(Minutes)</span></h2>
 					<p>Average Play Time: <b>{{stats.data.runtimeAvg.toLocaleString()}} minutes</b></p>
 					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
 						<canvas id="playtimeChart"></canvas>
 					</div>
+					
 					<!-- <div class="container-fluid mt-5 mb-5 g-0">
 						<div class="row row-cols-1 row-cols-md-3 g-4">
 							<div class="col">
@@ -172,23 +253,18 @@
 							
 				</template>	
 				
-				<!-- combat pane -->			
-				<template v-if="pane=='combat'" >		
-				
-				</template>
-				
 				<!-- build pane -->			
 				<template v-if="pane=='build'" >		
 				
-					<h1>Mobility</h1>
-					<p>Propulsion parts are frequently attached just for protection. This chart shows which propulsion types players use to actually move.</p>
+					<h1 class="mt-3">Mobility</h1>
+					<p>This chart shows which propulsion types players use to actually move.</p>
 					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
 						<canvas id="spacesMovedPieChart"></canvas>
 					</div>					
 
 				
 					
-					<h1>Favorite Parts</h1>
+					<h1 class="mt-3">Favorite Parts</h1>
 					<p>These are the parts that players keep attached the longest. Each game registers one "favorite part" per category.</p>
 					
 					<h2 class="mb-0 text-info">Propulsion</h2>
@@ -440,11 +516,180 @@
 						</div>
 					</div>
 					
+				</template>
+					
+
+				<!-- combat pane -->			
+				<template v-if="pane=='combat'" >		
+					
+					<h1 class="mt-3">Time Spent at Alert Level</h1>
+					<p>The average percentage times that players spend at various alert levels</p>
+					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+						<canvas id="alertLevelsChart"></canvas>
+					</div>
+			
+					<h1 class="mt-3">Squads Dispatched</h1>
+					<p>Squads dispatched in response to various player actions. It does not include regular patrols.
+					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+						<canvas id="squadsDispatchedChart"></canvas>
+					</div>
+					
+					
+					<h1 class="mt-3">Attacks <span class="text-secondary">(Shots Fired and Melee Strikes)</span></h1>
+					<p>This chart shows each individual shot in a volley, including each shot from a multi-shot weapon and followup melee strikes.</p>
+					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+						<div class="row row-cols-sm-2 g-5">
+							<div class="col">
+								<h3 class="text-center mt-0">Weapon Type</h3>
+								<canvas id="attacksByWeaponTypeChart"></canvas>
+							</div>
+							<div class="col">
+								<h3 class="text-center mt-0">Damage Type</h3>
+								<canvas id="attacksByDamageTypeChart"></canvas>
+							</div>
+						</div>
+					</div>
+					
+					<h1 class="mt-3">Damaged Inflicted</h1>
+					<p>Damage inflicted includes damage against bots, terrain, and self.</p>
+					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+						<div class="row row-cols-sm-2 g-5">
+							<div class="col">
+								<h3 class="text-center mt-0">Weapon Type</h3>
+								<canvas id="damageByWeaponTypeChart"></canvas>
+							</div>
+							<div class="col">
+								<h3 class="text-center mt-0">Damage Type</h3>
+								<canvas id="damageByDamageTypeChart"></canvas>
+							</div>
+						</div>
+					</div>
+						
+					<h1 class="mt-3">Bots Destroyed <span class="text-secondary">By Class</span></h1>
+					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+						<canvas id="botsDestroyedChart"></canvas>
+					</div>
 					
 				</template>
-								
+				
+
+				<!-- combat pane -->			
+				<template v-if="pane=='hacking'" >		
+					
+					<h1 class="mt-3">Machine Hacking</h1>
+					
+					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+						<div class="row row-cols-sm-2 g-5">
+							<div class="col">
+								<h3 class="text-center mt-0">Machines Accessed</h3>
+								<canvas id="machinesAccessChart"></canvas>
+							</div>
+							<div class="col">
+								<h3 class="text-center mt-0">Machines Hacked</h3>
+								<canvas id="machinesHackedChart"></canvas>
+							</div>
+						</div>
+					</div>
+					
+					<h1 class="mt-3">Direct Hacks</h1>
+					
+					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+						<div class="row row-cols-sm-1 g-5">
+							<div class="col">
+								<h3 class="text-center">Terminals</h3>
+								<canvas id="terminalHacksChart"></canvas>
+							</div>
+							<div class="col">
+								<h3 class="text-center">Fabricators</h3>
+								<canvas id="fabricatorHacksChart"></canvas>
+							</div>
+							<div class="col">
+								<h3 class="text-center">Repair Stations</h3>
+								<canvas id="repairStationHacksChart"></canvas>
+							</div>
+							<div class="col">
+								<h3 class="text-center">Recycling Units</h3>
+								<canvas id="recyclingUnitHacksChart"></canvas>
+							</div>
+							<div class="col">
+								<h3 class="text-center">Scanalyzers</h3>
+								<canvas id="scanalyzerHacksChart"></canvas>
+							</div>
+							<div class="col">
+								<h3 class="text-center">Garrisons</h3>
+								<canvas id="garrisonAccessHacksChart"></canvas>
+							</div>
+						</div>
+					</div>
+					
+					<h1 class="mt-3">Unauthorized Hacks</h1>
+					
+					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+						<canvas id="unauthorizedHacksChart"></canvas>
+					</div>
+					
+					<h1 class="mt-3">Bot Hacking</h1>
+					
+					<h2>Bots Hacked</h2>
+					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+						<canvas id="robotsHackedChart"></canvas>
+					</div>
+					
+					<h2>Bothacks Applied</h2>
+					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+						<canvas id="bothacksChart"></canvas>
+					</div>
+											
+				</template>
+				
+
+				<!-- lookup pane -->			
+				<template v-if="pane=='lookup'" >
+					<h2>Stat Lookup</h2>		
+					
+					<div class="row mb-3">
+						<div class="col-sm-10">
+							<select v-model="selectedStatLookup" class="form-select">
+								<option v-for="r in stats.data.stat_labels" :value="r">{{r.label}}</option>
+							</select>
+						</div>
+						<div class="col-sm-2">
+							<button class="btn btn-secondary" @click="selectStatLookup()">GO</button>
+						</div>
+					</div>
+												
+					<template v-if="selectedStatData == 'loading'">
+						<p>Loading...</p>
+						<progress style="height: 2em;" ></progress>
+					</template>
+					<template v-else-if="selectedStatData">
+						<h2>Top Runs</h2>
+						<table class="table text-nowrap">
+							<tr>
+								<th>Value</th>
+								<th>Player</th>
+								<th>Version</th>
+								<th>Mode</th>
+								<th>Difficulty</th>
+								<th>Scoresheet</th>
+							</tr>
+							<tr v-for="r of selectedStatData">
+								<td>{{r.value.toLocaleString()}}</td>
+								<td>{{r.player_name}}</td>
+								<td>{{r.version}}</td>
+								<td>{{r.mode.toString().replace('SPECIAL_MODE_','')}}</td>
+								<td>{{r.difficulty.replace('DIFFICULTY_','')}}</td>
+								<td><a :href="'index.html?' + r.filehash" target="_blank" >{{r.filehash}}</a></td>
+							</tr>
+						</table>						
+						
+					</template>
+					
+				</template>
+				
+																				
 				<!-- pane nav bar -->
-				<nav class="nav nav-pills nav-justified my-3">
+				<nav class="nav nav-pills nav-justified my-3" v-if="pane!='loading' && pane!='lookup'">
 					<!-- <button type="button" class="btn nav-item mx-1 text-nowrap btn-primary" v-on:click="ChangePane('input')">◄</button> -->
 					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='overview' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('overview')">Overview</button>
 					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='build' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('build')">Build</button>

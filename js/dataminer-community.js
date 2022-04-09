@@ -102,21 +102,29 @@ Chart.colors_by_key = {
 	ballisticCannon: 'rgb(20,80,135)',
 	ballisticGun: 'rgb(55,123,196)',
 	launcher: 'rgb(219,41,41)',
+	explosions: 'rgba(219,41,41,1)',
 	slashing: 'rgba(214,221,17,1)', 
 	slashingWeapon: 'rgba(214,221,17,1)',
+	melee: 'rgba(214,221,17,1)', 
 	piercing: 'rgba(192,55,196,1)', 
 	piercingWeapon: 'rgba(192,55,196,1)',
 	impact: 'rgba(240,240,240,1)',
 	impactWeapon: 'rgba(240,240,240,1)',
 	specialWeapon: '#999',
 	specialMeleeWeapon: '#42D484',
+	special: '#42D484',
 	phasic: '#00744a',
 	phasicWeapon: '#DD4499',
 	entropic: '#ff6ab6', 
 	entropicWeapon: '#ff6ab6',
 	electromagnetic: 'rgba(59,221,17,1)', 
 	explosive: 'rgba(219,41,41,1)', 
-	allies: '#73d0ff',
+	allies: '#73d0ff',	
+	gun: '#89a784', 
+	guns: '#89a784', 
+	cannon: '#5647a2', 
+	cannons: '#5647a2', 
+	ramming: '#FFF'
 };
 
 Chart.SortPieData = function ( data, labels, colors=null ) { // coupled arrays
@@ -200,142 +208,174 @@ app = new Vue({
 		analysis: null, // populates when request for JSON succeeds
 		pane: null, // dont set to 'overview' by default. graphs need to be prompted to draw
 		ChangePane,
+		UpdateStats,
+		selectStatLookup,
+		selectedStatLookup: null,
+		selectedStatData: null,
+		showSettingsMenu: false,
 		charts: [],
 		error_msg: null,
+		settings: {
+			// difficulty: 'DIFFICULTY_ROGUE',
+			difficulty: '',
+			// mode: 'SPECIAL_MODE_NONE',
+			mode: '',
+			version: '',
+			player: '',
+			// player: 'MTF',
+			winsonly: 0,
+			skipcache: 1,
+			label: '',
+			
+			difficulties: [],
+			versions: [],
+			players: [],
+			modes:[]
+		}
 	}
 })
 
-ChangePane('loading');
-LoadStatsFromServer();
 
-function LoadStatsFromServer() {
+UpdateStats();
+
+
+function UpdateStats() {
+	ChangePane('loading');
+	app.showSettingsMenu = false;
+	LoadStatsFromServer( 'community', data => {
+		if ( data ) { 
+			app.stats = data;
+			ChangePane('overview');
+		}
+	});
+}
+
+
+function LoadStatsFromServer( requestFunction='community', callback, autoChangePanes=true ) {
 
 	this.error_msg = null;
 	
-	// let difficulty = 'DIFFICULTY_ROGUE';
-	let difficulty = '';
-	// let mode = 'SPECIAL_MODE_NONE';
-	let mode = '';
-	let version = '';
-	// let player = 'aoemica';
-	let player = 'leiavoia';
-	let winsonly = 0;
-	let skipcache = 1;
-	let file = `dataminer.php?f=community&winsonly=${winsonly}&mode=${mode}&difficulty=${difficulty}&version=${version}&player=${player}&skipcache=${skipcache}`;
+	let file = `dataminer.php?f=${requestFunction}&winsonly=${app.settings.winsonly}&mode=${app.settings.mode}&difficulty=${app.settings.difficulty}&version=${app.settings.version}&player=${app.settings.player}&skipcache=${app.settings.skipcache}&label=${app.settings.label}`;
 	
-	ChangePane('loading');
+	if ( autoChangePanes ) { ChangePane('loading'); }
 	
 	fetch( file ).then( rsp => {
 		if ( !rsp.ok || !rsp.body || String(rsp.status).match(/^(4|5)/) ) {
-			ChangePane('input');
+			if ( autoChangePanes ) { ChangePane('overview'); }
 			app.error_msg = 'Server statistics not available. Could not lock coordinates for planetary alignment matrix transform, or possibly server is busted.';
 			return false;
 		}		
 		return rsp.json();
 	})
-	.then( data => {
-		if ( data ) { 
-			app.stats = data;
-			ChangePane('overview');
-		}
-	})
-	.catch(error => {
+	.then( callback )
+	.catch( error => {
 		app.error_msg = 'Error when trying to get file: ' + error;
-		ChangePane('input');
+		if ( autoChangePanes ) { ChangePane('overview'); }
 	});
 }
 
-function DownloadDataminerDataAnalysis( app ) {
-	// TODO: don't re-download if categories are the same as what we have already
-	url = window.location.href
-		.replace( window.location.search, '' ) 
-		.replace( /#.*/, '' ) 
-		.replace('.html','')
-		+ 'dataminer.php'
-		+ `?version=${app.scoresheet.header.version}`
-		+ `&difficulty=${app.scoresheet.header.difficulty}`
-		+ `&mode=${app.scoresheet.header.specialMode}`
-		;
-	let fetchHandler = data => {
-		if ( data ) {
-			if ( data['parts.inventory.slots']?.samples < 10 ) {
-				throw new Error('Not enough samples in peer group.')
-			}
-			app.analysis = data;
-			// Analyze comps
-			if ( app.scoresheet.flatstats ) {
-				for ( let i of app.scoresheet.flatstats ) {
-					if ( i[3] && app.analysis[i[3]] ) {
-						// [ truncated_key, value, depth, full_key, avg, min, max, diff, formatted_diff, diffclass ]
-						let diff = (i[1] && app.analysis[i[3]].avg) ? (100* (i[1] - app.analysis[i[3]].avg) / app.analysis[i[3]].avg) : 0;
-						let diffclass = 'avg';
-						if ( diff > 400 ) { diffclass = 'plus400'; }
-						else if ( diff > 200 ) { diffclass = 'plus200'; }
-						else if ( diff > 100 ) { diffclass = 'plus100'; }
-						else if ( diff > 50 ) { diffclass = 'plus50'; }
-						else if ( diff < -90 ) { diffclass = 'minus90'; }
-						else if ( diff < -75 ) { diffclass = 'minus75'; }
-						else if ( diff < -50 ) { diffclass = 'minus50'; }
-						else if ( diff < -25 ) { diffclass = 'minus25'; }
-						i.push( (app.analysis[i[3]].avg || 0).toLocaleString(undefined, {minimumFractionDigits:0,maximumFractionDigits:(app.analysis[i[3]].avg >= 100 ? 0 : 2)}) );
-						i.push( (app.analysis[i[3]].min || 0).toLocaleString(undefined, {minimumFractionDigits:0,maximumFractionDigits:(app.analysis[i[3]].min >= 100 ? 0 : 2)}) );
-						i.push( (app.analysis[i[3]].max || 0).toLocaleString(undefined, {minimumFractionDigits:0,maximumFractionDigits:(app.analysis[i[3]].max >= 100 ? 0 : 2)}) );
-						i.push( diff );
-						i.push( (diff > 0 ? '+' : '') + diff.toLocaleString(undefined, {minimumFractionDigits:0,maximumFractionDigits:2}) + '%' );
-						i.push( diffclass );
-					}
-				}
-			}
-			// sort the comps for interesting hilites
-			let mapper = function ( arr ) {
-				// clean the name up to be more readable
-				let name = arr[3].split('.').slice(1);
-				if ( name[0].match(/(combat|build|resources|hacking|exploration|intel|machines|traps|bothacking|stealth|alert|allies)/) ) { name.shift(); }
-				if ( name[1] && name[1].match('total') ) { name.splice(1,1); } // actions.total
-				if ( name[ name.length-1 ].match('overall') ) { name.pop(); }
-				name = name.map( _ => _.Undatafy() ).join(': ');
-				return {
-					name: name,
-					value: arr[1],
-					diff: arr[8]
-				};
-			};
-			// note: filtering out single-event items that tend to be uninteresting when the average is near zero.
-			app.scoresheet.hilites = app.scoresheet.flatstats.filter( i => i[7] > 0 && i[1] > 1 ).sort( (a,b) => b[7] - a[7] ).slice( 0, 19 ).map( mapper );
-			app.scoresheet.lowlites = app.scoresheet.flatstats.filter( i => i[7] < 0  ).sort( (a,b) => a[7] - b[7] ).slice( 0, 19 ).map( mapper );
+// function DownloadDataminerDataAnalysis( app ) {
+// 	// TODO: don't re-download if categories are the same as what we have already
+// 	url = window.location.href
+// 		.replace( window.location.search, '' ) 
+// 		.replace( /#.*/, '' ) 
+// 		.replace('.html','')
+// 		+ 'dataminer.php'
+// 		+ `?version=${app.scoresheet.header.version}`
+// 		+ `&difficulty=${app.scoresheet.header.difficulty}`
+// 		+ `&mode=${app.scoresheet.header.specialMode}`
+// 		;
+// 	let fetchHandler = data => {
+// 		if ( data ) {
+// 			if ( data['parts.inventory.slots']?.samples < 10 ) {
+// 				throw new Error('Not enough samples in peer group.')
+// 			}
+// 			app.analysis = data;
+// 			// Analyze comps
+// 			if ( app.scoresheet.flatstats ) {
+// 				for ( let i of app.scoresheet.flatstats ) {
+// 					if ( i[3] && app.analysis[i[3]] ) {
+// 						// [ truncated_key, value, depth, full_key, avg, min, max, diff, formatted_diff, diffclass ]
+// 						let diff = (i[1] && app.analysis[i[3]].avg) ? (100* (i[1] - app.analysis[i[3]].avg) / app.analysis[i[3]].avg) : 0;
+// 						let diffclass = 'avg';
+// 						if ( diff > 400 ) { diffclass = 'plus400'; }
+// 						else if ( diff > 200 ) { diffclass = 'plus200'; }
+// 						else if ( diff > 100 ) { diffclass = 'plus100'; }
+// 						else if ( diff > 50 ) { diffclass = 'plus50'; }
+// 						else if ( diff < -90 ) { diffclass = 'minus90'; }
+// 						else if ( diff < -75 ) { diffclass = 'minus75'; }
+// 						else if ( diff < -50 ) { diffclass = 'minus50'; }
+// 						else if ( diff < -25 ) { diffclass = 'minus25'; }
+// 						i.push( (app.analysis[i[3]].avg || 0).toLocaleString(undefined, {minimumFractionDigits:0,maximumFractionDigits:(app.analysis[i[3]].avg >= 100 ? 0 : 2)}) );
+// 						i.push( (app.analysis[i[3]].min || 0).toLocaleString(undefined, {minimumFractionDigits:0,maximumFractionDigits:(app.analysis[i[3]].min >= 100 ? 0 : 2)}) );
+// 						i.push( (app.analysis[i[3]].max || 0).toLocaleString(undefined, {minimumFractionDigits:0,maximumFractionDigits:(app.analysis[i[3]].max >= 100 ? 0 : 2)}) );
+// 						i.push( diff );
+// 						i.push( (diff > 0 ? '+' : '') + diff.toLocaleString(undefined, {minimumFractionDigits:0,maximumFractionDigits:2}) + '%' );
+// 						i.push( diffclass );
+// 					}
+// 				}
+// 			}
+// 			// sort the comps for interesting hilites
+// 			let mapper = function ( arr ) {
+// 				// clean the name up to be more readable
+// 				let name = arr[3].split('.').slice(1);
+// 				if ( name[0].match(/(combat|build|resources|hacking|exploration|intel|machines|traps|bothacking|stealth|alert|allies)/) ) { name.shift(); }
+// 				if ( name[1] && name[1].match('total') ) { name.splice(1,1); } // actions.total
+// 				if ( name[ name.length-1 ].match('overall') ) { name.pop(); }
+// 				name = name.map( _ => _.Undatafy() ).join(': ');
+// 				return {
+// 					name: name,
+// 					value: arr[1],
+// 					diff: arr[8]
+// 				};
+// 			};
+// 			// note: filtering out single-event items that tend to be uninteresting when the average is near zero.
+// 			app.scoresheet.hilites = app.scoresheet.flatstats.filter( i => i[7] > 0 && i[1] > 1 ).sort( (a,b) => b[7] - a[7] ).slice( 0, 19 ).map( mapper );
+// 			app.scoresheet.lowlites = app.scoresheet.flatstats.filter( i => i[7] < 0  ).sort( (a,b) => a[7] - b[7] ).slice( 0, 19 ).map( mapper );
+// 		}
+// 	};		
+// 	return fetch( url ).then( rsp => {
+// 		if ( !rsp.ok || !rsp.body || String(rsp.status).match(/^(4|5|204)/) ) {
+// 			throw new Error('Error when trying to get analysis file.');
+// 		}		
+// 		app.scoresheet.header.analysisFile = url;
+// 		return rsp.json();
+// 	})
+// 	.then( fetchHandler )
+// 	.catch( error => {
+// 		// we couldn't download the live database version. 
+// 		// see if we can fall back to a local static file.
+// 		let static_file = 'dataminer.analysis.standard.b11.json';
+// 		if ( app.scoresheet.header.version.match(/beta 10/) ) {
+// 			static_file = 'dataminer.analysis.standard.b10.json';
+// 		}
+// 		return fetch( static_file ).then( rsp => {
+// 			let json = rsp.json();
+// 			// couldnt get file
+// 			if ( !rsp.ok || !rsp.body || String(rsp.status).match(/^(4|5|204)/) ) {
+// 				app.error_msg = 'Could not get dataminer analysis file. I tried, though. I really did.';
+// 				return false;
+// 			}
+// 			app.scoresheet.header.analysisFile = static_file;
+// 			app.scoresheet.header.analysisNote = 'Using standard comparison analysis file. Exact peer group not available.';
+// 			return json;
+// 		})
+// 		.then( fetchHandler )
+// 		.catch( error => {
+// 			app.error_msg = 'Error when trying to get file: ' + error;
+// 		});
+// 	});	
+// }
+
+function selectStatLookup() {
+	app.settings.label = app.selectedStatLookup.label;
+	app.selectedStatData = 'loading';
+	LoadStatsFromServer( 'topx', data => {
+		if ( data ) { 
+			app.selectedStatData = data;
+			ChangePane('lookup');
 		}
-	};		
-	return fetch( url ).then( rsp => {
-		if ( !rsp.ok || !rsp.body || String(rsp.status).match(/^(4|5|204)/) ) {
-			throw new Error('Error when trying to get analysis file.');
-		}		
-		app.scoresheet.header.analysisFile = url;
-		return rsp.json();
-	})
-	.then( fetchHandler )
-	.catch( error => {
-		// we couldn't download the live database version. 
-		// see if we can fall back to a local static file.
-		let static_file = 'dataminer.analysis.standard.b11.json';
-		if ( app.scoresheet.header.version.match(/beta 10/) ) {
-			static_file = 'dataminer.analysis.standard.b10.json';
-		}
-		return fetch( static_file ).then( rsp => {
-			let json = rsp.json();
-			// couldnt get file
-			if ( !rsp.ok || !rsp.body || String(rsp.status).match(/^(4|5|204)/) ) {
-				app.error_msg = 'Could not get dataminer analysis file. I tried, though. I really did.';
-				return false;
-			}
-			app.scoresheet.header.analysisFile = static_file;
-			app.scoresheet.header.analysisNote = 'Using standard comparison analysis file. Exact peer group not available.';
-			return json;
-		})
-		.then( fetchHandler )
-		.catch( error => {
-			app.error_msg = 'Error when trying to get file: ' + error;
-		});
-	});	
+	}, false);	
 }
 
 function ChangePane(pane) {
@@ -354,17 +394,20 @@ function ChangePane(pane) {
 	// draw charts that need the rendered HTML to be present first
 	Vue.nextTick( _ => {
 		
+		let notOverall = x => !x.label.match(/overall$/);
+		
 		if ( pane === 'build' ) {
 			let spacesMoved = app.stats.data.spacesMoved.filter( x => x.label != 'stats.exploration.spacesMoved.overall' );
-			app.charts.push( DrawGenericPieChart(
+			app.charts.push( DrawGenericChart(
 				spacesMoved.map( x => x.sum ),
 				spacesMoved.map( x => x.label.replace('stats.exploration.spacesMoved.','') ),
 				'spacesMovedPieChart',
-				{ sort:true, colors: 'indexed', undatafy: true, addpct:true, legendPos:'left' }
+				{ sort:true, colors: 'indexed', undatafy: true, addpct:true, legendPos:'left', aspectRatio:1.75 }
 				) );
 		}
 		
 		else if ( pane === 'overview' ) {
+		
 			app.charts.push( DrawWinLossPieChart( 
 				[	app.stats.data.winloss.wins, 
 					// app.stats.data.winloss.losses,
@@ -375,15 +418,176 @@ function ChangePane(pane) {
 				], 
 				['Wins','Access','Research','Factory','Materials']
 				) );
+				
 			app.charts.push( DrawWinTypesPieChart( 
 				app.stats.data.wintypes.map( x => x.num ),
 				app.stats.data.wintypes.map( x => 'W' + x.value )
 				) );
+				
 			app.charts.push( DrawPlaytimeChart( 
-				app.stats.data.runtimesChartData.filter( x => x.minutes < 500 ).map( x => ({x:x.minutes, y:x.num}) ), 
-				// app.stats.data.runtimesChartData.map( x => x.num ), 
-				// app.stats.data.runtimesChartData.map( x => x.minutes ) 
-			) );			
+				app.stats.data.runtimesChartData.filter( x => x.minutes < 500 ).map( x => ({x:x.minutes, y:x.num}) )
+			) );		
+			
+			if ( app.settings.player && app.stats.data.playerRuns ) {
+			
+				app.charts.push( DrawPlayerRunsChart( 
+					app.stats.data.playerRuns.map( x => ({x:x.date, y:x.score}) )
+					) );
+								
+				// for ( let r of app.stats.data.playerRuns ) {
+				// 	r.
+				// }
+			}	
+		}
+		
+		else if ( pane === 'hacking' ) {
+		
+			app.charts.push( DrawGenericChart( 
+				app.stats.data.machinesAccessed.filter(notOverall).map( x => x.sum ) ,
+				app.stats.data.machinesAccessed.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
+				'machinesAccessChart',
+				{ sort:true, colors: 'indexed', undatafy: true, addpct:true, legendPos:'top', aspectRatio:1, chartType: 'doughnut' }
+				) );
+				
+			app.charts.push( DrawGenericChart( 
+				app.stats.data.machinesHacked.filter(notOverall).map( x => x.sum ) ,
+				app.stats.data.machinesHacked.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
+				'machinesHackedChart',
+				{ sort:true, colors: 'indexed', undatafy: true, addpct:true, legendPos:'top', aspectRatio:1, chartType: 'doughnut' }
+				) );
+				
+			app.charts.push( DrawGenericChart( 
+				app.stats.data.terminalHacks.filter(notOverall).map( x => x.sum ) ,
+				app.stats.data.terminalHacks.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
+				'terminalHacksChart',
+				{ sort:true,  undatafy: true, addpct:true, legend:false, aspectRatio:0.75, flipAxes:true, chartType: 'bar' }
+				) );
+				
+			app.charts.push( DrawGenericChart( 
+				app.stats.data.fabricatorHacks.filter(notOverall).map( x => x.sum ) ,
+				app.stats.data.fabricatorHacks.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
+				'fabricatorHacksChart',
+				{ sort:true, undatafy: true, addpct:true, legendPos:'left', aspectRatio:2, chartType: 'pie' }
+				) );
+				
+			app.charts.push( DrawGenericChart( 
+				app.stats.data.repairStationHacks.filter(notOverall).map( x => x.sum ) ,
+				app.stats.data.repairStationHacks.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
+				'repairStationHacksChart',
+				{ sort:true, undatafy: true, addpct:true, legendPos:'left', aspectRatio:2, chartType: 'pie' }
+				) );
+				
+			app.charts.push( DrawGenericChart( 
+				app.stats.data.recyclingUnitHacks.filter(notOverall).map( x => x.sum ) ,
+				app.stats.data.recyclingUnitHacks.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
+				'recyclingUnitHacksChart',
+				{ sort:true, undatafy: true, addpct:true, legendPos:'left', aspectRatio:2, chartType: 'pie' }
+				) );
+				
+			app.charts.push( DrawGenericChart( 
+				app.stats.data.scanalyzerHacks.filter(notOverall).map( x => x.sum ) ,
+				app.stats.data.scanalyzerHacks.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
+				'scanalyzerHacksChart',
+				{ sort:true, undatafy: true, addpct:true, legendPos:'left', aspectRatio:2, chartType: 'pie' }
+				) );
+				
+			app.charts.push( DrawGenericChart( 
+				app.stats.data.garrisonAccessHacks.filter(notOverall).map( x => x.sum ) ,
+				app.stats.data.garrisonAccessHacks.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
+				'garrisonAccessHacksChart',
+				{ sort:true, undatafy: true, addpct:true, legendPos:'left', aspectRatio:2, chartType: 'pie' }
+				) );
+				
+			app.charts.push( DrawGenericChart( 
+				app.stats.data.unauthorizedHacks.filter(notOverall).map( x => x.sum ) ,
+				app.stats.data.unauthorizedHacks.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
+				'unauthorizedHacksChart',
+				{ sort:true,  undatafy: true, addpct:true, legend:false, aspectRatio:1, flipAxes:true, chartType: 'bar' }
+				) );
+				
+			app.charts.push( DrawGenericChart( 
+				app.stats.data.robotsHacked.filter(notOverall).map( x => x.sum ) ,
+				app.stats.data.robotsHacked.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
+				'robotsHackedChart',
+				{ sort:true, undatafy: true, addpct:true, legendPos:'left', aspectRatio:2, chartType: 'pie' }
+				) );
+				
+			app.charts.push( DrawGenericChart( 
+				app.stats.data.bothacks.filter(notOverall).map( x => x.sum ) ,
+				app.stats.data.bothacks.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
+				'bothacksChart',
+				{ sort:true, undatafy: true, addpct:true, legend:false, aspectRatio:0.75, flipAxes:true, chartType: 'bar' }
+				) );
+				
+		}
+		
+		else if ( pane === 'combat' ) {
+				
+			app.charts.push( DrawGenericChart( 
+				app.stats.data.attacksByWeaponType.map( x => x.sum ) ,
+				app.stats.data.attacksByWeaponType.map( x => x.label.replace(/^.*\./,'').replace('overall','melee') ),
+				'attacksByWeaponTypeChart',
+				{ sort:true, colors: 'indexed', undatafy: true, addpct:true, legendPos:'top', aspectRatio:1 }
+				) );
+										
+			app.charts.push( DrawGenericChart( 
+				app.stats.data.attacksByDamageType.map( x => x.sum ) ,
+				app.stats.data.attacksByDamageType.map( x => x.label.replace(/^.*\./,'') ),
+				'attacksByDamageTypeChart',
+				{ sort:true, colors: 'indexed', undatafy: true, addpct:true, legendPos:'top', aspectRatio:1 }
+				) );
+										
+			app.charts.push( DrawGenericChart( 
+				app.stats.data.damageByWeaponType.map( x => x.sum ) ,
+				app.stats.data.damageByWeaponType.map( x => x.label.replace(/^.*\./,'') ),
+				'damageByWeaponTypeChart',
+				{ sort:true, colors: 'indexed', undatafy: true, addpct:true, legendPos:'top', aspectRatio:1 }
+				) );
+										
+			app.charts.push( DrawGenericChart( 
+				app.stats.data.damageByDamageType.map( x => x.sum ) ,
+				app.stats.data.damageByDamageType.map( x => x.label.replace(/^.*\./,'') ),
+				'damageByDamageTypeChart',
+				{ sort:true, colors: 'indexed', undatafy: true, addpct:true, legendPos:'top', aspectRatio:1 }
+				) );
+										
+			app.charts.push( DrawGenericChart( 
+				app.stats.data.classesDestroyed.filter(notOverall).map( x => x.sum ) ,
+				app.stats.data.classesDestroyed.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
+				'botsDestroyedChart',
+				{ sort:true, colors: 'green', undatafy: true, addpct:true, legend:false, aspectRatio:0.5, flipAxes:true, chartType:'bar' }
+				) );
+										
+			app.charts.push( DrawGenericChart( 
+				app.stats.data.squadsDispatched.filter(notOverall).map( x => x.sum ) ,
+				app.stats.data.squadsDispatched.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
+				'squadsDispatchedChart',
+				{ sort:true, colors: 'pie', undatafy: true, addpct:true, legendPos:'left', aspectRatio:1.75 }
+				) );
+									
+			// // change labels and sort a bit:
+			// for ( let x of app.stats.data.alertLevels ) {
+			// 	switch ( x.label ) {
+			// 		case 'lowSecurityPercent': { x.sorting=0; x.label = 'Low Security'; break; }
+			// 		case 'level1': { x.sorting=1; x.label = 'Level 1'; break; }
+			// 		case 'level2': { x.sorting=2; x.label = 'Level 2'; break; }
+			// 		case 'level3': { x.sorting=3; x.label = 'Level 3'; break; }
+			// 		case 'level4': { x.sorting=4; x.label = 'Level 4'; break; }
+			// 		case 'level5': { x.sorting=5; x.label = 'Level 5'; break; }
+			// 		case 'highSecurity': { x.sorting=6; x.label = 'High Security'; break; }
+			// 		case 'maxSecurity': { x.sorting=7; x.label = 'Maximum Security'; break; }
+			// 		default: ;;
+			// 	}
+			// }
+			// app.stats.data.alertLevels.sort( (a,b) => b.sorting - a.sorting );
+			app.charts.push( DrawGenericChart( 
+				app.stats.data.alertLevels.filter(notOverall).map( x => x.sum ) ,
+				app.stats.data.alertLevels.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
+				'alertLevelsChart',
+				{ sort:true, colors: 'pie', undatafy: true, addpct:true, legendPos:'left', aspectRatio:1.75 }
+				) );
+			
+	
 		}
 		
 		
@@ -410,7 +614,7 @@ function DrawPlaytimeChart( data ) {
 		}]
 	};
 	const config = {
-		type: 'line',
+		type: (data.length > 500 ? 'line' : 'bar' ),
 		data: chartdata,
 		options: {
 			aspectRatio: 3,
@@ -441,6 +645,58 @@ function DrawPlaytimeChart( data ) {
 		},
 	};
 	return new Chart( document.getElementById('playtimeChart'), config );
+}
+
+
+function DrawPlayerRunsChart( data ) {
+
+	const chartdata = {
+		datasets: [{
+			label: 'Player Runs',
+			borderWidth: 1,
+			data: data,
+			pointRadius:8,
+			showLine: false,
+			fill: false,
+			backgroundColor: 'rgba(65, 163, 79, 0.75)'
+		}]
+	};
+	const config = {
+		type: 'line',
+		data: chartdata,
+		options: {
+			aspectRatio: 3,
+			responsive: true,
+			interaction: {
+				intersect: false,
+			},				
+				
+			plugins: {
+				legend: { display: false },
+				title: { display: false }
+			},
+			scales: {
+				x: {
+					type: 'time',
+					time: {
+						unit: 'month'
+					},					
+					title: { 
+						text: 'Date',
+						display: true
+					}
+				},
+				y: {
+					// type: 'linear',
+					title: { 
+						text: 'Score',
+						display: true
+					}
+				}
+			}
+		},
+	};
+	return new Chart( document.getElementById('playerRunsChart'), config );
 }
 
 
@@ -507,7 +763,7 @@ function DrawWinTypesPieChart( data, labels ) {
 	return new Chart( document.getElementById('wintypePieChart'), config );
 }
 
-function DrawGenericPieChart( data, labels, elementID, options ) {
+function DrawGenericChart( data, labels, elementID, options ) {
 	if ( options.sort ) { 
 		Chart.SortPieData(data,labels); 
 	}
@@ -536,17 +792,21 @@ function DrawGenericPieChart( data, labels, elementID, options ) {
 		fill: true,
 	}];
 	const config = {
-		type: 'doughnut',
+		type: (options.chartType || 'doughnut'),
 		data: { labels, datasets },
 		options: {
-			// maintainAspectRatio: false,
-			aspectRatio: 1.75,
+			indexAxis: (options.flipAxes ? 'y' : 'x'),
+			aspectRatio: (options.aspectRatio || null),
+			maintainAspectRatio: true, // (!!options.aspectRatio),
 			responsive: true,			
 			interaction: {
 				intersect: false,
 			},					
 			plugins: {
-				legend: { position: options.legendPos || 'top', display: true, },
+				legend: { 
+					position: options.legendPos || 'top', 
+					display: !('legend' in options && !options.legend)
+				},
 				title: { display: false, }
 			}
 				
