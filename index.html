@@ -290,17 +290,19 @@
 						<div class="row row-cols-lg-2 g-5">
 							<div class="col text-center">
 								<h1 class="display-1 text-success" v-if="scoresheet.header.win">ASCENDED!</h1>
+								<h1 class="display-1 text-success" v-else-if="scoresheet.header.runResult == '[OPEN_PERCENT]'">IN PLAY</h1>
 								<h1 class="display-1 text-danger" v-else>DEFEAT!</h1>
-								<p class="lead">
+								<p class="lead" v-if="scoresheet.header.runResult != '[OPEN_PERCENT]'">
 									{{scoresheet.header.runResult}}
 								</p>
 								<div class="row row-cols-lg">
 									<div class="col text-center">
-										<p class="mt-4 mb-0">Final Score:</p>
+										<p class="mt-4 mb-0">Score:</p>
 										<p class="display-3 mt-0 pt-0 text-info">{{scoresheet.performance.totalScore.toLocaleString()}}</p>
 									</div>
 									<div class="col text-center" v-if="!scoresheet.header.win">
-										<p class="mt-4 mb-0">Died In:</p>
+										<p class="mt-4 mb-0" v-if="scoresheet.header.runResult == '[OPEN_PERCENT]'">Location:</p>
+										<p class="mt-4 mb-0" v-else>Died In:</p>
 										<p class="display-3 mt-0 pt-0 text-info">{{scoresheet.game.finalMapReached}}</p>
 									</div>
 								</div>
@@ -326,7 +328,7 @@
 										<th>Run Time</th>
 										<td>{{scoresheet.game.runTime}}</td>
 									</tr>
-									<tr>
+									<tr v-if="scoresheet.header.difficulty">
 										<th>Difficulty</th>
 										<td>
 											{{scoresheet.header.difficulty.replace('DIFFICULTY_','')}}
@@ -359,7 +361,7 @@
 											<a v-bind:href="scoresheet.meta.permalink" target="_blank" v-if="scoresheet.meta.permalink">Permalink</a>
 										</td>
 									</tr>								
-									<tr v-if="analysis">
+									<tr v-if="analysis && analysis['parts.inventory.slots']">
 										<th>Comparisons</th>
 										<td>
 											{{analysis['parts.inventory.slots'].samples.toLocaleString()}} runs in dataset. 
@@ -1060,7 +1062,7 @@
 								<div class="card statbox h-100">
 									<div class="card-header">Melee Follow-Ups</div>
 									<div class="card-body text-success numeric">
-										<span class="card-text">{{ scoresheet.stats.combat.meleeFollowupPercent.toFixed(1) }}%</span>
+										<span class="card-text">{{ (scoresheet.stats.combat.meleeFollowupPercent || 0).toFixed(1)}}%</span>
 										<canvas id="meleeFollowupSparkChart"></canvas>	
 									</div>
 								</div>
