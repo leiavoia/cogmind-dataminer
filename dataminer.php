@@ -36,25 +36,21 @@ else {
 	$label = Sanitize( isset($_REQUEST['label']) && $_REQUEST['label'] ? $_REQUEST['label'] : null );
 	$player = Sanitize( isset($_REQUEST['player']) && $_REQUEST['player'] ? $_REQUEST['player'] : null );
 	$num = SanitizeInt( isset($_REQUEST['num']) && $_REQUEST['num'] ? $_REQUEST['num'] : 30 );
-	$winsonly = SanitizeInt( isset($_REQUEST['winsonly']) && $_REQUEST['winsonly'] ? true : false );
-	$skipcache = SanitizeInt( isset($_REQUEST['skipcache']) && $_REQUEST['skipcache'] ? true : false );
+	$winsonly = SanitizeInt( isset($_REQUEST['winsonly']) && $_REQUEST['winsonly'] ? 1 : 0 );
+	$skipcache = SanitizeInt( isset($_REQUEST['skipcache']) && $_REQUEST['skipcache'] ? 1 : 0 );
 	$f = Sanitize( isset($_REQUEST['f']) && $_REQUEST['f'] ? $_REQUEST['f'] : 'stats' );
 
 	$cache_hash = md5( implode(':',[$f,$mode,$difficulty,$version,$label,$player,$winsonly] ) );
 	$cache_file = CACHE_DIR . '/' . $cache_hash . '.json';
-
+	$cache_hit = 0;
+	
 	$json = null;
 
-	//  $records = GetCommunityStats(  ); 
-	// $records = GetOnTheFlyNumericalStats('stats.exploration.spacesMoved.overall');
-	// header('Content-Type: application/json');
-	// print json_encode( $records); 
-	// exit;
-	
 	// look for a cached file
 	if ( !$skipcache ) {
-		if ( is_readable($cache_file) && filemtime($cache_file) < CACHE_TTL ) {
+		if ( is_readable($cache_file) && time() - filemtime($cache_file) < CACHE_TTL ) {
 			$json = file_get_contents($cache_file);
+			$cache_hit = 1;
 		}
 	}
 
@@ -99,11 +95,12 @@ else {
 	}
 
 	// print output
-	if ( $records ) {
+	if ( $json ) {
 		header('Content-Type: application/json');
 		header('Content-Security-Policy: upgrade-insecure-requests;');
 		header("X-XSS-Protection: 1");
 		header("Content-Length: " . strlen($json) );
+		header("X-Cache: " . ($cache_hit ? 'HIT' : 'MISS') );
 		print $json;
 	}
 	else {
@@ -112,7 +109,7 @@ else {
 	ob_flush();
 
 	// cache the result for future queries
-	if ( CACHE_DIR && $json ) {
+	if ( !$cache_hit && CACHE_DIR && $json ) {
 		file_put_contents( $cache_file, $json );	
 	}
 
@@ -442,7 +439,7 @@ function GetGraphData( $label, $mode=null, $difficulty=null, $version=null, $pla
 	if ( $mode ) { $hooks []= " AND runs.mode = '" . addslashes($mode) . "' "; }
 	if ( $difficulty ) { $hooks []= " AND runs.difficulty = '" . addslashes($difficulty) . "' "; }
 	if ( $version ) { $hooks []= " AND runs.version = '" . addslashes($version) . "' "; }
-	if ( $player ) { $hooks []= " AND runs.player_name = '" . addslashes($player) . "' "; }
+	if ( $player ) { $hooks []= " AND runs.player_id = (SELECT player_id FROM runs WHERE player_name = '" . addslashes($player) . "' LIMIT 1) "; }
 	if ( $winsonly ) { $hooks []= " AND runs.win = 1"; }
 	$records = [];
 	$db = DB();
@@ -468,7 +465,8 @@ function GetTopX( $label, $mode=null, $difficulty=null, $version=null, $player=n
 	if ( $mode ) { $hooks []= " AND runs.mode = '" . addslashes($mode) . "' "; }
 	if ( $difficulty ) { $hooks []= " AND runs.difficulty = '" . addslashes($difficulty) . "' "; }
 	if ( $version ) { $hooks []= " AND runs.version = '" . addslashes($version) . "' "; }
-	if ( $player ) { $hooks []= " AND runs.player_name = '" . addslashes($player) . "' "; }
+	if ( $player ) { $hooks []= " AND runs.player_id = (SELECT player_id FROM runs WHERE player_name = '" . addslashes($player) . "' LIMIT 1) "; }
+	// if ( $player ) { $hooks []= " AND runs.player_id = (SELECT player_id FROM runs WHERE player_name = '" . addslashes($player) . "' LIMIT 1) "; }
 	if ( $winsonly ) { $hooks []= " AND runs.win = 1 "; }
 	$sort = 'DESC';
 	$limit = $num ? " LIMIT $num " : NULL ;
@@ -507,7 +505,7 @@ function GetStringCounts( $label, $mode=null, $difficulty=null, $version=null, $
 	if ( $mode ) { $hooks []= " AND runs.mode = '" . addslashes($mode) . "' "; }
 	if ( $difficulty ) { $hooks []= " AND runs.difficulty = '" . addslashes($difficulty) . "' "; }
 	if ( $version ) { $hooks []= " AND runs.version = '" . addslashes($version) . "' "; }
-	if ( $player ) { $hooks []= " AND runs.player_name = '" . addslashes($player) . "' "; }
+	if ( $player ) { $hooks []= " AND runs.player_id = (SELECT player_id FROM runs WHERE player_name = '" . addslashes($player) . "' LIMIT 1) "; }
 	if ( $winsonly ) { $hooks []= " AND runs.win = 1"; }
 	$sort = 'DESC';
 	$limit = $num ? " LIMIT $num " : NULL ;
@@ -542,7 +540,7 @@ function GetRunTimesGraphData( $mode=null, $difficulty=null, $version=null, $pla
 	if ( $mode ) { $hooks []= " AND runs.mode = '" . addslashes($mode) . "' "; }
 	if ( $difficulty ) { $hooks []= " AND runs.difficulty = '" . addslashes($difficulty) . "' "; }
 	if ( $version ) { $hooks []= " AND runs.version = '" . addslashes($version) . "' "; }
-	if ( $player ) { $hooks []= " AND runs.player_name = '" . addslashes($player) . "' "; }
+	if ( $player ) { $hooks []= " AND runs.player_id = (SELECT player_id FROM runs WHERE player_name = '" . addslashes($player) . "' LIMIT 1) "; }
 	if ( $winsonly ) { $hooks []= " AND runs.win = 1"; }
 	$hooks = implode(' ', $hooks);
 	$records = [];
@@ -687,7 +685,7 @@ function GetOnTheFlyNumericalStats( $label=null, $mode=null, $difficulty=null, $
 			$hooks []= " AND runstats.stat_id = CRC32('" . addslashes($label) . "')";
 		}
 	}
-	if ( $player ) { $hooks []= " AND runs.player_name = '" . addslashes($player) . "' "; }
+	if ( $player ) { $hooks []= " AND runs.player_id = (SELECT player_id FROM runs WHERE player_name = '" . addslashes($player) . "' LIMIT 1) "; }
 	if ( $winsonly ) { $hooks []= " AND runs.win = 1"; }
 	
 	$records = [];
@@ -696,13 +694,13 @@ function GetOnTheFlyNumericalStats( $label=null, $mode=null, $difficulty=null, $
 		SELECT
 			stats.label,
 			runstats.stat_id,
-			SUM( runstats.value ) as `sum`,
-			COUNT( runstats.value ) as `samples`,
-			COUNT( DISTINCT runstats.value ) as `uniq`,
-			MIN( CAST(runstats.value as DECIMAL(24,5)) ) as `min`,
-			MAX( CAST(runstats.value as DECIMAL(24,5)) ) as `max`,
-			ROUND( AVG( CAST(runstats.value as DECIMAL(24,5)) ), 3) as `avg`,
-			ROUND( STD( CAST(runstats.value as DECIMAL(24,5)) ), 3) as `std`
+			SUM( runstats.value ) as `sum` -- ,
+			-- COUNT( runstats.value ) as `samples`,
+			-- COUNT( DISTINCT runstats.value ) as `uniq`,
+			-- MIN( CAST(runstats.value as DECIMAL(24,5)) ) as `min`,
+			-- MAX( CAST(runstats.value as DECIMAL(24,5)) ) as `max`,
+			-- ROUND( AVG( CAST(runstats.value as DECIMAL(24,5)) ), 3) as `avg`,
+			-- ROUND( STD( CAST(runstats.value as DECIMAL(24,5)) ), 3) as `std`
 		FROM runs, runstats, stats
 		WHERE runstats.stat_id = stats.id
 			AND runstats.run_id = runs.id
@@ -713,16 +711,7 @@ function GetOnTheFlyNumericalStats( $label=null, $mode=null, $difficulty=null, $
 	$result = $db->query($q);
 	if ( $result && $result->num_rows ) {
 		while( $row = $result->fetch_assoc() ) {
-			// set the label as the key if we won't have multiple entries
-			// if ( !is_array($label) ) {
-			// 	$k = $row['label'];
-			// 	unset($row['label']);
-			// 	$records[$k] = $row;
-			// }
-			// // otherwise leave it the way it is
-			// else {
-				$records []= $row;
-			// }
+			$records []= $row;
 		}
 	}
 	return $records;
@@ -733,7 +722,7 @@ function GetRunsByPlayer( $mode=null, $difficulty=null, $version=null, $player=n
 	if ( $mode ) { $hooks []= " AND runs.mode = '" . addslashes($mode) . "' "; }
 	if ( $difficulty ) { $hooks []= " AND runs.difficulty = '" . addslashes($difficulty) . "' "; }
 	if ( $version ) { $hooks []= " AND runs.version = '" . addslashes($version) . "' "; }
-	if ( $player ) { $hooks []= " AND runs.player_name = '" . addslashes($player) . "' "; }
+	if ( $player ) { $hooks []= " AND runs.player_id = (SELECT player_id FROM runs WHERE player_name = '" . addslashes($player) . "' LIMIT 1) "; }
 	if ( $winsonly ) { $hooks []= " AND runs.win = 1"; }
 	
 	$records = [];
@@ -747,6 +736,51 @@ function GetRunsByPlayer( $mode=null, $difficulty=null, $version=null, $player=n
 		ORDER BY date ASC
 		;
 		"; 
+	$result = $db->query($q);
+	if ( $result && $result->num_rows ) {
+		while( $row = $result->fetch_assoc() ) {
+			$records []= $row;
+		}
+	}
+	return $records;
+}
+
+function CountRuns( $mode=null, $difficulty=null, $version=null, $player=null, $winsonly=false ) {
+	$hooks = [];
+	if ( $mode ) { $hooks []= " AND runs.mode = '" . addslashes($mode) . "' "; }
+	if ( $difficulty ) { $hooks []= " AND runs.difficulty = '" . addslashes($difficulty) . "' "; }
+	if ( $version ) { $hooks []= " AND runs.version = '" . addslashes($version) . "' "; }
+	if ( $player ) { $hooks []= " AND runs.player_id = (SELECT player_id FROM runs WHERE player_name = '" . addslashes($player) . "' LIMIT 1) "; }
+	if ( $winsonly ) { $hooks []= " AND runs.win = 1"; }
+	
+	$db = DB();
+	$q = " SELECT COUNT(*) as num FROM runs WHERE 1=1 " . implode(' ', $hooks) . " ;"; 
+	$result = $db->query($q);
+	if ( $result && $result->num_rows ) {
+		while( $row = $result->fetch_assoc() ) {
+			return $row['num'];
+		}
+	}
+	return 0;
+}
+
+function GamesPlayedByDay( $mode=null, $difficulty=null, $version=null, $player=null, $winsonly=false ) {
+	$hooks = [];
+	if ( $mode ) { $hooks []= " AND runs.mode = '" . addslashes($mode) . "' "; }
+	if ( $difficulty ) { $hooks []= " AND runs.difficulty = '" . addslashes($difficulty) . "' "; }
+	if ( $version ) { $hooks []= " AND runs.version = '" . addslashes($version) . "' "; }
+	if ( $player ) { $hooks []= " AND runs.player_id = (SELECT player_id FROM runs WHERE player_name = '" . addslashes($player) . "' LIMIT 1) "; }
+	if ( $winsonly ) { $hooks []= " AND runs.win = 1"; }
+	
+	$records = [];
+	$db = DB();
+	$q = "
+		SELECT COUNT(runs.id) as num, DATE(runs.date) as date
+		FROM runs 
+		WHERE 1=1 " . implode(' ', $hooks) . " 
+		GROUP BY DATE(runs.date)
+		ORDER BY DATE(runs.date)
+		;"; 
 	$result = $db->query($q);
 	if ( $result && $result->num_rows ) {
 		while( $row = $result->fetch_assoc() ) {
@@ -835,6 +869,8 @@ function GetCommunityStats( $mode=null, $difficulty=null, $version=null, $player
 			'versions' => ListAllVersions(),
 			'players' => ListAllPlayers(),
 			'modes' => ListAllModes(),
+			
+			'num_runs' => CountRuns( $mode, $difficulty, $version, $player, $winsonly ),
 			
 			'wintypes' => GetStringCounts('game.winType', $mode, $difficulty, $version, $player, true ),
 			'winloss' => GetWinLoss( $mode, $difficulty, $version, $player ),
@@ -965,6 +1001,10 @@ function GetCommunityStats( $mode=null, $difficulty=null, $version=null, $player
 	// special runs list if you ask for a specific player
 	if ( $player ) {
 		$data['data']['playerRuns'] = GetRunsByPlayer( $mode, $difficulty, $version, $player, $winsonly );
+	}
+	// otherwise you get runs-per-day
+	else {
+		$data['data']['runsByDay'] = GamesPlayedByDay( $mode, $difficulty, $version, $player, $winsonly );
 	}
 	
 	return $data;

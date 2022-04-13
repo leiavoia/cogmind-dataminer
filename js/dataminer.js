@@ -367,7 +367,7 @@ function DownloadDataminerDataAnalysis( app ) {
 	url = window.location.href
 		.replace( window.location.search, '' ) 
 		.replace( /#.*/, '' ) 
-		.replace('.html','')
+		.replace('index.html','')
 		+ 'dataminer.php'
 		+ `?version=${app.scoresheet.header.version}`
 		+ `&difficulty=${app.scoresheet.header.difficulty}`

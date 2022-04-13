@@ -61,6 +61,14 @@ Chart.pie_colors = [ // you should not be adding stuff in like this.
 	'#57391f',
 ];
 Chart.colors_by_key = {
+	win: '#41A34F',
+	wins: '#41A34F',
+	a0: '#000000',
+	command: '#2671b9',
+	access: '#EEEEEE', 
+	research: '#BB1199', 
+	factory: '#888', 
+	materials: '#CC9966',
 	power: '#dfd239',
 	propulsion: '#418d4f',
 	utility: '#1e66a7',
@@ -201,46 +209,64 @@ String.prototype.Undatafy = Undatafy; // you're bad for doing this
 
 // ======== NOW LETS ACTUALLY GET SOME WORK DONE ==========
 
+// URL query string params
+const urlSearchParams = new URLSearchParams(window.location.search);
+const qsparams = Object.fromEntries(urlSearchParams.entries());
+
 // set up Vue
 app = new Vue({
 	el: '#app',
 	data: { 
 		analysis: null, // populates when request for JSON succeeds
 		pane: null, // dont set to 'overview' by default. graphs need to be prompted to draw
+		stats: { data: { num_runs:0 } }, // to be populated by server
 		ChangePane,
 		UpdateStats,
 		selectStatLookup,
+		toggleSettingsMenu,
+		validateLookupFilter,
 		selectedStatLookup: null,
+		statLookupFilter: '',
 		selectedStatData: null,
 		showSettingsMenu: false,
+		showStatLookupFilter: false,
 		charts: [],
 		error_msg: null,
 		settings: {
-			// difficulty: 'DIFFICULTY_ROGUE',
-			difficulty: '',
-			// mode: 'SPECIAL_MODE_NONE',
-			mode: '',
-			version: '',
-			player: '',
-			// player: 'MTF',
-			winsonly: 0,
-			skipcache: 1,
-			label: '',
+			num: 50,
+			difficulty: (qsparams.difficulty || ''),
+			mode: (qsparams.mode || (qsparams.player ? '' : 'SPECIAL_MODE_NONE')),
+			version: (qsparams.version || (qsparams.player ? '' : 'Beta 11')),
+			player: (qsparams.player || ''),
+			winsonly: (qsparams.winsonly ? 1 : 0),
+			skipcache: (qsparams.skipcache ? 1 : 0),
+			label: (qsparams.label || ''),
 			
 			difficulties: [],
 			versions: [],
 			players: [],
 			modes:[]
+		},
+		settingsForm: {
+			num: 50,
+			difficulty: (qsparams.difficulty || ''),
+			mode: (qsparams.mode || (qsparams.player ? '' : 'SPECIAL_MODE_NONE')),
+			version: (qsparams.version || (qsparams.player ? '' : 'Beta 11')),
+			player: (qsparams.player || ''),
+			winsonly: (qsparams.winsonly ? 1 : 0),
+			skipcache: (qsparams.skipcache ? 1 : 0),
+			label: (qsparams.label || ''),
 		}
 	}
 })
 
-
 UpdateStats();
-
 
 function UpdateStats() {
 	ChangePane('loading');
+	for ( k in app.settingsForm ) {
+		app.settings[k] = app.settingsForm[k];
+	}
 	app.showSettingsMenu = false;
 	LoadStatsFromServer( 'community', data => {
 		if ( data ) { 
@@ -250,12 +276,11 @@ function UpdateStats() {
 	});
 }
 
-
 function LoadStatsFromServer( requestFunction='community', callback, autoChangePanes=true ) {
 
 	this.error_msg = null;
 	
-	let file = `dataminer.php?f=${requestFunction}&winsonly=${app.settings.winsonly}&mode=${app.settings.mode}&difficulty=${app.settings.difficulty}&version=${app.settings.version}&player=${app.settings.player}&skipcache=${app.settings.skipcache}&label=${app.settings.label}`;
+	let file = `dataminer.php?f=${requestFunction}&winsonly=${app.settings.winsonly}&mode=${app.settings.mode}&difficulty=${app.settings.difficulty}&version=${app.settings.version}&player=${app.settings.player}&skipcache=${app.settings.skipcache}&label=${app.settings.label}&num=${app.settings.num}`;
 	
 	if ( autoChangePanes ) { ChangePane('loading'); }
 	
@@ -272,6 +297,16 @@ function LoadStatsFromServer( requestFunction='community', callback, autoChangeP
 		app.error_msg = 'Error when trying to get file: ' + error;
 		if ( autoChangePanes ) { ChangePane('overview'); }
 	});
+}
+
+function toggleSettingsMenu() {
+	// copy settings into the form
+	if ( !app.showSettingsMenu ) {
+		for ( k in app.settingsForm ) {
+			app.settingsForm[k] = app.settings[k];
+		}
+	}
+	app.showSettingsMenu = !app.showSettingsMenu;
 }
 
 // function DownloadDataminerDataAnalysis( app ) {
@@ -367,19 +402,49 @@ function LoadStatsFromServer( requestFunction='community', callback, autoChangeP
 // 	});	
 // }
 
+function validateLookupFilter() {
+	// make sure the thing typed into the search box actually exists
+	let i = app.stats.data.stat_labels.map(x => x.label).indexOf( app.statLookupFilter );
+	if ( i > -1 ) {
+		app.selectedStatLookup = app.stats.data.stat_labels[i];
+		app.statLookupFilter = '';
+		app.showStatLookupFilter = false;
+	}
+	else {
+		// app.selectedStatLookup = null;
+	}
+}
+
 function selectStatLookup() {
+	if ( !app.selectedStatLookup ) { return false; }
 	app.settings.label = app.selectedStatLookup.label;
+	app.settings.num = 100;
 	app.selectedStatData = 'loading';
-	LoadStatsFromServer( 'topx', data => {
-		if ( data ) { 
-			app.selectedStatData = data;
-			ChangePane('lookup');
-		}
-	}, false);	
+	// if the data is numeric, get the top30 list
+	if ( app.selectedStatLookup.type !== 'string' ) {
+		LoadStatsFromServer( 'topx', data => {
+			if ( data ) { 
+				app.selectedStatData = data;
+				ChangePane('lookup');
+			}
+		}, false);	
+	}
+	else {
+		// if its a string, we want a frequency count instead
+		LoadStatsFromServer( 'strfreq', data => {
+			if ( data ) { 
+				app.selectedStatData = data;
+				ChangePane('lookup');
+			}
+		}, false);	
+	}
+	
 }
 
 function ChangePane(pane) {
 
+	showSettingsMenu = false;
+	
 	if ( app.pane == pane ) { 
 		return false; 
 	}
@@ -429,14 +494,24 @@ function ChangePane(pane) {
 			) );		
 			
 			if ( app.settings.player && app.stats.data.playerRuns ) {
-			
 				app.charts.push( DrawPlayerRunsChart( 
-					app.stats.data.playerRuns.map( x => ({x:x.date, y:x.score}) )
+					app.stats.data.playerRuns.map( x => ({ x:x.date, y:x.score }) ),
+					app.stats.data.playerRuns.map( x => {
+						if ( x.win ) return Chart.colors_by_key['win'];
+						else if ( x.final_depth < -7 ) return Chart.colors_by_key['materials'];
+						else if ( x.final_depth < -3 ) return Chart.colors_by_key['factory'];
+						else if ( x.final_depth < -1 ) return Chart.colors_by_key['research'];
+						else if ( x.final_map == 'COM' ) return Chart.colors_by_key['command'];
+						else if ( x.final_map == 'AC0' ) return Chart.colors_by_key['a0'];
+						return Chart.colors_by_key['access'];
+					} ),
+				) );
+			}	
+			
+			if ( !app.settings.player && app.stats.data.runsByDay?.length ) {
+				app.charts.push( DrawRunsByDayChart( 
+					app.stats.data.runsByDay.map( x => ({x:x.date, y:x.num}) )
 					) );
-								
-				// for ( let r of app.stats.data.playerRuns ) {
-				// 	r.
-				// }
 			}	
 		}
 		
@@ -498,12 +573,22 @@ function ChangePane(pane) {
 				{ sort:true, undatafy: true, addpct:true, legendPos:'left', aspectRatio:2, chartType: 'pie' }
 				) );
 				
+			// this chart gets special colors
 			app.charts.push( DrawGenericChart( 
 				app.stats.data.unauthorizedHacks.filter(notOverall).map( x => x.sum ) ,
 				app.stats.data.unauthorizedHacks.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
 				'unauthorizedHacksChart',
-				{ sort:true,  undatafy: true, addpct:true, legend:false, aspectRatio:1, flipAxes:true, chartType: 'bar' }
-				) );
+				{ sort:true,  undatafy: true, addpct:true, legend:false, aspectRatio:1, flipAxes:true, chartType: 'bar', colors:
+					app.stats.data.unauthorizedHacks.filter(notOverall).map( x => { 
+						if ( x.label.match(/terminals/) ) { return Chart.colors_by_key['terminals'] } 
+						if ( x.label.match(/fabricators/) ) { return Chart.colors_by_key['fabricators'] } 
+						if ( x.label.match(/repairStations/) ) { return Chart.colors_by_key['repairStations'] } 
+						if ( x.label.match(/scanalyzers/) ) { return Chart.colors_by_key['scanalyzers'] } 
+						if ( x.label.match(/garrisonAccess/) ) { return Chart.colors_by_key['garrisonAccess'] } 
+						if ( x.label.match(/recyclingUnits/) ) { return Chart.colors_by_key['recyclingUnits'] } 
+						return Chart.colors_by_key['terminals'];
+					}) 
+				} ) );
 				
 			app.charts.push( DrawGenericChart( 
 				app.stats.data.robotsHacked.filter(notOverall).map( x => x.sum ) ,
@@ -516,7 +601,7 @@ function ChangePane(pane) {
 				app.stats.data.bothacks.filter(notOverall).map( x => x.sum ) ,
 				app.stats.data.bothacks.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
 				'bothacksChart',
-				{ sort:true, undatafy: true, addpct:true, legend:false, aspectRatio:0.75, flipAxes:true, chartType: 'bar' }
+				{ sort:true, undatafy: true, addpct:true, legend:false, aspectRatio:0.6, flipAxes:true, chartType: 'bar' }
 				) );
 				
 		}
@@ -555,7 +640,7 @@ function ChangePane(pane) {
 				app.stats.data.classesDestroyed.filter(notOverall).map( x => x.sum ) ,
 				app.stats.data.classesDestroyed.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
 				'botsDestroyedChart',
-				{ sort:true, colors: 'green', undatafy: true, addpct:true, legend:false, aspectRatio:0.5, flipAxes:true, chartType:'bar' }
+				{ sort:true, colors: 'pie', undatafy: true, addpct:true, legend:false, aspectRatio:0.5, flipAxes:true, chartType:'bar' }
 				) );
 										
 			app.charts.push( DrawGenericChart( 
@@ -582,7 +667,7 @@ function ChangePane(pane) {
 			// app.stats.data.alertLevels.sort( (a,b) => b.sorting - a.sorting );
 			app.charts.push( DrawGenericChart( 
 				app.stats.data.alertLevels.filter(notOverall).map( x => x.sum ) ,
-				app.stats.data.alertLevels.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
+				app.stats.data.alertLevels.filter(notOverall).map( x => x.label.replace(/^.*\./,'').replace('lowSecurityPercent','lowSecurity') ),
 				'alertLevelsChart',
 				{ sort:true, colors: 'pie', undatafy: true, addpct:true, legendPos:'left', aspectRatio:1.75 }
 				) );
@@ -596,7 +681,10 @@ function ChangePane(pane) {
 
 
 function DrawPlaytimeChart( data ) {
-
+	if ( !data || data.length <= 1 || !document.getElementById('playtimeChart') ) { 
+		// console.log("No data or no canvas: " + 'playtimeChart');
+		return false; 
+	}
 	// we're going to restructure the data into larger blocks of time to make the graph chunkier
 	let divisor = 5;
 	let = newdata = {};
@@ -648,17 +736,19 @@ function DrawPlaytimeChart( data ) {
 }
 
 
-function DrawPlayerRunsChart( data ) {
-
+function DrawPlayerRunsChart( data, colors ) {
+	if ( !data || data.length <= 1 || !document.getElementById('playerRunsChart') ) { 
+		// console.log("No data or no canvas: " + 'playerRunsChart');
+		return false; 
+	}
 	const chartdata = {
 		datasets: [{
-			label: 'Player Runs',
 			borderWidth: 1,
 			data: data,
-			pointRadius:8,
+			pointRadius:6,
 			showLine: false,
 			fill: false,
-			backgroundColor: 'rgba(65, 163, 79, 0.75)'
+			backgroundColor: ( colors || 'rgba(65, 163, 79, 0.75)' )
 		}]
 	};
 	const config = {
@@ -699,8 +789,65 @@ function DrawPlayerRunsChart( data ) {
 	return new Chart( document.getElementById('playerRunsChart'), config );
 }
 
+function DrawRunsByDayChart( data ) {
+	if ( !data || data.length <= 1 || !document.getElementById('runsByDayChart') ) { 
+		// console.log("No data or no canvas: " + 'runsByDayChart');
+		return false; 
+	}
+	const chartdata = {
+		datasets: [{
+			label: 'Runs Per Day',
+			borderWidth: 1,
+			data: data,
+			// pointRadius:8,
+			// showLine: false,
+			fill: true,
+			// backgroundColor: 'rgba(65, 163, 79, 0.75)'
+		}]
+	};
+	const config = {
+		type: 'line',
+		data: chartdata,
+		options: {
+			aspectRatio: 2,
+			responsive: true,
+			interaction: {
+				intersect: false,
+			},				
+			plugins: {
+				legend: { display: false },
+				title: { display: false }
+			},
+			scales: {
+				x: {
+					type: 'time',
+					time: {
+						unit: 'month'
+					},					
+					title: { 
+						text: 'Date',
+						display: true
+					}
+				},
+				y: {
+					// type: 'linear',
+					title: { 
+						text: 'Runs Completed',
+						display: true
+					}
+				}
+			}
+		},
+	};
+	return new Chart( document.getElementById('runsByDayChart'), config );
+}
+
 
 function DrawWinLossPieChart( data, labels ) {
+	if ( !data || data.length === 0 || !document.getElementById('winlossPieChart') ) { 
+		// console.log("No data or no canvas: " + 'winlossPieChart');
+		return false; 
+	}
 	// Chart.SortPieData(data,labels);
 	datasets = [ { 
 		label: 'Wins and Losses', 
@@ -730,6 +877,10 @@ function DrawWinLossPieChart( data, labels ) {
 }
 
 function DrawWinTypesPieChart( data, labels ) {
+	if ( !data || data.length === 0 || !document.getElementById('wintypePieChart') ) { 
+		// console.log("No data or no canvas: " + 'wintypePieChart');
+		return false; 
+	}
 	Chart.SortPieData(data,labels);
 	datasets = [ { 
 		label: 'Win Types', 
@@ -764,12 +915,29 @@ function DrawWinTypesPieChart( data, labels ) {
 }
 
 function DrawGenericChart( data, labels, elementID, options ) {
-	if ( options.sort ) { 
-		Chart.SortPieData(data,labels); 
+	if ( !data || data.length <= 1 || !document.getElementById(elementID) ) { 
+		// console.log("No data or no canvas: " + elementID);
+		return false; 
 	}
+	
 	let bgcolors = Chart.pie_colors;
 	if ( options.colors == 'indexed' ) {
 		bgcolors = labels.map( k => Chart.colors_by_key[k] );
+	}
+	else if ( Array.isArray(options.colors) ) {
+		bgcolors = options.colors;
+	}
+	else if ( options.colors == 'pie' ) {
+		bgcolors = Chart.pie_colors
+	}
+	else if ( options.colors ) {
+		bgcolors = options.colors
+	}
+	if ( options.sort ) { 
+		if ( Array.isArray(options.colors) || options.colors == 'indexed' ) {
+			Chart.SortPieData(data,labels,bgcolors);
+		}
+		else { Chart.SortPieData(data,labels); };
 	}
 	if ( options.undatafy ) {
 		labels = labels.map( x => x.Undatafy() );
@@ -785,7 +953,6 @@ function DrawGenericChart( data, labels, elementID, options ) {
 		} 
 	}
 	datasets = [ { 
-		// label: '', 
 		data, 
 		backgroundColor: bgcolors,
 		borderWidth: 0,

@@ -316,7 +316,7 @@
 								<table class="table table-borderless" style="--bs-table-accent-bg: none">
 									<tr>
 										<th>Player</th>
-										<td>{{scoresheet.header.playerName}}</td>
+										<td><a v-bind:href="'community.html?player=' + scoresheet.header.playerName" target="_blank">{{scoresheet.header.playerName}}</a></td>
 									</tr>
 									<tr>
 										<th>Date</th>

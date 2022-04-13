@@ -94,19 +94,20 @@
 				<!-- filers menu -->
 				<div class="container-fluid px-3 py-3 mt-3 mb-3 bg-primary text-light rounded" v-if="pane!='loading'">
 					<template v-if="!showSettingsMenu" class="text-center m-0">
+						<span v-if="stats && stats.data.num_runs">Dataset: <b>{{stats.data.num_runs.toLocaleString()}} runs</b> | </span>
 						Version: <b>{{settings.version || 'All'}}</b>, 
 						Difficulty: <b>{{settings.difficulty.replace('DIFFICULTY_','') || 'All'}}</b>, 
 						Mode: <b>{{settings.mode.replace('SPECIAL_MODE_','') || 'All'}}</b>, 
 						Player: <b>{{settings.player || 'All'}}</b>, 
 						Wins Only: <b>{{settings.winsonly ? 'YES' : 'NO'}}</b>
-						<button type="button" class="btn btn-secondary rounded-pill btn-sm px-2 py-0 m-2" @click="showSettingsMenu = !showSettingsMenu" >Change</button>
+						<button type="button" class="btn btn-secondary rounded-pill btn-sm px-2 py-0 m-2" @click="toggleSettingsMenu()" >Change Dataset</button>
 					</template>
 					<template v-else-if="stats">
-						<form>
+						<form @submit.prevent="UpdateStats()">
 							<div class="row mb-3">
 								<label for="inputEmail3" class="col-sm-2 col-form-label">Version:</label>
 								<div class="col-sm-10">
-									<select v-model="settings.version" class="form-select">
+									<select v-model="settingsForm.version" class="form-select">
 										<option value="">All</option>
 										<option v-for="r in stats.data.versions" :value="r.version">{{r.version}}</option>
 									</select>
@@ -115,7 +116,7 @@
 							<div class="row mb-3">
 								<label for="inputEmail3" class="col-sm-2 col-form-label">Difficulty:</label>
 								<div class="col-sm-10">
-									<select v-model="settings.difficulty" class="form-select">
+									<select v-model="settingsForm.difficulty" class="form-select">
 										<option value="">All</option>
 										<option v-for="r in stats.data.difficulties" :value="r">{{r.replace('DIFFICULTY_','')}}</option>
 									</select>
@@ -124,7 +125,7 @@
 							<div class="row mb-3">
 								<label for="inputEmail3" class="col-sm-2 col-form-label">Mode:</label>
 								<div class="col-sm-10">
-									<select v-model="settings.mode" class="form-select">
+									<select v-model="settingsForm.mode" class="form-select">
 										<option value="">All</option>
 										<option v-for="r in stats.data.modes" :value="r.mode">{{r.mode.toString().replace('SPECIAL_MODE_','')}}</option>
 									</select>
@@ -133,23 +134,24 @@
 							<div class="row mb-3">
 								<label for="inputEmail3" class="col-sm-2 col-form-label">Player:</label>
 								<div class="col-sm-10">
-									<select v-model="settings.player" class="form-select">
+									<input class="form-control" v-model="settingsForm.player" list="playerlist" id="playerlistInput" placeholder="Type to search..." @keydown.enter.prevent />
+									<datalist id="playerlist">
 										<option value="">All</option>
 										<option v-for="r in stats.data.players" :value="r.player_name.toString()">{{r.player_name.toString()}}</option>
-									</select>
+									</datalist>
 								</div>
 							</div>
 							<div class="row mb-3">
 								<label for="inputEmail3" class="col-sm-2 col-form-label">Wins:</label>
 								<div class="col-sm-10">
-									<select v-model="settings.winsonly" class="form-select">
+									<select v-model="settingsForm.winsonly" class="form-select">
 										<option value="0">All Runs</option>
 										<option value="1">Wins Only</option>
 									</select>
 								</div>
 							</div>
-							<button class="btn btn-primary" @click="showSettingsMenu = !showSettingsMenu">Cancel</button>
-							<button class="btn btn-success" @click="UpdateStats()">Update</button>
+							<button type="button" class="btn btn-primary" @click="showSettingsMenu = !showSettingsMenu" id="theCancelButton">Cancel</button>
+							<button type="submit" class="btn btn-success">Update</button>
 						</form>
 					</template>
 				</div>
@@ -165,515 +167,83 @@
 					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='lookup' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('lookup')">Lookup</button>
 				</nav>
 				
+				<template v-if="stats && !stats.data.num_runs && pane!='loading'">
+					<p class="alert alert-warning">No data found. Try changing the filters.</p>
+				</template>
+				
+				<template v-else>
 								
-				<!-- overview pane -->			
-				<template v-if="pane=='overview'" >		
+					<!-- overview pane -->			
+					<template v-if="pane=='overview'" >		
+						
+						<template v-if="settings.player && stats.data.playerRuns && stats.data.playerRuns.length">
+							<h2>Player Runs <span class="text-secondary">({{settings.player}})</span></h2>
+							<p>Runs on Record: <b>{{stats.data.playerRuns.length}}</b></p>
+							<div class="container-fluid px-5 py-4 mt-5 mb-2 bg-primary text-light rounded">
+								<canvas id="playerRunsChart"></canvas>
+							</div>
+							<p class="mt-2"><!-- fake chart legend -->
+								<span class="badge" style="background-color: #41A34F;">Win</span>
+								<span class="badge" style="background-color: #CC9966;">Materials</span>
+								<span class="badge" style="background-color: #888;">Factory</span>
+								<span class="badge" style="background-color: #BB1199;">Research</span>
+								<span class="badge" style="background-color: #EEE; color: #222;">Access</span>
+								<span class="badge" style="background-color: #2671b9;">REDACTED</span>
+								<span class="badge" style="background-color: #000; color: #999;">REDACTED</span>
+							</p>
+						</template>
+						
+						<template v-else>
+							<h2>Runs <span class="text-secondary">By Day</span></h2>
+							<p>Runs on Record: <b>{{stats.data.num_runs.toLocaleString()}}</b></p>
+							<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+								<canvas id="runsByDayChart"></canvas>
+							</div>
+						</template>
 
-					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
-						<div class="row row-cols-sm-2 g-5">
-							<div class="col">
-								<h3 class="text-center mt-0">Wins / Losses</h3>
-								<canvas id="winlossPieChart"></canvas>
-							</div>
-							<div class="col">
-								<h3 class="text-center mt-0">Win Types</h3>
-								<canvas id="wintypePieChart"></canvas>
-							</div>
-						</div>
-					</div>
-					
-					<template v-if="settings.player && stats.data.playerRuns && stats.data.playerRuns.length">
-						<h2>Player Runs <span class="text-secondary">({{settings.player}})</span></h2>
-						<p>Runs on Record: <b>{{stats.data.playerRuns.length}}</b></p>
 						<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
-							<canvas id="playerRunsChart"></canvas>
-						</div>
-					</template>
-					
-					<h2>Game Play Time <span class="text-secondary">(Minutes)</span></h2>
-					<p>Average Play Time: <b>{{stats.data.runtimeAvg.toLocaleString()}} minutes</b></p>
-					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
-						<canvas id="playtimeChart"></canvas>
-					</div>
-					
-					<!-- <div class="container-fluid mt-5 mb-5 g-0">
-						<div class="row row-cols-1 row-cols-md-3 g-4">
-							<div class="col">
-								<div class="card statbox h-100">
-									<div class="card-header">Average Play Time</div>
-									<div class="card-body text-success numeric">
-										<span class="card-text">{{stats.data.runtimeAvg.toLocaleString()}}m</span>
-									</div>
+							<div class="row row-cols-sm-2 g-5">
+								<div class="col" v-if="!settings.winsonly">
+									<h3 class="text-center mt-0">Wins / Losses</h3>
+									<canvas id="winlossPieChart"></canvas>
+								</div>
+								<div class="col">
+									<h3 class="text-center mt-0">Win Types</h3>
+									<canvas id="wintypePieChart"></canvas>
 								</div>
 							</div>
 						</div>
-					</div> -->
-										
-					<h2>High Scores</h2>
-					<table class="table text-nowrap">
-						<tr>
-							<th>Score</th>
-							<th>Player</th>
-							<th>Version</th>
-							<th>Mode</th>
-							<th>Difficulty</th>
-							<th>Scoresheet</th>
-						</tr>
-						<tr v-for="r of stats.data.highscores">
-							<td>{{r.value.toLocaleString()}}</td>
-							<td>{{r.player_name}}</td>
-							<td>{{r.version}}</td>
-							<td>{{r.mode.toString().replace('SPECIAL_MODE_','')}}</td>
-							<td>{{r.difficulty.replace('DIFFICULTY_','')}}</td>
-							<td><a :href="'index.html?' + r.filehash" target="_blank" >{{r.filehash}}</a></td>
-						</tr>
-					</table>
-					
-					<h2>Top Causes of Death</h2>
-					<div class="row row-cols-sm-2 g-5">
-						<div class="col ">
-							<h3>Killed By</h3>
-							<table class="table ">
-								<tr v-for="r in stats.data.causeOfDeath">
-									<td><b>{{r.num.toLocaleString()}}</b></td>
-									<td>{{r.value}}</td>
-								</tr>
-							</table>
-						</div>
-						<div class="col">
-							<h3>Killed With</h3>
-							<table class="table ">
-								<tr v-for="r in stats.data.itemOfDeath">
-									<td><b>{{r.num.toLocaleString()}}</b></td>
-									<td>{{r.value}}</td>
-								</tr>
-							</table>
-						</div>
-					</div>
-							
-				</template>	
-				
-				<!-- build pane -->			
-				<template v-if="pane=='build'" >		
-				
-					<h1 class="mt-3">Mobility</h1>
-					<p>This chart shows which propulsion types players use to actually move.</p>
-					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
-						<canvas id="spacesMovedPieChart"></canvas>
-					</div>					
-
-				
-					
-					<h1 class="mt-3">Favorite Parts</h1>
-					<p>These are the parts that players keep attached the longest. Each game registers one "favorite part" per category.</p>
-					
-					<h2 class="mb-0 text-info">Propulsion</h2>
-					
-					<div class="container-fluid mt-3 mb-5 g-0 px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
-						<div class="row row-cols-1 row-cols-md-3 g-4">
-							<div class="col">				
-								<h3>Overall</h3>
-								<ol>
-									<li v-for="r in stats.data['favorites.propulsion.overall']">
-										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
-									</li>
-								</ol>
-							</div>
-							<div class="col">				
-								<h3>Treads</h3>
-								<ol>
-									<li v-for="r in stats.data['favorites.propulsion.treads']">
-										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
-									</li>
-								</ol>
-							</div>
-							<div class="col">
-								<h3>Legs</h3>
-								<ol>
-									<li v-for="r in stats.data['favorites.propulsion.leg']">
-										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
-									</li>
-								</ol>
-							</div>
-							<div class="col">
-								<h3>Wheels</h3>
-								<ol>
-									<li v-for="r in stats.data['favorites.propulsion.wheel']">
-										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
-									</li>
-								</ol>
-							</div>
-							<div class="col">
-								<h3>Hover</h3>
-								<ol>
-									<li v-for="r in stats.data['favorites.propulsion.hoverUnit']">
-										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
-									</li>
-								</ol>
-							</div>
-							<div class="col">
-								<h3>Flight</h3>
-								<ol>
-									<li v-for="r in stats.data['favorites.propulsion.flightUnit']">
-										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
-									</li>
-								</ol>
-							</div>
-						</div>
-					</div>
-					
-					<h2 class="mb-0 text-info">Weapons</h2>
-					<div class="container-fluid mt-3 mb-5 g-0 px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
-						<div class="row row-cols-1 row-cols-md-3 g-4">
-							<div class="col">
-								<h3>Overall</h3>
-								<ol>
-									<li v-for="r in stats.data['favorites.weapon.overall']">
-										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
-									</li>
-								</ol>
-							</div>
-							<div class="col">
-								<h3>Energy Gun</h3>
-								<ol>
-									<li v-for="r in stats.data['favorites.weapon.energyGun']">
-										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
-									</li>
-								</ol>
-							</div>
-							<div class="col">
-								<h3>Energy Cannon</h3>
-								<ol>
-									<li v-for="r in stats.data['favorites.weapon.energyCannon']">
-										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
-									</li>
-								</ol>
-							</div>
-							<div class="col">
-								<h3>Ballistic Gun</h3>
-								<ol>
-									<li v-for="r in stats.data['favorites.weapon.ballisticGun']">
-										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
-									</li>
-								</ol>
-							</div>
-							<div class="col">
-								<h3>Ballistic Cannon</h3>
-								<ol>
-									<li v-for="r in stats.data['favorites.weapon.ballisticCannon']">
-										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
-									</li>
-								</ol>
-							</div>
-							<div class="col">
-								<h3>Launchers</h3>
-								<ol>
-									<li v-for="r in stats.data['favorites.weapon.launcher']">
-										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
-									</li>
-								</ol>
-							</div>
-							<div class="col">
-								<h3>Impact</h3>
-								<ol>
-									<li v-for="r in stats.data['favorites.weapon.impactWeapon']">
-										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
-									</li>
-								</ol>
-							</div>
-							<div class="col">
-								<h3>Slashing</h3>
-								<ol>
-									<li v-for="r in stats.data['favorites.weapon.slashingWeapon']">
-										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
-									</li>
-								</ol>
-							</div>
-							<div class="col">
-								<h3>Piercing</h3>
-								<ol>
-									<li v-for="r in stats.data['favorites.weapon.piercingWeapon']">
-										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
-									</li>
-								</ol>
-							</div>
-							<div class="col">
-								<h3>Special Weapons</h3>
-								<ol>
-									<li v-for="r in stats.data['favorites.weapon.specialWeapon']">
-										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
-									</li>
-								</ol>
-							</div>
-							<div class="col">
-								<h3>Special Melee</h3>
-								<ol>
-									<li v-for="r in stats.data['favorites.weapon.specialMeleeWeapon']">
-										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
-									</li>
-								</ol>
-							</div>
-						</div>
-					</div>
-								
-					<h2 class="mb-0 text-info">Power</h2>
-					<div class="container-fluid mt-3 mb-5 g-0 px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
-						<div class="row row-cols-1 row-cols-md-3 g-4">
-							<div class="col">
-								<h3>Overall</h3>
-								<ol>
-									<li v-for="r in stats.data['favorites.power.overall']">
-										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
-									</li>
-								</ol>
-							</div>
-							<div class="col">
-								<h3>Engines</h3>
-								<ol>
-									<li v-for="r in stats.data['favorites.power.engine']">
-										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
-									</li>
-								</ol>
-							</div>
-							<div class="col">
-								<h3>Cores</h3>
-								<ol>
-									<li v-for="r in stats.data['favorites.power.powerCore']">
-										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
-									</li>
-								</ol>
-							</div>
-							<div class="col">
-								<h3>Reactors</h3>
-								<ol>
-									<li v-for="r in stats.data['favorites.power.reactor']">
-										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
-									</li>
-								</ol>
-							</div>
-						</div>
-					</div>
-					
-					<h2 class="mb-0 text-info">Utilities</h2>
-					<div class="container-fluid mt-3 mb-5 g-0 px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
-						<div class="row row-cols-1 row-cols-md-3 g-4">
-							<div class="col">
-								<h3>Overall</h3>
-								<ol>
-									<li v-for="r in stats.data['favorites.utility.overall']">
-										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
-									</li>
-								</ol>
-							</div>
-							<div class="col">
-								<h3>Devices</h3>
-								<ol>
-									<li v-for="r in stats.data['favorites.utility.device']">
-										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
-									</li>
-								</ol>
-							</div>
-							<div class="col">
-								<h3>Storage</h3>
-								<ol>
-									<li v-for="r in stats.data['favorites.utility.storage']">
-										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
-									</li>
-								</ol>
-							</div>
-							<div class="col">
-								<h3>Processors</h3>
-								<ol>
-									<li v-for="r in stats.data['favorites.utility.processor']">
-										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
-									</li>
-								</ol>
-							</div>
-							<div class="col">
-								<h3>Hackware</h3>
-								<ol>
-									<li v-for="r in stats.data['favorites.utility.hackware']">
-										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
-									</li>
-								</ol>
-							</div>
-							<div class="col">
-								<h3>Protection / Armor</h3>
-								<ol>
-									<li v-for="r in stats.data['favorites.utility.protection']">
-										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
-									</li>
-								</ol>
-							</div>
-							<div class="col">
-								<h3>Artifacts</h3>
-								<ol>
-									<li v-for="r in stats.data['favorites.utility.artifact']">
-										{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
-									</li>
-								</ol>
-							</div>
-						</div>
-					</div>
-					
-				</template>
-					
-
-				<!-- combat pane -->			
-				<template v-if="pane=='combat'" >		
-					
-					<h1 class="mt-3">Time Spent at Alert Level</h1>
-					<p>The average percentage times that players spend at various alert levels</p>
-					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
-						<canvas id="alertLevelsChart"></canvas>
-					</div>
-			
-					<h1 class="mt-3">Squads Dispatched</h1>
-					<p>Squads dispatched in response to various player actions. It does not include regular patrols.
-					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
-						<canvas id="squadsDispatchedChart"></canvas>
-					</div>
-					
-					
-					<h1 class="mt-3">Attacks <span class="text-secondary">(Shots Fired and Melee Strikes)</span></h1>
-					<p>This chart shows each individual shot in a volley, including each shot from a multi-shot weapon and followup melee strikes.</p>
-					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
-						<div class="row row-cols-sm-2 g-5">
-							<div class="col">
-								<h3 class="text-center mt-0">Weapon Type</h3>
-								<canvas id="attacksByWeaponTypeChart"></canvas>
-							</div>
-							<div class="col">
-								<h3 class="text-center mt-0">Damage Type</h3>
-								<canvas id="attacksByDamageTypeChart"></canvas>
-							</div>
-						</div>
-					</div>
-					
-					<h1 class="mt-3">Damaged Inflicted</h1>
-					<p>Damage inflicted includes damage against bots, terrain, and self.</p>
-					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
-						<div class="row row-cols-sm-2 g-5">
-							<div class="col">
-								<h3 class="text-center mt-0">Weapon Type</h3>
-								<canvas id="damageByWeaponTypeChart"></canvas>
-							</div>
-							<div class="col">
-								<h3 class="text-center mt-0">Damage Type</h3>
-								<canvas id="damageByDamageTypeChart"></canvas>
-							</div>
-						</div>
-					</div>
 						
-					<h1 class="mt-3">Bots Destroyed <span class="text-secondary">By Class</span></h1>
-					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
-						<canvas id="botsDestroyedChart"></canvas>
-					</div>
-					
-				</template>
-				
-
-				<!-- combat pane -->			
-				<template v-if="pane=='hacking'" >		
-					
-					<h1 class="mt-3">Machine Hacking</h1>
-					
-					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
-						<div class="row row-cols-sm-2 g-5">
-							<div class="col">
-								<h3 class="text-center mt-0">Machines Accessed</h3>
-								<canvas id="machinesAccessChart"></canvas>
-							</div>
-							<div class="col">
-								<h3 class="text-center mt-0">Machines Hacked</h3>
-								<canvas id="machinesHackedChart"></canvas>
-							</div>
+						<h2>Game Play Time <span class="text-secondary">(Minutes)</span></h2>
+						<p>Average Play Time: <b>{{stats.data.runtimeAvg.toLocaleString()}} minutes</b></p>
+						<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+							<canvas id="playtimeChart"></canvas>
 						</div>
-					</div>
-					
-					<h1 class="mt-3">Direct Hacks</h1>
-					
-					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
-						<div class="row row-cols-sm-1 g-5">
-							<div class="col">
-								<h3 class="text-center">Terminals</h3>
-								<canvas id="terminalHacksChart"></canvas>
+						
+						<!-- <div class="container-fluid mt-5 mb-5 g-0">
+							<div class="row row-cols-1 row-cols-md-3 g-4">
+								<div class="col">
+									<div class="card statbox h-100">
+										<div class="card-header">Average Play Time</div>
+										<div class="card-body text-success numeric">
+											<span class="card-text">{{stats.data.runtimeAvg.toLocaleString()}}m</span>
+										</div>
+									</div>
+								</div>
 							</div>
-							<div class="col">
-								<h3 class="text-center">Fabricators</h3>
-								<canvas id="fabricatorHacksChart"></canvas>
-							</div>
-							<div class="col">
-								<h3 class="text-center">Repair Stations</h3>
-								<canvas id="repairStationHacksChart"></canvas>
-							</div>
-							<div class="col">
-								<h3 class="text-center">Recycling Units</h3>
-								<canvas id="recyclingUnitHacksChart"></canvas>
-							</div>
-							<div class="col">
-								<h3 class="text-center">Scanalyzers</h3>
-								<canvas id="scanalyzerHacksChart"></canvas>
-							</div>
-							<div class="col">
-								<h3 class="text-center">Garrisons</h3>
-								<canvas id="garrisonAccessHacksChart"></canvas>
-							</div>
-						</div>
-					</div>
-					
-					<h1 class="mt-3">Unauthorized Hacks</h1>
-					
-					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
-						<canvas id="unauthorizedHacksChart"></canvas>
-					</div>
-					
-					<h1 class="mt-3">Bot Hacking</h1>
-					
-					<h2>Bots Hacked</h2>
-					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
-						<canvas id="robotsHackedChart"></canvas>
-					</div>
-					
-					<h2>Bothacks Applied</h2>
-					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
-						<canvas id="bothacksChart"></canvas>
-					</div>
+						</div> -->
 											
-				</template>
-				
-
-				<!-- lookup pane -->			
-				<template v-if="pane=='lookup'" >
-					<h2>Stat Lookup</h2>		
-					
-					<div class="row mb-3">
-						<div class="col-sm-10">
-							<select v-model="selectedStatLookup" class="form-select">
-								<option v-for="r in stats.data.stat_labels" :value="r">{{r.label}}</option>
-							</select>
-						</div>
-						<div class="col-sm-2">
-							<button class="btn btn-secondary" @click="selectStatLookup()">GO</button>
-						</div>
-					</div>
-												
-					<template v-if="selectedStatData == 'loading'">
-						<p>Loading...</p>
-						<progress style="height: 2em;" ></progress>
-					</template>
-					<template v-else-if="selectedStatData">
-						<h2>Top Runs</h2>
+						<h2>High Scores</h2>
 						<table class="table text-nowrap">
 							<tr>
-								<th>Value</th>
+								<th>Score</th>
 								<th>Player</th>
 								<th>Version</th>
 								<th>Mode</th>
 								<th>Difficulty</th>
 								<th>Scoresheet</th>
 							</tr>
-							<tr v-for="r of selectedStatData">
+							<tr v-for="r of stats.data.highscores">
 								<td>{{r.value.toLocaleString()}}</td>
 								<td>{{r.player_name}}</td>
 								<td>{{r.version}}</td>
@@ -681,23 +251,501 @@
 								<td>{{r.difficulty.replace('DIFFICULTY_','')}}</td>
 								<td><a :href="'index.html?' + r.filehash" target="_blank" >{{r.filehash}}</a></td>
 							</tr>
-						</table>						
+						</table>
+						
+						<h2 v-if="!settings.winsonly">Top Causes of Death</h2>
+						<div class="row row-cols-sm-2 g-5" v-if="!settings.winsonly">
+							<div class="col ">
+								<h3>Killed By</h3>
+								<table class="table ">
+									<tr v-for="r in stats.data.causeOfDeath">
+										<td><b>{{r.num.toLocaleString()}}</b></td>
+										<td>{{r.value}}</td>
+									</tr>
+								</table>
+							</div>
+							<div class="col">
+								<h3>Killed With</h3>
+								<table class="table ">
+									<tr v-for="r in stats.data.itemOfDeath">
+										<td><b>{{r.num.toLocaleString()}}</b></td>
+										<td>{{r.value}}</td>
+									</tr>
+								</table>
+							</div>
+						</div>
+								
+					</template>	
+					
+					<!-- build pane -->			
+					<template v-if="pane=='build'" >		
+					
+						<h1 class="mt-5">Mobility</h1>
+						<p>This chart shows which propulsion types players use to actually move.</p>
+						<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+							<canvas id="spacesMovedPieChart"></canvas>
+						</div>					
+
+					
+						
+						<h1 class="mt-5">Favorite Parts</h1>
+						<p>These are the parts that players keep attached the longest. Each game registers one "favorite part" per category.</p>
+						
+						<h2 class="mb-0 text-info">Propulsion</h2>
+						
+						<div class="container-fluid mt-3 mb-5 g-0 px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+							<div class="row row-cols-1 row-cols-md-3 g-4">
+								<div class="col">				
+									<h3>Overall</h3>
+									<ol>
+										<li v-for="r in stats.data['favorites.propulsion.overall']">
+											{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+										</li>
+									</ol>
+								</div>
+								<div class="col">				
+									<h3>Treads</h3>
+									<ol>
+										<li v-for="r in stats.data['favorites.propulsion.treads']">
+											{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+										</li>
+									</ol>
+								</div>
+								<div class="col">
+									<h3>Legs</h3>
+									<ol>
+										<li v-for="r in stats.data['favorites.propulsion.leg']">
+											{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+										</li>
+									</ol>
+								</div>
+								<div class="col">
+									<h3>Wheels</h3>
+									<ol>
+										<li v-for="r in stats.data['favorites.propulsion.wheel']">
+											{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+										</li>
+									</ol>
+								</div>
+								<div class="col">
+									<h3>Hover</h3>
+									<ol>
+										<li v-for="r in stats.data['favorites.propulsion.hoverUnit']">
+											{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+										</li>
+									</ol>
+								</div>
+								<div class="col">
+									<h3>Flight</h3>
+									<ol>
+										<li v-for="r in stats.data['favorites.propulsion.flightUnit']">
+											{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+										</li>
+									</ol>
+								</div>
+							</div>
+						</div>
+						
+						<h2 class="mb-0 text-info">Weapons</h2>
+						<div class="container-fluid mt-3 mb-5 g-0 px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+							<div class="row row-cols-1 row-cols-md-3 g-4">
+								<div class="col">
+									<h3>Overall</h3>
+									<ol>
+										<li v-for="r in stats.data['favorites.weapon.overall']">
+											{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+										</li>
+									</ol>
+								</div>
+								<div class="col">
+									<h3>Energy Gun</h3>
+									<ol>
+										<li v-for="r in stats.data['favorites.weapon.energyGun']">
+											{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+										</li>
+									</ol>
+								</div>
+								<div class="col">
+									<h3>Energy Cannon</h3>
+									<ol>
+										<li v-for="r in stats.data['favorites.weapon.energyCannon']">
+											{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+										</li>
+									</ol>
+								</div>
+								<div class="col">
+									<h3>Ballistic Gun</h3>
+									<ol>
+										<li v-for="r in stats.data['favorites.weapon.ballisticGun']">
+											{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+										</li>
+									</ol>
+								</div>
+								<div class="col">
+									<h3>Ballistic Cannon</h3>
+									<ol>
+										<li v-for="r in stats.data['favorites.weapon.ballisticCannon']">
+											{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+										</li>
+									</ol>
+								</div>
+								<div class="col">
+									<h3>Launchers</h3>
+									<ol>
+										<li v-for="r in stats.data['favorites.weapon.launcher']">
+											{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+										</li>
+									</ol>
+								</div>
+								<div class="col">
+									<h3>Impact</h3>
+									<ol>
+										<li v-for="r in stats.data['favorites.weapon.impactWeapon']">
+											{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+										</li>
+									</ol>
+								</div>
+								<div class="col">
+									<h3>Slashing</h3>
+									<ol>
+										<li v-for="r in stats.data['favorites.weapon.slashingWeapon']">
+											{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+										</li>
+									</ol>
+								</div>
+								<div class="col">
+									<h3>Piercing</h3>
+									<ol>
+										<li v-for="r in stats.data['favorites.weapon.piercingWeapon']">
+											{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+										</li>
+									</ol>
+								</div>
+								<div class="col">
+									<h3>Special Weapons</h3>
+									<ol>
+										<li v-for="r in stats.data['favorites.weapon.specialWeapon']">
+											{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+										</li>
+									</ol>
+								</div>
+								<div class="col">
+									<h3>Special Melee</h3>
+									<ol>
+										<li v-for="r in stats.data['favorites.weapon.specialMeleeWeapon']">
+											{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+										</li>
+									</ol>
+								</div>
+							</div>
+						</div>
+									
+						<h2 class="mb-0 text-info">Power</h2>
+						<div class="container-fluid mt-3 mb-5 g-0 px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+							<div class="row row-cols-1 row-cols-md-3 g-4">
+								<div class="col">
+									<h3>Overall</h3>
+									<ol>
+										<li v-for="r in stats.data['favorites.power.overall']">
+											{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+										</li>
+									</ol>
+								</div>
+								<div class="col">
+									<h3>Engines</h3>
+									<ol>
+										<li v-for="r in stats.data['favorites.power.engine']">
+											{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+										</li>
+									</ol>
+								</div>
+								<div class="col">
+									<h3>Cores</h3>
+									<ol>
+										<li v-for="r in stats.data['favorites.power.powerCore']">
+											{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+										</li>
+									</ol>
+								</div>
+								<div class="col">
+									<h3>Reactors</h3>
+									<ol>
+										<li v-for="r in stats.data['favorites.power.reactor']">
+											{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+										</li>
+									</ol>
+								</div>
+							</div>
+						</div>
+						
+						<h2 class="mb-0 text-info">Utilities</h2>
+						<div class="container-fluid mt-3 mb-5 g-0 px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+							<div class="row row-cols-1 row-cols-md-3 g-4">
+								<div class="col">
+									<h3>Overall</h3>
+									<ol>
+										<li v-for="r in stats.data['favorites.utility.overall']">
+											{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+										</li>
+									</ol>
+								</div>
+								<div class="col">
+									<h3>Devices</h3>
+									<ol>
+										<li v-for="r in stats.data['favorites.utility.device']">
+											{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+										</li>
+									</ol>
+								</div>
+								<div class="col">
+									<h3>Storage</h3>
+									<ol>
+										<li v-for="r in stats.data['favorites.utility.storage']">
+											{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+										</li>
+									</ol>
+								</div>
+								<div class="col">
+									<h3>Processors</h3>
+									<ol>
+										<li v-for="r in stats.data['favorites.utility.processor']">
+											{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+										</li>
+									</ol>
+								</div>
+								<div class="col">
+									<h3>Hackware</h3>
+									<ol>
+										<li v-for="r in stats.data['favorites.utility.hackware']">
+											{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+										</li>
+									</ol>
+								</div>
+								<div class="col">
+									<h3>Protection / Armor</h3>
+									<ol>
+										<li v-for="r in stats.data['favorites.utility.protection']">
+											{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+										</li>
+									</ol>
+								</div>
+								<div class="col">
+									<h3>Artifacts</h3>
+									<ol>
+										<li v-for="r in stats.data['favorites.utility.artifact']">
+											{{r.value}} <span class="text-secondary">({{r.num.toLocaleString()}})</span>
+										</li>
+									</ol>
+								</div>
+							</div>
+						</div>
+						
+					</template>
+						
+
+					<!-- combat pane -->			
+					<template v-if="pane=='combat'" >		
+						
+						<h1 class="mt-5">Time Spent at Alert Level</h1>
+						<p>The average percentage times that players spend at various alert levels</p>
+						<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+							<canvas id="alertLevelsChart"></canvas>
+						</div>
+				
+						<h1 class="mt-5">Squads Dispatched</h1>
+						<p>Squads dispatched in response to various player actions. It does not include regular patrols.
+						<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+							<canvas id="squadsDispatchedChart"></canvas>
+						</div>
+						
+						
+						<h1 class="mt-5">Attacks <span class="text-secondary">(Shots Fired and Melee Strikes)</span></h1>
+						<p>This chart shows each individual shot in a volley, including each shot from a multi-shot weapon and followup melee strikes.</p>
+						<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+							<div class="row row-cols-sm-2 g-5">
+								<div class="col">
+									<h3 class="text-center mt-0">Weapon Type</h3>
+									<canvas id="attacksByWeaponTypeChart"></canvas>
+								</div>
+								<div class="col">
+									<h3 class="text-center mt-0">Damage Type</h3>
+									<canvas id="attacksByDamageTypeChart"></canvas>
+								</div>
+							</div>
+						</div>
+						
+						<h1 class="mt-5">Damaged Inflicted</h1>
+						<p>Damage inflicted includes damage against bots, terrain, and self.</p>
+						<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+							<div class="row row-cols-sm-2 g-5">
+								<div class="col">
+									<h3 class="text-center mt-0">Weapon Type</h3>
+									<canvas id="damageByWeaponTypeChart"></canvas>
+								</div>
+								<div class="col">
+									<h3 class="text-center mt-0">Damage Type</h3>
+									<canvas id="damageByDamageTypeChart"></canvas>
+								</div>
+							</div>
+						</div>
+							
+						<h1 class="mt-5">Bots Destroyed <span class="text-secondary">By Class</span></h1>
+						<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+							<canvas id="botsDestroyedChart"></canvas>
+						</div>
 						
 					</template>
 					
+
+					<!-- combat pane -->			
+					<template v-if="pane=='hacking'" >		
+						
+						<h1 class="mt-5">Machine Hacking</h1>
+						
+						<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+							<div class="row row-cols-sm-2 g-5">
+								<div class="col">
+									<h3 class="text-center mt-0">Machines Accessed</h3>
+									<canvas id="machinesAccessChart"></canvas>
+								</div>
+								<div class="col">
+									<h3 class="text-center mt-0">Machines Hacked</h3>
+									<canvas id="machinesHackedChart"></canvas>
+								</div>
+							</div>
+						</div>
+						
+						<h1 class="mt-5">Direct Hacks</h1>
+						
+						<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+							<div class="row row-cols-sm-1 g-5">
+								<div class="col">
+									<h3 class="text-center">Terminals</h3>
+									<canvas id="terminalHacksChart"></canvas>
+								</div>
+								<div class="col">
+									<h3 class="text-center">Fabricators</h3>
+									<canvas id="fabricatorHacksChart"></canvas>
+								</div>
+								<div class="col">
+									<h3 class="text-center">Repair Stations</h3>
+									<canvas id="repairStationHacksChart"></canvas>
+								</div>
+								<div class="col">
+									<h3 class="text-center">Recycling Units</h3>
+									<canvas id="recyclingUnitHacksChart"></canvas>
+								</div>
+								<div class="col">
+									<h3 class="text-center">Scanalyzers</h3>
+									<canvas id="scanalyzerHacksChart"></canvas>
+								</div>
+								<div class="col">
+									<h3 class="text-center">Garrisons</h3>
+									<canvas id="garrisonAccessHacksChart"></canvas>
+								</div>
+							</div>
+						</div>
+						
+						<h1 class="mt-5">Unauthorized Hacks</h1>
+						
+						<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+							<canvas id="unauthorizedHacksChart"></canvas>
+						</div>
+						
+						<h1 class="mt-5">Bot Hacking</h1>
+						
+						<h2>Bots Hacked</h2>
+						<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+							<canvas id="robotsHackedChart"></canvas>
+						</div>
+						
+						<h2>Bothacks Applied</h2>
+						<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+							<canvas id="bothacksChart"></canvas>
+						</div>
+												
+					</template>
+					
+
+					<!-- lookup pane -->			
+					<template v-if="pane=='lookup'" >
+						<h1 class="mb-3">Stat Lookup</h1>		
+						<p>Look up any single run-level Cogmind statistic here. Numerical values will return a list of the top runs with that stat. String-based values will return a frequency chart of the most used values.<!--  Choose a statistic from the list or search for when by clicking "Filter". --></p>
+						
+						<div class="row mb-3">
+							<div class="col-sm-12 mt-1">
+								<select v-model="selectedStatLookup" class="form-select">
+									<option v-for="r in stats.data.stat_labels" :value="r">{{r.label}}</option>
+								</select>
+							</div>
+<!-- 							<div class="col-sm-12 mt-1" v-show="showStatLookupFilter">
+								<input class="form-control" v-model="statLookupFilter" list="statlookuplist" id="statlookuplistinput" placeholder="Select above, or type to search..."  @input="validateLookupFilter()">
+								<datalist id="statlookuplist">
+									<option v-for="r in stats.data.stat_labels" :value="r.label">{{r.label}}</option>
+								</datalist>
+							</div> -->
+							<div class="col-sm-12 mt-1">
+								<!-- <button class="btn btn-secondary" @click="showStatLookupFilter = !showStatLookupFilter">FILTER</button> -->
+								<button class="btn btn-success" @click="selectStatLookup()">GO</button>
+							</div>
+						</div>
+													
+						<template v-if="selectedStatData == 'loading'">
+							<p>Loading...</p>
+							<progress style="height: 2em;" ></progress>
+						</template>
+						
+						<template v-else-if="selectedStatData && selectedStatLookup.type === 'string'">
+							<h2>Frequency:</h2>
+							<table class="table text-nowrap">
+								<tr>
+									<th>Occurances</th>
+									<th>Value</th>
+								</tr>
+								<tr v-for="r of selectedStatData">
+									<td>{{r.num.toLocaleString()}}</td>
+									<td>{{r.value}}</td>
+								</tr>
+							</table>						
+						</template>
+						
+						<template v-else-if="selectedStatData && selectedStatLookup.type !== 'string'">
+							<h2>Top Runs</h2>
+							<table class="table text-nowrap">
+								<tr>
+									<th>Value</th>
+									<th>Player</th>
+									<th>Version</th>
+									<th>Mode</th>
+									<th>Difficulty</th>
+									<th>Scoresheet</th>
+								</tr>
+								<tr v-for="r of selectedStatData">
+									<td>{{r.value.toLocaleString()}}</td>
+									<td>{{r.player_name}}</td>
+									<td>{{r.version}}</td>
+									<td>{{r.mode.toString().replace('SPECIAL_MODE_','')}}</td>
+									<td>{{r.difficulty.replace('DIFFICULTY_','')}}</td>
+									<td><a :href="'index.html?' + r.filehash" target="_blank" >{{r.filehash}}</a></td>
+								</tr>
+							</table>						
+						</template>
+						
+					</template>
+					
+																					
+					<!-- pane nav bar -->
+					<nav class="nav nav-pills nav-justified my-3" v-if="pane!='loading' && pane!='lookup'">
+						<!-- <button type="button" class="btn nav-item mx-1 text-nowrap btn-primary" v-on:click="ChangePane('input')">◄</button> -->
+						<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='overview' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('overview')">Overview</button>
+						<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='build' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('build')">Build</button>
+						<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='combat' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('combat')">Combat</button>
+						<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='hacking' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('hacking')">Hacking</button>
+						<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='lookup' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('lookup')">Lookup</button>
+					</nav>
+					
 				</template>
 				
-																				
-				<!-- pane nav bar -->
-				<nav class="nav nav-pills nav-justified my-3" v-if="pane!='loading' && pane!='lookup'">
-					<!-- <button type="button" class="btn nav-item mx-1 text-nowrap btn-primary" v-on:click="ChangePane('input')">◄</button> -->
-					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='overview' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('overview')">Overview</button>
-					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='build' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('build')">Build</button>
-					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='combat' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('combat')">Combat</button>
-					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='hacking' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('hacking')">Hacking</button>
-					<button type="button" class="btn nav-item mx-1 text-nowrap" :class="pane=='lookup' ? 'btn-secondary' : 'btn-primary'" v-on:click="ChangePane('lookup')">Lookup</button>
-				</nav>
-					
 			</div><!-- end "app" div -->
 		</div><!-- end page container -->
 		
