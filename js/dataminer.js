@@ -1153,10 +1153,12 @@ function ChangePane(pane) {
 	Vue.nextTick( _ => {
 		
 		if ( pane === 'overview' ) {
-			app.charts.push( DrawTurnsTakenChart( 
+			app.charts.push( DrawGenericChart( 
 				app.scoresheet.charts.turns_chart_data, 
-				app.scoresheet.charts.chart_map_labels
-				) );
+				app.scoresheet.charts.chart_map_labels,
+				'turnsTakenChart',
+				{ chartType: 'bar', legend:false, aspectRatio:3 }
+				) );				
 			app.charts.push( DrawGenericChart( 
 				app.scoresheet.charts.actions_chart_data, 
 				app.scoresheet.charts.actions_chart_labels,
@@ -1226,10 +1228,6 @@ function ChangePane(pane) {
 					) );
 			}
 			
-			// app.charts.push( DrawCoreChart( 
-			// 	app.scoresheet.charts.core_chart_data, 
-			// 	app.scoresheet.charts.chart_map_labels
-			// 	) );
 		}
 		
 		else if ( pane === 'input' ) {
@@ -1582,8 +1580,16 @@ function ChangePane(pane) {
 		
 			// below the fold optimization
 			setTimeout( _ => {
-				app.charts.push( DrawKillTypesChart(app.scoresheet.charts.kill_types_chart_data, app.scoresheet.charts.kill_types_chart_labels) );
+			
+				app.charts.push( DrawGenericChart( 
+					app.scoresheet.charts.kill_types_chart_data, 
+					app.scoresheet.charts.kill_types_chart_labels,
+					'killsTypesChart',
+					{ addpct:true, sort:true, undatafy: true, legend:false, chartType: 'bar', aspectRatio:3 }
+					) );
+				
 				app.charts.push( DrawDamageInflictedChart(app.scoresheet.charts.damage_chart_data, app.scoresheet.charts.chart_map_labels) );
+				
 				if ( app.scoresheet.stats.combat.shotsHitRobots.criticalStrikes ) {
 					app.charts.push( DrawGenericChart( 
 						app.scoresheet.charts.criticals_pie_chart_data, 
@@ -1592,12 +1598,37 @@ function ChangePane(pane) {
 						{ sort:true, undatafy: true, addpct:true, legendPos:'left', chartType: 'doughnut', aspectRatio:2 /* , colors:'indexed' */ }
 						) );
 				}
-				app.charts.push( DrawDamageReceivedChart(app.scoresheet.charts.damage_received_chart_data, app.scoresheet.charts.chart_map_labels) );
-				app.charts.push( DrawKillsChart( {
-					combatbots: app.scoresheet.charts.kills_chart_data,
-					greenbots: app.scoresheet.charts.greenbot_kills_chart_data,
-					other: app.scoresheet.charts.neutral_kills_chart_data,
-				}, app.scoresheet.charts.chart_map_labels) );
+				
+				app.charts.push( DrawGenericChart( 
+					app.scoresheet.charts.damage_received_chart_data, 
+					app.scoresheet.charts.chart_map_labels,
+					'damageReceivedChart',
+					{ legend:false, chartType: 'bar', aspectRatio:3, colors:'#b93f3f' }
+					) );
+							
+				app.charts.push( DrawGenericChart( 
+					[
+						{
+							label: 'Combat Bots',
+							color: '#b93f3f',
+							data: app.scoresheet.charts.kills_chart_data
+						},
+						{
+							label: 'Green Bots',
+							color: '#41A34F',
+							data: app.scoresheet.charts.greenbot_kills_chart_data 
+						},
+						{
+							label: 'Unarmed / Watchers',
+							color: '#777',
+							data: app.scoresheet.charts.neutral_kills_chart_data 
+						},
+					],
+					app.scoresheet.charts.chart_map_labels,
+					'killsChart',
+					{ legend:true, chartType: 'bar', stacked:true, aspectRatio:3 }
+					) );
+				
 			}, 1000);
 			
 			// damage types
@@ -2374,103 +2405,6 @@ function DrawDamageInflictedChart( data, labels, include_allies=true ) {
 	};
 	return new Chart( document.getElementById('damageInflictedChart'), config );
 }
-			
-function DrawDamageReceivedChart( data, labels ) {
-	datasets = [ { 
-		label: 'Damage Received', 
-		data, 
-		backgroundColor: '#b93f3f',
-		borderWidth: 0,
-		fill: true,
-	}];
-	const config = {
-		type: 'bar',
-		data: { labels, datasets },
-		options: {
-			responsive: true,		
-			aspectRatio: 3,	
-			interaction: {
-				intersect: false,
-			},					
-			plugins: {
-				legend: {
-					position: 'top',
-					display:false
-				},
-				title: {
-					display: false,
-					text: 'Damage Received'
-				}
-			}
-		},
-	};
-	return new Chart( document.getElementById('damageReceivedChart'), config );
-}
-			
-function DrawKillTypesChart( data, labels ) {
-	Chart.SortPieData(data,labels);
-	datasets = [ { 
-		label: 'Bot Types Destroyed', 
-		data, 
-		borderWidth: 0,
-		fill: true,
-	}];
-	const config = {
-		type: 'bar',
-		data: { labels: labels.map(x=>x.Undatafy()), datasets },
-		options: {
-			responsive: true,	
-			aspectRatio: 4,
-			interaction: {
-				intersect: false,
-			},					
-			plugins: {
-				legend: {
-					display: false,
-					position: 'top',
-				},
-				title: {
-					display: false,
-				}
-			}
-		},
-	};
-	return new Chart( document.getElementById('killsTypesChart'), config );
-}
-
-function DrawCoreChart( data, labels ) {
-	const chartdata = {
-		labels: labels,
-		datasets: [{
-			label: 'Core Remaining',
-			borderWidth: 1,
-			fill: true,
-			tension: 0.4,
-			data: data,
-		}]
-	};
-	const config = {
-		type: 'bar',
-		data: chartdata,
-		options: {
-			aspectRatio: 4,
-			responsive: true,
-			interaction: {
-				intersect: false,
-			},					
-			plugins: {
-				legend: {
-					display: false,
-					position: 'top',
-				},
-				title: {
-					display: false,
-				}
-			}
-		},
-	};
-	return new Chart( document.getElementById('coreChart'), config );
-}
 
 function DrawSparkChart( canvasID, data, myval ) {
 	if ( !data || data.length <= 1 ) { 
@@ -2527,40 +2461,6 @@ function DrawSparkChart( canvasID, data, myval ) {
 		},
 	};
 	return new Chart( document.getElementById(canvasID), config );
-}
-
-function DrawTurnsTakenChart( data, labels ) {
-	const chartdata = {
-		labels: labels,
-		datasets: [{
-			label: 'Turns Taken',
-			borderWidth: 1,
-			fill: true,
-			tension: 0.4,
-			data: data,
-		}]
-	};
-	const config = {
-		type: 'bar',
-		data: chartdata,
-		options: {
-			aspectRatio: 4,
-			responsive: true,
-			interaction: {
-				intersect: false,
-			},					
-			plugins: {
-				legend: {
-					display: false,
-					position: 'top',
-				},
-				title: {
-					display: false,
-				}
-			}
-		},
-	};
-	return new Chart( document.getElementById('turnsTakenChart'), config );
 }
 
 function DrawInventoryChart( data, carried_data, labels ) {
@@ -2756,13 +2656,23 @@ function DrawGenericChart( data, labels, elementID, options ) {
 			}
 		} 
 	}
-	datasets = [ { 
-		data, 
-		backgroundColor: bgcolors,
+	
+	// if `data` was an array of objects (as opposed to POD), then assume we have multiple series
+	// A series can either be an array of POD, or an object with explicit chart.js dataseries properties.
+	if ( typeof(data[0]) !== 'object' ) { data = [data]; }
+	// if `bgcolors` is an array and we have multiple series, assign one color per series
+	let color_counter = 0;
+	datasets = data.map( d => ({ 
+		data: ('data' in d ? d.data : d ), 
+		label: ('label' in d ? d.label : null ), 
+		backgroundColor: ( 'color' in d
+			? d.color
+			: ( (data.length > 1 && bgcolors.length && bgcolors.length > 1) ? bgcolors[color_counter++] : bgcolors)
+			),
 		borderWidth: 0,
-		fill: true,
+		fill: ('fill' in d ? d.fill : true),
 		tension: (options.tension || 0),
-	}];
+	}) );
 	const config = {
 		type: (options.chartType || 'doughnut'),
 		data: { labels, datasets },
@@ -2784,6 +2694,9 @@ function DrawGenericChart( data, labels, elementID, options ) {
 				
 		},
 	};
+	if ( options.stacked || options.stack ) {
+		config.options.scales = { x: { stacked: true, }, y: { stacked: true } };
+	}
 	return new Chart( document.getElementById(elementID), config );
 }
 
