@@ -383,6 +383,15 @@
 						<div class="row row-cols-1 row-cols-md-3 g-4">
 							<div class="col">
 								<div class="card statbox h-100">
+									<div class="card-header">Score</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.performance.totalScore.toLocaleString()}}</span>
+										<canvas id="scoreSparkChart" v-if="analysis"></canvas>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
 									<div class="card-header">Turns</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.exploration.turnsPassed.toLocaleString()}}</span>
@@ -392,14 +401,14 @@
 							</div>
 							<div class="col">
 								<div class="card statbox h-100">
-									<div class="card-header">Cadence (Actions Per Minute)</div>
+									<div class="card-header">Actions Per Minute</div>
 									<div class="card-body text-success numeric">
 										<span class="card-text">{{scoresheet.stats.actions.cadence.toFixed(0)}}</span>
 										<canvas id="cadenceSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>
-							<div class="col">
+							<!-- <div class="col">
 								<div class="card statbox h-100">
 									<div class="card-header">Average Mobility Speed</div>
 									<div class="card-body text-success numeric">
@@ -407,7 +416,7 @@
 										<canvas id="avgSpeedSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
-							</div>
+							</div> -->
 							<div class="col">
 								<div class="card statbox h-100">
 									<div class="card-header">Slots</div>
@@ -508,12 +517,7 @@
 							</div>
 						</div>
 					</div>
-					
-					<h2>Alert Influence</h2>
-					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
-						<canvas id="alertChart"></canvas>
-					</div>
-					
+
 					<h2>Turns Taken</h2>
 					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
 						<canvas id="turnsTakenChart"></canvas>
@@ -601,25 +605,48 @@
 				<template v-if="pane=='build'">
 					
 					<h2 class="">Slots</h2>
-					
-					<p class="slot_loadout">
-						<span v-for="n in scoresheet.parts.power.slots" class="p"></span>
-						<span v-for="n in scoresheet.parts.propulsion.slots" class="n"></span>
-						<span v-for="n in scoresheet.parts.utility.slots" class="u"></span>
-						<span v-for="n in scoresheet.parts.weapon.slots" class="w"></span>
-					</p>
-					<p>
-						Power: {{scoresheet.parts.power.slots}},
-						Propulsion: {{scoresheet.parts.propulsion.slots}},
-						Utility: {{scoresheet.parts.utility.slots}},
-						Weapon: {{scoresheet.parts.weapon.slots}}
-					</p>
-		
-					<h2 class="">Final Build: {{scoresheet.cogmind.finalBuild}}</h2>
-					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
-						<canvas id="classDistroChart"></canvas>
+									
+					<div class="container-fluid mt-5 mb-3 g-0">
+						<div class="row row-cols-1 row-cols-md-4 g-2">
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Power</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.parts.power.slots}}</span>
+										<canvas id="slotPowerSparkChart"></canvas>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Propulsion</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.parts.propulsion.slots}}</span>
+										<canvas id="slotPropSparkChart"></canvas>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Utility</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.parts.utility.slots}}</span>
+										<canvas id="slotUtilSparkChart"></canvas>
+									</div>
+								</div>
+							</div>
+							<div class="col">
+								<div class="card statbox h-100">
+									<div class="card-header">Weapon</div>
+									<div class="card-body text-success numeric">
+										<span class="card-text">{{scoresheet.parts.weapon.slots}}</span>
+										<canvas id="slotWeaponSparkChart"></canvas>
+									</div>
+								</div>
+							</div>
+						</div>
 					</div>
-										
+						
 					<!-- <h2>Build Quality</h2>
 					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
 						<canvas id="buildQualityChart"></canvas>
@@ -679,7 +706,19 @@
 					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
 						<canvas id="inventoryChart"></canvas>
 					</div>
-																				
+		
+					<h2 class="">Final Build: {{scoresheet.cogmind.finalBuild}}</h2>
+					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+						<canvas id="classDistroChart"></canvas>
+					</div>
+							
+					<table class="table table-sm">
+						<tr v-for="map of scoresheet.route.entries">
+							<td class="text-nowrap">{{map.location.depth}}/{{map.location.mapname}}</td>
+							<td>{{map.dominantClass}}</td>
+						</tr>
+					</table>
+																													
 					<h2>Part Swapping</h2>
 					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
 						<div class="row row-cols-sm-2 g-5">
@@ -1413,7 +1452,29 @@
 				
 				<!-- STEALTH -->
 				<template v-if="pane=='stealth'">
-					<!-- <h2>Stealth</h2> -->
+					
+					<h2>Alert Influence</h2>
+					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+						<canvas id="alertChart"></canvas>
+					</div>
+					
+					<h2 class="mt-5">Time Spent at Alert Level</h2>
+					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+						<canvas id="alertLevelsChart"></canvas>
+					</div>
+										
+					<h2>Making A Scene</h2>
+					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+						<p class="text-sm text-center text-muted">(click a label to show/hide category)</p>
+						<canvas id="stealthChart"></canvas>
+					</div>	
+			
+					<h2 class="mt-5">Squads Dispatched</h2>
+					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+						<canvas id="squadsDispatchedChart"></canvas>
+					</div>
+									
+					<h2>Stealth Stats</h2>
 					<div class="container-fluid mt-5 mb-5 g-0">
 						<div class="row row-cols-1 row-cols-md-3 g-4">
 							<div class="col">
@@ -1554,13 +1615,7 @@
 								</div>
 							</div>															
 						</div>
-					</div>
-					
-					<h2>Making A Scene</h2>
-					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
-						<p class="text-sm text-center text-muted">(click a label to show/hide category)</p>
-						<canvas id="stealthChart"></canvas>
-					</div>			
+					</div>							
 					
 				</template>		
 				

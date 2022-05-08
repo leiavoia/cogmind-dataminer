@@ -57,6 +57,14 @@ Chart.pie_colors = [ // you should not be adding stuff in like this.
 	'#57391f',
 ];
 Chart.colors_by_key = {
+	win: '#41A34F',
+	wins: '#41A34F',
+	a0: '#000000',
+	command: '#2671b9',
+	access: '#EEEEEE', 
+	research: '#BB1199', 
+	factory: '#888', 
+	materials: '#CC9966',
 	power: '#dfd239',
 	propulsion: '#418d4f',
 	utility: '#1e66a7',
@@ -98,21 +106,29 @@ Chart.colors_by_key = {
 	ballisticCannon: 'rgb(20,80,135)',
 	ballisticGun: 'rgb(55,123,196)',
 	launcher: 'rgb(219,41,41)',
+	explosions: 'rgba(219,41,41,1)',
 	slashing: 'rgba(214,221,17,1)', 
 	slashingWeapon: 'rgba(214,221,17,1)',
+	melee: 'rgba(214,221,17,1)', 
 	piercing: 'rgba(192,55,196,1)', 
 	piercingWeapon: 'rgba(192,55,196,1)',
 	impact: 'rgba(240,240,240,1)',
 	impactWeapon: 'rgba(240,240,240,1)',
 	specialWeapon: '#999',
 	specialMeleeWeapon: '#42D484',
+	special: '#42D484',
 	phasic: '#00744a',
 	phasicWeapon: '#DD4499',
 	entropic: '#ff6ab6', 
 	entropicWeapon: '#ff6ab6',
 	electromagnetic: 'rgba(59,221,17,1)', 
 	explosive: 'rgba(219,41,41,1)', 
-	allies: '#73d0ff',
+	allies: '#73d0ff',	
+	gun: '#89a784', 
+	guns: '#89a784', 
+	cannon: '#5647a2', 
+	cannons: '#5647a2', 
+	ramming: '#FFF'
 };
 
 Chart.SortPieData = function ( data, labels, colors=null ) { // coupled arrays
@@ -538,6 +554,7 @@ function AnalyzeScoresheet( data ) {
 		support_chart_data: [],
 		weight_chart_data: [],
 		inventory_chart_data: [],
+		inventory_carried_chart_data: [],
 		kills_chart_data: [],
 		greenbot_kills_chart_data: [],
 		neutral_kills_chart_data: [],
@@ -592,7 +609,7 @@ function AnalyzeScoresheet( data ) {
 												
 		// influence
 		data.charts.alert_chart_data.push(map.stats.alert.peakInfluence.overall);
-		
+
 		// damage inflicted by weapon type
 		// note: not all indexes are present for every map area, so iterate over the "overall" list instead
 		for ( let k in data.stats.combat.damageInflicted ) {
@@ -640,6 +657,7 @@ function AnalyzeScoresheet( data ) {
 		
 		// inventory size
 		data.charts.inventory_chart_data.push( map.stats.build.largestInventoryCapacity.overall );
+		data.charts.inventory_carried_chart_data.push( map.stats.build.largestInventoryCapacity.averageCarried );
 		
 		// weight
 		data.charts.weight_chart_data.push( map.stats.build.heaviestBuild.overall );
@@ -688,7 +706,7 @@ function AnalyzeScoresheet( data ) {
 		// history decoration - color coded messages
 		if ( map.historyEvents ) { 
 			for ( row of map.historyEvents ) { 
-				if ( row.event.match(/(lost|released all parts|locked|lockdown|assault|sterilization system|crushed|destroyed by|self destr|core integrity fell|corruption reached|assimilated all|stolen by|self-destructed|Destroyed self|Terminal network hard line cut|core destroyed|activated Command garrisons|Derelicts to an unsafe place|Attacked by the|came to Exiles' defense)/i) ) { row.class = 'bad'; }
+				if ( row.event.match(/(lost|released all parts|locked|lockdown|assault|sterilization system|crushed|destroyed by|self destr|core integrity fell|corruption reached|assimilated all|stolen by|self-destructed|Destroyed self|Terminal network hard line cut|core destroyed|activated Command garrisons|Derelicts to an unsafe place|Attacked by the|came to Exiles' defense|came to Zion's defense)/i) ) { row.class = 'bad'; }
 				else if ( row.event.match(/(learned|destroyed|killed|installed|found|Aligned with FarCom|given|expanded rif|repaired|fabricated|Loaded intel|hub disabled|Gained derelict followers|Revealed the true nature|received the|redirected|Retrieved Zion|Zion.+teleported in|answering call for help|Disengaged cave|squad redirected|Derelicts to a safe place)/i) ) { row.class = 'good'; }
 				else if ( row.event.match(/(discovered|identified|build established|Accompanied by)/i) ) { row.class = 'info'; }
 				else if ( row.event.match(/(entered|evolved)/i) ) { row.class = 'notice'; }
@@ -767,12 +785,10 @@ function AnalyzeScoresheet( data ) {
 	// overall damage types
 	data.charts.overall_damage_data = {}
 	for ( let k in data.stats.combat.damageInflicted ) {
-		if ( typeof(data.charts.overall_damage_data[k]) === 'undefined' ) { data.charts.overall_damage_data[k] = []; }
-		data.charts.overall_damage_data[k].push( data.stats.combat.damageInflicted[k] );
+		data.charts.overall_damage_data[k] = data.stats.combat.damageInflicted[k];
 	}
 	// damage from allies
-	if ( typeof(data.charts.overall_damage_data['allies']) === 'undefined' ) { data.charts.overall_damage_data['allies'] = []; }
-	data.charts.overall_damage_data['allies'].push( data.stats.allies.allyAttacks.totalDamage || 0 );
+	data.charts.overall_damage_data['allies'] = data.stats.allies.allyAttacks.totalDamage || 0;
 			
 	// killed bot types
 	data.charts.kill_types_chart_labels = [];
@@ -803,6 +819,27 @@ function AnalyzeScoresheet( data ) {
 			data.charts.bothacks_chart_labels.push(k.Undatafy());
 			data.charts.bothacks_chart_data.push( data.stats.bothacking.robotHacksApplied[k] );
 			data.charts.num_bothacks +=  data.stats.bothacking.robotHacksApplied[k];
+		}
+	}
+	
+	// alert levels
+	data.charts.alertlevel_chart_labels = [];
+	data.charts.alertlevel_chart_data = [];
+	for ( let k in data.stats.alert.maximumAlertLevel ) {
+		if ( k != 'overall' ) { 
+			let label = k.replace(/^.*\./,'').replace('lowSecurityPercent','lowSecurity');
+			data.charts.alertlevel_chart_labels.push(label);
+			data.charts.alertlevel_chart_data.push(data.stats.alert.maximumAlertLevel[k]);
+		}
+	}
+	
+	// squads dispatched
+	data.charts.squads_chart_labels = [];
+	data.charts.squads_chart_data = [];
+	for ( let k in data.stats.alert.squadsDispatched ) {
+		if ( k != 'overall' ) { 
+			data.charts.squads_chart_labels.push(k);
+			data.charts.squads_chart_data.push(data.stats.alert.squadsDispatched[k]);
 		}
 	}
 	
@@ -1078,20 +1115,22 @@ function ChangePane(pane) {
 	Vue.nextTick( _ => {
 		
 		if ( pane === 'overview' ) {
-			app.charts.push( DrawAlertChart( 
-				app.scoresheet.charts.alert_chart_data, 
-				app.scoresheet.charts.chart_map_labels
-				) );
 			app.charts.push( DrawTurnsTakenChart( 
 				app.scoresheet.charts.turns_chart_data, 
 				app.scoresheet.charts.chart_map_labels
 				) );
-			app.charts.push( DrawActionsChart( 
+			app.charts.push( DrawGenericChart( 
 				app.scoresheet.charts.actions_chart_data, 
-				app.scoresheet.charts.actions_chart_labels
-				) );
-				
+				app.scoresheet.charts.actions_chart_labels,
+				'actionsChart',
+				{ sort:true, undatafy: true, addpct:true, legendPos:'left', chartType: 'doughnut', colors:'pie', aspectRatio:2 }
+				) );				
 			if ( app.analysis ) {
+				app.charts.push( DrawSparkChart(
+					'scoreSparkChart',
+					app.analysis['performance.totalScore']?.chartdata,
+					app.scoresheet.performance.totalScore
+					) );
 				app.charts.push( DrawSparkChart(
 					'turnsSparkChart',
 					app.analysis['stats.exploration.turnsPassed']?.chartdata,
@@ -1102,11 +1141,11 @@ function ChangePane(pane) {
 					app.analysis['stats.actions.cadence']?.chartdata,
 					app.scoresheet.stats.actions.cadence
 					) );
-				app.charts.push( DrawSparkChart(
-					'avgSpeedSparkChart',
-					app.analysis['stats.exploration.spacesMoved.averageSpeed']?.chartdata,
-					app.scoresheet.stats.exploration.spacesMoved.averageSpeed
-					) );
+				// app.charts.push( DrawSparkChart(
+				// 	'avgSpeedSparkChart',
+				// 	app.analysis['stats.exploration.spacesMoved.averageSpeed']?.chartdata,
+				// 	app.scoresheet.stats.exploration.spacesMoved.averageSpeed
+				// 	) );
 				app.charts.push( DrawSparkChart(
 					'regionsVisitedSparkChart',
 					app.analysis['performance.regionsVisited.count']?.chartdata,
@@ -1187,42 +1226,79 @@ function ChangePane(pane) {
 		}
 		
 		else if ( pane === 'build' ) {
-			app.charts.push( DrawClassDistroChart(
-				app.scoresheet.charts.class_distro_chart_data, 
-				app.scoresheet.charts.class_distro_chart_labels
-			) );
-			app.charts.push( DrawPropPieChart(
-				app.scoresheet.charts.prop_pie_chart_data, 
-				app.scoresheet.charts.prop_pie_chart_labels
-			) );
+			app.charts.push( DrawSparkChart(
+				'slotPowerSparkChart',
+				app.analysis['parts.power.slots']?.chartdata,
+				app.scoresheet.parts.power.slots
+				) );
+			app.charts.push( DrawSparkChart(
+				'slotPropSparkChart',
+				app.analysis['parts.propulsion.slots']?.chartdata,
+				app.scoresheet.parts.propulsion.slots
+				) );
+			app.charts.push( DrawSparkChart(
+				'slotUtilSparkChart',
+				app.analysis['parts.utility.slots']?.chartdata,
+				app.scoresheet.parts.utility.slots
+				) );
+			app.charts.push( DrawSparkChart(
+				'slotWeaponSparkChart',
+				app.analysis['parts.weapon.slots']?.chartdata,
+				app.scoresheet.parts.weapon.slots
+				) );
+				
 			app.charts.push( DrawPropGraph(
 				app.scoresheet.charts.prop_chart_data, 
 				app.scoresheet.charts.chart_map_labels
 			) );
-			app.charts.push( DrawPartsAttachedPieChart(
+			app.charts.push( DrawGenericChart( 
+				app.scoresheet.charts.class_distro_chart_data, 
+				app.scoresheet.charts.class_distro_chart_labels,
+				'classDistroChart',
+				{ sort:true, undatafy: true, addpct:true, legendPos:'left', chartType: 'bar', aspectRatio: 4, legend:false }
+				) );
+			app.charts.push( DrawGenericChart( 
+				app.scoresheet.charts.prop_pie_chart_data, 
+				app.scoresheet.charts.prop_pie_chart_labels,
+				'propPieChart',
+				{ sort:true, undatafy: true, addpct:true, legendPos:'left', chartType: 'doughnut', colors:'indexed' }
+				) );
+			app.charts.push( DrawGenericChart( 
 				app.scoresheet.charts.parts_attached_chart_data, 
-				app.scoresheet.charts.parts_attached_chart_labels
-			) );
-			app.charts.push( DrawPowerAttachedPieChart(
+				app.scoresheet.charts.parts_attached_chart_labels,
+				'partsAttachedPieChart',
+				{ sort:true, undatafy: true, addpct:true, legendPos:'left', chartType: 'doughnut', colors:'indexed' }
+				) );
+			app.charts.push( DrawGenericChart( 
 				app.scoresheet.charts.parts_attached_power_chart_data, 
-				app.scoresheet.charts.parts_attached_power_chart_labels
-			) );
-			app.charts.push( DrawPropulsionAttachedPieChart(
+				app.scoresheet.charts.parts_attached_power_chart_labels,
+				'powerAttachedPieChart',
+				{ sort:true, undatafy: true, addpct:true, legendPos:'left', chartType: 'doughnut', colors:'indexed' }
+				) );
+			app.charts.push( DrawGenericChart( 
 				app.scoresheet.charts.parts_attached_propulsion_chart_data, 
-				app.scoresheet.charts.parts_attached_propulsion_chart_labels
-			) );
-			app.charts.push( DrawUtilityAttachedPieChart(
+				app.scoresheet.charts.parts_attached_propulsion_chart_labels,
+				'propulsionAttachedPieChart',
+				{ sort:true, undatafy: true, addpct:true, legendPos:'left', chartType: 'doughnut', colors:'indexed' }
+				) );
+			app.charts.push( DrawGenericChart( 
 				app.scoresheet.charts.parts_attached_utility_chart_data, 
-				app.scoresheet.charts.parts_attached_utility_chart_labels
-			) );
-			app.charts.push( DrawWeaponAttachedPieChart(
+				app.scoresheet.charts.parts_attached_utility_chart_labels,
+				'utilityAttachedPieChart',
+				{ sort:true, undatafy: true, addpct:true, legendPos:'left', chartType: 'doughnut', colors:'indexed' }
+				) );
+			app.charts.push( DrawGenericChart( 
 				app.scoresheet.charts.parts_attached_weapon_chart_data, 
-				app.scoresheet.charts.parts_attached_weapon_chart_labels
-			) );
-			app.charts.push( DrawPartsLostPieChart(
+				app.scoresheet.charts.parts_attached_weapon_chart_labels,
+				'weaponAttachedPieChart',
+				{ sort:true, undatafy: true, addpct:true, legendPos:'left', chartType: 'doughnut', colors:'indexed' }
+				) );
+			app.charts.push( DrawGenericChart( 
 				app.scoresheet.charts.parts_lost_chart_data, 
-				app.scoresheet.charts.parts_lost_chart_labels
-			) );
+				app.scoresheet.charts.parts_lost_chart_labels,
+				'partsLostPieChart',
+				{ sort:true, undatafy: true, addpct:true, legendPos:'left', chartType: 'doughnut', colors:'indexed' }
+				) );
 			app.charts.push( DrawWeightChart( {
 				support_chart_data: app.scoresheet.charts.support_chart_data,
 				weight_chart_data: app.scoresheet.charts.weight_chart_data,
@@ -1234,7 +1310,8 @@ function ChangePane(pane) {
 				}, app.scoresheet.charts.chart_map_labels
 			) );
 			app.charts.push( DrawInventoryChart( 
-				app.scoresheet.charts.inventory_chart_data, 
+				app.scoresheet.charts.inventory_chart_data,
+				app.scoresheet.charts.inventory_carried_chart_data,
 				app.scoresheet.charts.chart_map_labels 
 			) );
 			// app.charts.push( DrawBuildChart( 
@@ -1470,7 +1547,12 @@ function ChangePane(pane) {
 				app.charts.push( DrawKillTypesChart(app.scoresheet.charts.kill_types_chart_data, app.scoresheet.charts.kill_types_chart_labels) );
 				app.charts.push( DrawDamageInflictedChart(app.scoresheet.charts.damage_chart_data, app.scoresheet.charts.chart_map_labels) );
 				if ( app.scoresheet.stats.combat.shotsHitRobots.criticalStrikes ) {
-					app.charts.push( DrawCriticalHitsPieChart(app.scoresheet.charts.criticals_pie_chart_data, app.scoresheet.charts.criticals_pie_chart_labels) );
+					app.charts.push( DrawGenericChart( 
+						app.scoresheet.charts.criticals_pie_chart_data, 
+						app.scoresheet.charts.criticals_pie_chart_labels,
+						'criticalHitsPieChart',
+						{ sort:true, undatafy: true, addpct:true, legendPos:'left', chartType: 'doughnut', aspectRatio:2 /* , colors:'indexed' */ }
+						) );
 				}
 				app.charts.push( DrawDamageReceivedChart(app.scoresheet.charts.damage_received_chart_data, app.scoresheet.charts.chart_map_labels) );
 				app.charts.push( DrawKillsChart( {
@@ -1480,13 +1562,47 @@ function ChangePane(pane) {
 				}, app.scoresheet.charts.chart_map_labels) );
 			}, 1000);
 			
-			// above the fold charts render first
-			app.charts.push( DrawDamageTypesChart(app.scoresheet.charts.overall_damage_data) );
-			app.charts.push( DrawWeaponTypesChart(app.scoresheet.charts.overall_damage_data) );	
+			// damage types
+			let dmg_types = ['kinetic', 'thermal', 'electromagnetic', 'explosive', 'entropic', 'slashing', 'piercing', 'impact', 'phasic'];
+			app.charts.push( DrawGenericChart( 
+				Object.entries(app.scoresheet.charts.overall_damage_data).filter( x => dmg_types.indexOf(x[0]) >= 0 ).map( x => x[1] ), 
+				Object.entries(app.scoresheet.charts.overall_damage_data).filter( x => dmg_types.indexOf(x[0]) >= 0 ).map( x => x[0] ),
+				'damageTypesChart',
+				{ sort:true, undatafy: true, addpct:true, legendPos:'left', chartType: 'doughnut', colors:'indexed' }
+				) );
+				
+			// weapon types
+			let weapon_types = ['melee', 'guns', 'cannons', 'ramming', 'explosions'];
+			app.charts.push( DrawGenericChart( 
+				Object.entries(app.scoresheet.charts.overall_damage_data).filter( x => weapon_types.indexOf(x[0]) >= 0 ).map( x => x[1] ), 
+				Object.entries(app.scoresheet.charts.overall_damage_data).filter( x => weapon_types.indexOf(x[0]) >= 0 ).map( x => x[0] ), 
+				'weaponTypesChart',
+				{ sort:true, undatafy: true, addpct:true, legendPos:'left', chartType: 'doughnut', colors:'indexed' }
+				) );
+				
 		}
 		
 		else if ( pane === 'stealth' ) {
 			app.charts.push( DrawStealthChart(app.scoresheet.charts.stealth_chart_data, app.scoresheet.charts.chart_map_labels) );
+			app.charts.push( DrawGenericChart( 
+				app.scoresheet.charts.alert_chart_data, 
+				app.scoresheet.charts.chart_map_labels,
+				'alertChart',
+				{ legend:false, chartType: 'bar' }
+				) );			
+			app.charts.push( DrawGenericChart( 
+				app.scoresheet.charts.alertlevel_chart_data,
+				app.scoresheet.charts.alertlevel_chart_labels,
+				'alertLevelsChart',
+				{ sort:false, undatafy: true, addpct:true, legendPos:'left', chartType: 'doughnut', colors:'pie' }
+				) );			
+			app.charts.push( DrawGenericChart( 
+				app.scoresheet.charts.squads_chart_data,
+				app.scoresheet.charts.squads_chart_labels,
+				'squadsDispatchedChart',
+				{ sort:true, undatafy: true, addpct:false, legend:false, chartType: 'bar', colors:'pie', aspectRatio:3 }
+				) );			
+
 			if ( app.analysis ) {
 				app.charts.push( DrawSparkChart(
 					'maxAlertSparkChart',
@@ -1572,17 +1688,34 @@ function ChangePane(pane) {
 		
 		else if ( pane === 'hacking' ) {
 			if ( app.scoresheet.charts.num_bothacks ) {
-				app.charts.push( DrawBothackingChart(app.scoresheet.charts.bothacks_chart_data, app.scoresheet.charts.bothacks_chart_labels) );
+				app.charts.push( DrawGenericChart( 
+					app.scoresheet.charts.bothacks_chart_data,
+					app.scoresheet.charts.bothacks_chart_labels,
+					'botHacksChart',
+					{ sort:true, undatafy: true, addpct:true, legendPos:'left', chartType: 'doughnut', colors:'pie' }
+					) );
 			}
-			app.charts.push( DrawHacksPerMachineChart(
+			app.charts.push( DrawGenericChart( 
 				app.scoresheet.charts.hacks_per_machine_chart_data, 
-				app.scoresheet.charts.hacks_per_machine_chart_labels
-			) );
+				app.scoresheet.charts.hacks_per_machine_chart_labels,
+				'hacksPerMachineChart',
+				{ sort:true, undatafy: true, addpct:false, legend:false, chartType: 'bar', colors:'indexed', aspectRatio:3 }
+				) );
 			if ( app.scoresheet.charts.num_directhacks ) {
-				app.charts.push( DrawIndvMachineHacksChart( app.scoresheet.charts.hack_data, app.scoresheet.charts.hack_labels, app.scoresheet.charts.hack_colors, 'direct' ) );
+				app.charts.push( DrawGenericChart( 
+					app.scoresheet.charts.hack_data, 
+					app.scoresheet.charts.hack_labels,
+					'directHacksChart',
+					{ sort:true, undatafy: true, addpct:false, legend:false, chartType: 'bar', colors:app.scoresheet.charts.hack_colors, aspectRatio:2.5 }
+					) );
 			}
 			if ( app.scoresheet.charts.num_uhacks ) {
-				app.charts.push( DrawIndvMachineHacksChart( app.scoresheet.charts.uhack_data, app.scoresheet.charts.uhack_labels, app.scoresheet.charts.uhack_colors, 'unauthorized' ) );
+				app.charts.push( DrawGenericChart( 
+					app.scoresheet.charts.uhack_data, 
+					app.scoresheet.charts.uhack_labels,
+					'unauthorizedHacksChart',
+					{ sort:true, undatafy: true, addpct:false, legend:false, chartType: 'bar', colors:app.scoresheet.charts.uhack_colors, aspectRatio:2.5 }
+					) );
 			}
 			if ( app.analysis ) {
 				app.charts.push( DrawSparkChart(
@@ -1759,10 +1892,10 @@ function CalculateBadges(data) {
 					// worth storing for later
 					data.stats.allies.zHero = hero;
 				}
-				else if ( row.event.match(/^(.+) came to Exiles' defense/i) ) {
-					let matches = [ ...row.event.matchAll(/^(.+) came to Exiles' defense/gi) ];
+				else if ( row.event.match(/^(.+) came to (Exiles'|Zion's) defense/i) ) {
+					let matches = [ ...row.event.matchAll(/^(.+) came to (Exiles'|Zion's) defense/gi) ];
 					let hero = matches[0][1] || 'Z-Hero';
-					data.badges.push([hero,'Hero of Zion came to the to Exiles defense']);
+					data.badges.push([hero,'Hero of Zion came to ' + matches[0][2] + ' defense']);
 					// not technically an ally, but whatever
 					data.stats.allies.zHero = hero; 
 				}
@@ -2177,140 +2310,6 @@ function DrawDamageReceivedChart( data, labels ) {
 	return new Chart( document.getElementById('damageReceivedChart'), config );
 }
 			
-function DrawDamageTypesChart( data ) {
-	let color_labels = {
-		kinetic: 'rgba(55,123,196,1)', 
-		thermal: 'rgba(255,158,0,1)', 
-		electromagnetic: 'rgba(59,221,17,1)', 
-		explosive: 'rgba(219,41,41,1)', 
-		entropic: '#ff6ab6', 
-		slashing: 'rgba(214,221,17,1)', 
-		piercing: 'rgba(192,55,196,1)', 
-		impact: 'rgba(240,240,240,1)',
-		phasic: '#00744a',
-	};
-	
-	let labels = [];
-	let chartdata = [];
-	let colors = [];
-	let entries = Object.entries(data)
-		.filter( entry => typeof(color_labels[entry[0]]) !== 'undefined' && entry[1] )
-		.sort( (a,b) => b[1] - a[1] );
-	for ( let v of entries ) {
-		labels.push(v[0].Undatafy());
-		chartdata.push(v[1]);
-		colors.push( color_labels[v[0]] );
-	}
-	datasets = [ { 
-		label: 'Damage Types Inflicted', 
-		data:chartdata, 
-		backgroundColor: colors,
-		borderWidth: 0,
-		fill: true,
-	}];
-	
-	const config = {
-		type: 'pie',
-		data: { labels, datasets },
-		options: {
-			responsive: true,			
-			interaction: {
-				intersect: false,
-			},					
-			plugins: {
-				legend: {
-					position: 'top',
-				},
-				title: {
-					display: false,
-					text: 'Damage Types Inflicted'
-				}
-			}
-		},
-	};
-	return new Chart( document.getElementById('damageTypesChart'), config );
-}
-
-			
-function DrawWeaponTypesChart( data ) {
-	let color_labels = {
-		melee: 'rgba(214,221,17,1)', 
-		guns: '#89a784', 
-		cannons: '#5647a2', 
-		ramming: '#FFF', 
-		explosions: 'rgba(219,41,41,1)'
-	};
-	let labels = [];
-	let chartdata = [];
-	let colors = [];
-	let entries = Object.entries(data)
-		.filter( entry => typeof(color_labels[entry[0]]) !== 'undefined' )
-		.sort( (a,b) => b[1] - a[1] );
-	for ( let v of entries ) {
-		labels.push(v[0].Undatafy());
-		chartdata.push(v[1]);
-		colors.push( color_labels[v[0]] );
-	}
-	datasets = [ { 
-		label: 'Weapon Type Damage', 
-		data:chartdata, 
-		backgroundColor: colors,
-		borderWidth: 0,
-		fill: true,
-	}];
-	const config = {
-		type: 'pie',
-		data: { labels: labels.map(x=>x.Undatafy()), datasets },
-		options: {
-			responsive: true,			
-			interaction: {
-				intersect: false,
-			},					
-			plugins: {
-				legend: {
-					position: 'top',
-				},
-				title: {
-					display: false,
-					text: 'Weapon Type Damage'
-				}
-			}
-		},
-	};
-	return new Chart( document.getElementById('weaponTypesChart'), config );
-}
-			
-function DrawClassDistroChart( data, labels ) {
-	datasets = [ { 
-		label: 'Class Distribution', 
-		data, 
-		// backgroundColor: Chart.pie_colors,
-		borderWidth: 0,
-		fill: true,
-	}];
-	const config = {
-		type: 'bar',
-		data: { labels: labels.map(x=>x.Undatafy()), datasets },
-		options: {
-			responsive: true,	
-			aspectRatio: 4,
-			interaction: {
-				intersect: false,
-			},					
-			plugins: {
-				legend: {
-					display: false,
-					position: 'top',
-				},
-				title: {
-					display: false,
-				}
-			}
-		},
-	};
-	return new Chart( document.getElementById('classDistroChart'), config );
-}
-
 function DrawKillTypesChart( data, labels ) {
 	Chart.SortPieData(data,labels);
 	datasets = [ { 
@@ -2341,440 +2340,12 @@ function DrawKillTypesChart( data, labels ) {
 	};
 	return new Chart( document.getElementById('killsTypesChart'), config );
 }
-			
-function DrawPropPieChart( data, labels ) {
-	Chart.SortPieData(data,labels);
-	let colors = labels.map( x => Chart.colors_by_key[x] );
-	datasets = [ { 
-		label: 'Propulsion', 
-		data, 
-		backgroundColor: colors,
-		borderWidth: 0,
-		fill: true,
-	}];
-	const config = {
-		type: 'pie',
-		data: { labels: labels.map(x=>x.Undatafy()), datasets },
-		options: {
-			aspectRatio: 1.75,	
-			responsive: true,			
-			interaction: {
-				intersect: false,
-			},					
-			plugins: {
-				legend: { position: 'left', display: true, },
-				title: {
-					display: false,
-				}
-			}
-		},
-	};
-	return new Chart( document.getElementById('propPieChart'), config );
-}
-			
-function DrawPartsAttachedPieChart( data, labels ) {
-	Chart.SortPieData(data,labels);
-	let colors = labels.map( x => Chart.colors_by_key[x] );
-	datasets = [ { 
-		label: 'Parts Attached', 
-		data, 
-		backgroundColor: colors,
-		borderWidth: 0,
-		fill: true,
-	}];
-	const config = {
-		type: 'pie',
-		data: { labels: labels.map(x=>x.Undatafy()), datasets },
-		options: {
-			responsive: true,			
-			interaction: {
-				intersect: false,
-			},					
-			plugins: {
-				legend: { position: 'top', display: true, },
-				title: {
-					display: false,
-				}
-			}
-		},
-	};
-	return new Chart( document.getElementById('partsAttachedPieChart'), config );
-}
-			
-function DrawPowerAttachedPieChart( data, labels ) {
-	Chart.SortPieData(data,labels);
-	let colors = labels.map( x => Chart.colors_by_key[x] );
-	datasets = [ { 
-		label: 'Power Attached', 
-		data, 
-		backgroundColor: colors,
-		borderWidth: 0,
-		fill: true,
-	}];
-	const config = {
-		type: 'pie',
-		data: { labels: labels.map(x=>x.Undatafy()), datasets },
-		options: {
-			responsive: true,			
-			interaction: {
-				intersect: false,
-			},					
-			plugins: {
-				legend: { position: 'top', display: true, },
-				title: { display: false, }
-			}
-		},
-	};
-	return new Chart( document.getElementById('powerAttachedPieChart'), config );
-}
-			
-function DrawPropulsionAttachedPieChart( data, labels ) {
-	Chart.SortPieData(data,labels);
-	let colors = labels.map( x => Chart.colors_by_key[x] );
-	datasets = [ { 
-		label: 'Propulsion Attached', 
-		data, 
-		backgroundColor: colors,
-		borderWidth: 0,
-		fill: true,
-	}];
-	const config = {
-		type: 'pie',
-		data: { labels: labels.map(x=>x.Undatafy()), datasets },
-		options: {
-			responsive: true,			
-			interaction: {
-				intersect: false,
-			},					
-			plugins: {
-				legend: { position: 'top', display: true, },
-				title: { display: false, }
-			}
-		},
-	};
-	return new Chart( document.getElementById('propulsionAttachedPieChart'), config );
-}
-			
-function DrawUtilityAttachedPieChart( data, labels ) {
-	Chart.SortPieData(data,labels);
-	let colors = labels.map( x => Chart.colors_by_key[x] );
-	datasets = [ { 
-		label: 'Utilities Attached', 
-		data, 
-		backgroundColor: colors,
-		borderWidth: 0,
-		fill: true,
-	}];
-	const config = {
-		type: 'pie',
-		data: { labels: labels.map(x=>x.Undatafy()), datasets },
-		options: {
-			responsive: true,			
-			interaction: {
-				intersect: false,
-			},					
-			plugins: {
-				legend: { position: 'top', display: true, },
-				title: { display: false, }
-			}
-		},
-	};
-	return new Chart( document.getElementById('utilityAttachedPieChart'), config );
-}
-			
-function DrawWeaponAttachedPieChart( data, labels ) {
-	Chart.SortPieData(data,labels);
-	let colors = labels.map( x => Chart.colors_by_key[x] );
-	datasets = [ { 
-		label: 'Weapons Attached', 
-		data, 
-		backgroundColor: colors,
-		borderWidth: 0,
-		fill: true,
-	}];
-	const config = {
-		type: 'pie',
-		data: { labels: labels.map(x=>x.Undatafy()), datasets },
-		options: {
-			responsive: true,			
-			interaction: {
-				intersect: false,
-			},					
-			plugins: {
-				legend: { position: 'top', display: true, },
-				title: { display: false, }
-			}
-		},
-	};
-	return new Chart( document.getElementById('weaponAttachedPieChart'), config );
-}
-			
-function DrawPartsLostPieChart( data, labels ) {
-	Chart.SortPieData(data,labels);
-	let colors = labels.map( x => Chart.colors_by_key[x] );
-	datasets = [ { 
-		label: 'Parts Lost', 
-		data, 
-		backgroundColor: colors,
-		borderWidth: 0,
-		fill: true,
-	}];
-	const config = {
-		type: 'pie',
-		data: { labels: labels.map(x=>x.Undatafy()), datasets },
-		options: {
-			responsive: true,			
-			interaction: {
-				intersect: false,
-			},					
-			plugins: {
-				legend: { position: 'top', display: true, },
-				title: {
-					display: false,
-				}
-			}
-		},
-	};
-	return new Chart( document.getElementById('partsLostPieChart'), config );
-}
-			
-function DrawHacksPerMachineChart( data, labels ) {
-	Chart.SortPieData(data,labels);
-	let colors = labels.map( x => Chart.colors_by_key[x] );
-	datasets = [ { 
-		label: 'Hacks Per Machine', 
-		data, 
-		backgroundColor: colors,
-		borderWidth: 0,
-		fill: true,
-	}];
-	const config = {
-		type: 'bar',
-		data: { labels: labels.map(x=>x.Undatafy()), datasets },
-		options: {
-			responsive: true,	
-			aspectRatio: 3,		
-			interaction: {
-				intersect: false,
-			},					
-			plugins: {
-				legend: {
-					position: 'right',
-					display: false,
-				},
-				title: {
-					display: false,
-				}
-			}
-		},
-	};
-	return new Chart( document.getElementById('hacksPerMachineChart'), config );
-}
-			
-function DrawBothackingChart( data, labels ) {
-	Chart.SortPieData(data,labels);
-	datasets = [ { 
-		label: 'Bot Hacks', 
-		data, 
-		backgroundColor: Chart.pie_colors,
-		borderWidth: 0,
-		fill: true,
-	}];
-	const config = {
-		type: 'pie',
-		data: { labels, datasets },
-		options: {
-			responsive: true,	
-			aspectRatio: 1.75,		
-			interaction: {
-				intersect: false,
-			},					
-			plugins: {
-				legend: {
-					position: 'left',
-					display: true,
-				},
-				title: {
-					display: false,
-				}
-			}
-		},
-	};
-	return new Chart( document.getElementById('botHacksChart'), config );
-}
-			
-function DrawCriticalHitsPieChart( data, labels ) {
-	Chart.SortPieData(data,labels);
-	datasets = [ { 
-		label: 'Critical Hit Types', 
-		data, 
-		backgroundColor: Chart.pie_colors,
-		borderWidth: 0,
-		fill: true,
-	}];
-	const config = {
-		type: 'pie',
-		data: { labels, datasets },
-		options: {
-			responsive: true,	
-			aspectRatio: 1.75,		
-			interaction: {
-				intersect: false,
-			},					
-			plugins: {
-				legend: {
-					position: 'left',
-					display: true,
-				},
-				title: {
-					display: false,
-				}
-			}
-		},
-	};
-	return new Chart( document.getElementById('criticalHitsPieChart'), config );
-}
-			
-function DrawActionsChart( data, labels ) {
-	Chart.SortPieData(data,labels);
-	datasets = [ { 
-		labels: 'Actions Taken', 
-		data, 
-		backgroundColor: Chart.pie_colors,
-		borderWidth: 0,
-		fill: true,
-	}];
-	const config = {
-		type: 'pie',
-		data: { labels, datasets },
-		options: {
-			responsive: true,	
-			aspectRatio: 1.75,		
-			interaction: {
-				intersect: false,
-			},					
-			plugins: {
-				legend: {
-					position: 'left',
-					display: true,
-				},
-				title: {
-					display: false,
-				}
-			}
-		},
-	};
-	return new Chart( document.getElementById('actionsChart'), config );
-}
-
-function DrawIndvMachineHacksChart( data, labels, colors, key ) {
-	Chart.SortPieData(data,labels,colors);
-	datasets = [ { 
-		label: (key + ' Hacks'), 
-		data, 
-		backgroundColor: colors,
-		borderWidth: 0,
-		fill: true,
-	}];
-	const config = {
-		type: 'bar',
-		data: { labels, datasets },
-		options: {
-			responsive: true,	
-			aspectRatio: 2.5,		
-			interaction: {
-				intersect: false,
-			},					
-			plugins: {
-				legend: {
-					position: 'right',
-					display: false,
-				},
-				title: {
-					display: false,
-				}
-			}
-		},
-	};
-	return new Chart( document.getElementById(key + 'HacksChart'), config );
-}
-
-// function DrawBuildChart( data, labels ) {
-// 	const chartdata = {
-// 		labels: labels,
-// 		datasets: [{
-// 			label: 'Build Quality',
-// 			borderWidth: 1,
-// 			fill: true,
-// 			tension: 0.4,
-// 			data: data,
-// 		}]
-// 	};
-// 	const config = {
-// 		type: 'line',
-// 		data: chartdata,
-// 		options: {
-// 			aspectRatio: 4,
-// 			responsive: true,
-// 			interaction: {
-// 				intersect: false,
-// 			},					
-// 			plugins: {
-// 				legend: {
-// 					display: false,
-// 					position: 'top',
-// 				},
-// 				title: {
-// 					display: false,
-// 				}
-// 			}
-// 		},
-// 	};
-// 	return new Chart( document.getElementById('buildQualityChart'), config );
-// }
-
-function DrawAlertChart( data, labels ) {
-	const chartdata = {
-		labels: labels,
-		datasets: [{
-			label: 'Alert',
-			// backgroundColor: 'rgb(236,156,32)',
-			// borderColor: 'rgb(236,156,32)',
-			borderWidth: 1,
-			fill: true,
-			tension: 0.4,
-			data: data,
-		}]
-	};
-	const config = {
-		type: 'line',
-		data: chartdata,
-		options: {
-			responsive: true,
-			interaction: {
-				intersect: false,
-			},					
-			plugins: {
-				legend: {
-					display: false,
-					position: 'top',
-				},
-				title: {
-					display: false,
-				}
-			}
-		},
-	};
-	return new Chart( document.getElementById('alertChart'), config );
-}
 
 function DrawCoreChart( data, labels ) {
 	const chartdata = {
 		labels: labels,
 		datasets: [{
 			label: 'Core Remaining',
-			// backgroundColor: 'rgb(236,156,32)',
-			// borderColor: 'rgb(236,156,32)',
 			borderWidth: 1,
 			fill: true,
 			tension: 0.4,
@@ -2866,8 +2437,6 @@ function DrawTurnsTakenChart( data, labels ) {
 		labels: labels,
 		datasets: [{
 			label: 'Turns Taken',
-			// backgroundColor: 'rgb(236,156,32)',
-			// borderColor: 'rgb(236,156,32)',
 			borderWidth: 1,
 			fill: true,
 			tension: 0.4,
@@ -2897,18 +2466,27 @@ function DrawTurnsTakenChart( data, labels ) {
 	return new Chart( document.getElementById('turnsTakenChart'), config );
 }
 
-function DrawInventoryChart( data, labels ) {
+function DrawInventoryChart( data, carried_data, labels ) {
 	const chartdata = {
 		labels: labels,
-		datasets: [{
-			label: 'Inventory Capacity',
-			// backgroundColor: 'rgb(236,156,32)',
-			// borderColor: 'rgb(236,156,32)',
-			borderWidth: 1,
-			fill: true,
-			// tension: 0.4,
-			data: data,
-		}]
+		datasets: [
+			{
+				label: 'Inventory Capacity',
+				borderWidth: 1,
+				fill: true,
+				data: data,
+				backgroundColor: '#555',
+				borderColor: '#555',
+				borderWidth: 3,	
+				order: 2,
+			},
+			{
+				label: 'Average Carry',
+				fill: false,
+				tension: 0.2,			
+				data: carried_data,		
+			}
+		]
 	};
 	const config = {
 		type: 'line',
@@ -2921,7 +2499,7 @@ function DrawInventoryChart( data, labels ) {
 			},					
 			plugins: {
 				legend: {
-					display: false,
+					display: true,
 					position: 'top',
 				},
 				title: {
@@ -2951,16 +2529,12 @@ function DrawWeightChart( data, labels ) {
 				pointRadius:0,
 				data: data.support_chart_data,
 				order: 2,
-				tension: 0.4,
+				tension: 0.2,
 			},
 			{
 				label: 'Weight',
-				// backgroundColor: '#911',
-				// borderColor: '#911',
-				borderWidth: 3,
 				fill:false,
-				pointRadius:2,
-				tension: 0.4,
+				tension: 0.2,
 				data: data.weight_chart_data,
 			},
 		]
@@ -2985,17 +2559,6 @@ function DrawWeightChart( data, labels ) {
 					text: 'Weight'
 				}
 			},
-			
-			// scales: {
-			// 	'y_axis_support': {
-			// 		type: 'linear',
-			// 		display: false
-			// 	},
-			// 	'y_axis_weight': {
-			// 		type: 'linear',
-			// 		display: true
-			// 	},
-			// },
 		}
 	};
 	
@@ -3052,6 +2615,79 @@ function DrawKillsChart( data, labels ) {
 		},
 	};
 	return new Chart( document.getElementById('killsChart'), config );
+}
+
+
+function DrawGenericChart( data, labels, elementID, options ) {
+	if ( !data || data.length <= 1 || !document.getElementById(elementID) ) { 
+		console.log("No data or no canvas: " + elementID);
+		return false; 
+	}
+	
+	let bgcolors = Chart.defaults.elements.bar.backgroundColor; //Chart.pie_colors;
+	if ( options.colors == 'indexed' ) {
+		bgcolors = labels.map( k => Chart.colors_by_key[k] );
+	}
+	else if ( Array.isArray(options.colors) ) {
+		bgcolors = options.colors;
+	}
+	else if ( options.colors == 'pie' ) {
+		bgcolors = Chart.pie_colors
+	}
+	else if ( options.colors == 'default' ) {
+		bgcolors = Chart.defaults.backgroundColor;
+	}
+	else if ( options.colors ) {
+		bgcolors = options.colors
+	}
+	if ( options.sort ) { 
+		if ( Array.isArray(options.colors) || options.colors == 'indexed' ) {
+			Chart.SortPieData(data,labels,bgcolors);
+		}
+		else { Chart.SortPieData(data,labels); };
+	}
+	if ( options.undatafy ) {
+		labels = labels.map( x => x.Undatafy() );
+	}
+	if ( options.addpct ) {
+		let total = 0;
+		for ( let i of data ) { total += i; }
+		if ( total ) {
+			for ( let i=0; i < data.length; i++ ) {
+				let pct = ( (data[i] / total) * 100 ).toFixed(1);
+				labels[i] = `${labels[i]} (${pct}%)`;
+			}
+		} 
+	}
+	datasets = [ { 
+		data, 
+		backgroundColor: bgcolors,
+		borderWidth: 0,
+		fill: true,
+		tension: (options.tension || 0),
+	}];
+	const config = {
+		type: (options.chartType || 'doughnut'),
+		data: { labels, datasets },
+		options: {
+			indexAxis: (options.flipAxes ? 'y' : 'x'),
+			aspectRatio: (options.aspectRatio || null),
+			maintainAspectRatio: true, // (!!options.aspectRatio),
+			responsive: true,			
+			interaction: {
+				intersect: false,
+			},					
+			plugins: {
+				legend: { 
+					position: options.legendPos || 'top', 
+					display: !('legend' in options && !options.legend)
+				},
+				title: { display: false, }
+			}
+				
+		},
+	};
+	return new Chart( document.getElementById(elementID), config );
 }
 
 // returns: [ { hash, name, date, score, win, finalmap } ]
