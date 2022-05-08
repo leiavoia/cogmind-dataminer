@@ -57,6 +57,15 @@ Chart.pie_colors = [ // you should not be adding stuff in like this.
 	'#57391f',
 ];
 Chart.colors_by_key = {
+	lowSecurityPercent:'#1c5d8b',
+	lowSecurity:'#1c5d8b',
+	level1:'#26bfc7',
+	level2:'#2fa533',
+	level3:'#dbe72a',
+	level4:'#dba434',
+	level5:'#aa1b36',
+	highSecurity:'#FFF',
+	maxSecurity:'#000',
 	win: '#41A34F',
 	wins: '#41A34F',
 	a0: '#000000',
@@ -559,6 +568,18 @@ function AnalyzeScoresheet( data ) {
 		greenbot_kills_chart_data: [],
 		neutral_kills_chart_data: [],
 		alert_chart_data: [],
+		adv_alert_chart_data: {
+			lowSecurityPercent:[],
+			level1:[],
+			level2:[],
+			level3:[],
+			level4:[],
+			level5:[],
+			highSecurity:[],
+			maxSecurity:[],
+			sterilized:[],
+			overall:[]
+		},
 		chart_map_labels: [],
 		core_chart_data: [],
 		// build_chart_data: [],
@@ -609,7 +630,24 @@ function AnalyzeScoresheet( data ) {
 												
 		// influence
 		data.charts.alert_chart_data.push(map.stats.alert.peakInfluence.overall);
-
+		for ( let k in data.charts.adv_alert_chart_data ) { // iterate over master keys. not all maps hit all levels
+			if ( k == 'sterilized'|| k == 'overall' ) { continue; } // save for later
+			data.charts.adv_alert_chart_data[k].push( 
+				map.stats.alert.peakInfluence.overall * ( map.stats.alert.maximumAlertLevel[k] / 100 )
+			);
+		}
+		// scan history messages for evidence of sterilization. it isn't technically an alert level
+		let steri = false;
+		if ( map.historyEvents ) { 
+			for ( row of map.historyEvents ) { 
+				if ( row.event.match(/sterilization/i) ) {
+					steri = true; break; 
+				}
+			}
+		}
+		data.charts.adv_alert_chart_data['sterilized'].push( steri ? map.stats.alert.peakInfluence.overall : 0 );
+		data.charts.adv_alert_chart_data['overall'].push( map.stats.alert.peakInfluence.overall );
+		
 		// damage inflicted by weapon type
 		// note: not all indexes are present for every map area, so iterate over the "overall" list instead
 		for ( let k in data.stats.combat.damageInflicted ) {
@@ -1584,17 +1622,18 @@ function ChangePane(pane) {
 		
 		else if ( pane === 'stealth' ) {
 			app.charts.push( DrawStealthChart(app.scoresheet.charts.stealth_chart_data, app.scoresheet.charts.chart_map_labels) );
-			app.charts.push( DrawGenericChart( 
-				app.scoresheet.charts.alert_chart_data, 
-				app.scoresheet.charts.chart_map_labels,
-				'alertChart',
-				{ legend:false, chartType: 'bar' }
-				) );			
+			app.charts.push( DrawAdvAlertGraph(app.scoresheet.charts.adv_alert_chart_data, app.scoresheet.charts.chart_map_labels) );
+			// app.charts.push( DrawGenericChart( 
+			// 	app.scoresheet.charts.alert_chart_data, 
+			// 	app.scoresheet.charts.chart_map_labels,
+			// 	'alertChart',
+			// 	{ legend:false, chartType: 'line', tension: 0.4, aspectRatio:2 }
+			// 	) );			
 			app.charts.push( DrawGenericChart( 
 				app.scoresheet.charts.alertlevel_chart_data,
 				app.scoresheet.charts.alertlevel_chart_labels,
 				'alertLevelsChart',
-				{ sort:false, undatafy: true, addpct:true, legendPos:'left', chartType: 'doughnut', colors:'pie' }
+				{ sort:false, undatafy: true, addpct:true, legendPos:'left', chartType: 'doughnut', colors:'indexed' }
 				) );			
 			app.charts.push( DrawGenericChart( 
 				app.scoresheet.charts.squads_chart_data,
@@ -2116,6 +2155,64 @@ function DrawStealthChart( data, labels ) {
 		},
 	};
 	return new Chart( document.getElementById('stealthChart'), config );
+}
+		
+
+function DrawAdvAlertGraph( data, labels ) {
+	datasets = [];
+	let counter = 0;
+	for ( let k in data ) {
+		if ( k == 'sterilized' || k == 'overall' ) { continue; }
+		datasets.push( {
+			label: k.replace('lowSecurityPercent','lowSecurity').Undatafy(),
+			fill: true,
+			data: data[k],
+			backgroundColor: Chart.colors_by_key[k],
+			pointStyle:'rect',		
+			order: 2,
+		});
+	}
+	// fake markers for sterilization data
+	if ( data['sterilized'].filter( x => x ).length ) { 
+		datasets.push( {
+			label: 'Sterilized',
+			type: 'line',
+			data: data['sterilized'],
+			pointBorderColor: '#FFF',
+			pointBackgroundColor: '#F3F',
+			fill: false,
+			order: 1,
+			borderWidth: 0,
+			pointBorderWidth: data['sterilized'].map( x => x ? 2 : 0 ),
+			pointRadius: data['sterilized'].map( x => x ? 8 : 0 ),
+			pointStyle:'rectRot' // "diamond"
+		});
+	}
+	const config = {
+		type: 'bar',
+		data: { labels, datasets },
+		options: {
+			responsive: true,
+			scales: {
+				x: { stacked: true, },
+				y: { stacked: true }
+			},					
+			interaction: {
+				intersect: false,
+			},					
+			plugins: {
+				legend: {
+					position: 'top',
+					labels: { usePointStyle: true }
+				},
+				title: {
+					display: false,
+					text: 'Alert'
+				}
+			}
+		},
+	};
+	return new Chart( document.getElementById('advAlertChart'), config );
 }
 		
 
