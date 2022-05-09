@@ -603,7 +603,6 @@ function AnalyzeScoresheet( data ) {
 		route_data: [], // { depth: int, maps: [strings] }
 		}
 		
-		
 	// create run heat map  [ truncated_key, value, depth, full_key ]
 	// populates with per-map data in the next block...
 	data.heatmap = TabularizeData(data.stats, 'stats').map( x => ({
@@ -1113,8 +1112,169 @@ function AnalyzeScoresheet( data ) {
 			return b;
 		});
 		data.map.html = data.map.html + l + '<br/>';
+				
+	}	
+		
+
+	// -------------\/----- ENGAGEMENT -----\/---------------
+	
+	// attempt to rate engagement by averaging stats over how much of the game was played/explored (the "divisor")
+	let engagement_divisor = 0;
+	for ( map of data.route.entries ) {
+		let mapname = typeof(map.location.map)=='string' ? map.location.map.replace('MAP_','') : (map.location.map==35 ? 'DSF' : 'Unknown Map');
+		// large areas get the full effect
+		if ( ['FAC','RES','ACC','COM','AC0','ARM','QUA','TES','SEC','STO'].indexOf(mapname) >= 0 ) {
+			engagement_divisor += 1.0;
+		}
+		// midsize areas have less effect on the averages
+		else if ( ['MAT','HUB','SEC'].indexOf(mapname) >= 0 ) {
+			engagement_divisor += 0.75;
+		}
+		// small areas
+		else if ( ['MIN','CET','EXT','DSF',35,'ARC','DEE'].indexOf(mapname) >= 0 ) {
+			engagement_divisor += 0.5;
+		}
+		// the rest
+		else {
+			engagement_divisor += 0.5;
+		}
 	}
-						
+	
+	// setup for engagement metrics
+	data.engagement = {};
+	data.engagement.combat = 1.0;
+	data.engagement.hacking = 1.0;
+	data.engagement.exploration = 1.0;
+	data.engagement.stealth = 1.0;
+	data.engagement.allies = 1.0;
+	data.engagement.build = 1.0;
+	
+	// GENERALLY: ( effect of stat * (stat / ideal num per map) )
+	
+	// COMBAT
+	data.engagement.combat = 
+		(0.3 * ( (data.stats.kills.combatHostilesDestroyed.overall / 20) / engagement_divisor))
+		+
+		(0.3 * ( (data.stats.combat.damageInflicted.overall / 2000) / engagement_divisor))
+		+
+		(0.2 * ( ((data.stats.combat.volleysFired.overall + data.stats.combat.meleeAttacks.overall ) / 50) / engagement_divisor))
+		;
+		
+	// HACKING
+	// how many types of hacks did we pull off?
+	let hack_types = 0;
+	for ( k of ['terminalHacks','scanalyzer','repairStationHacks','garrisonAccessHacks','recyclingUnitHacks','fabricatorHacks'] ) {
+		if ( typeof(data.stats.hacking[k]) === 'undefined' ) { continue; }
+		hack_types += Object.entries(data.stats.hacking[k]).length -1;
+	}
+	let uhack_types = 0;
+	for ( k of ['terminals','scanalyzers','repairStations','garrisonAccess','recyclingUnits','fabricators'] ) {
+		if ( typeof(data.stats.hacking.unauthorizedHacks[k]) === 'undefined' ) { continue; }
+		uhack_types += Object.entries(data.stats.hacking.unauthorizedHacks[k]).length -1;
+	}
+	// don't count open door and records hacks. thats cheating.
+	let total_hacks = data.stats.hacking?.totalHacks?.overall || 0;
+	total_hacks -= data.stats.hacking?.terminalHacks?.openDoor || 0;
+	total_hacks -= data.stats.hacking?.terminalHacks?.record || 0;
+	data.engagement.hacking = 
+		(0.45 * ( (total_hacks / 20) / engagement_divisor))
+		+
+		(0.20 * (hack_types / 40) )
+		+ 
+		(0.20 * (uhack_types / 20) )
+		+ 
+		(0.15 * (( data.stats.hacking.hackingSkill - 50 ) / 30 ) ) // we only care about the common 50-80% range
+		;
+		
+	// EXPLORATION
+	// we can't depend on "branchRegions" because the scoresheet doesnt include 
+	// DSF, garrisons, or wastes in that number, but we do. Count manually.
+	let nonMainRegions = 0;
+	for ( map of data.route.entries ) {
+		if ( ['MAP_SCR','MAP_MAT','MAP_FAC','MAP_RES','MAP_ACC'].indexOf(map.location.map) < 0 ) {
+			nonMainRegions++;
+		}
+	}
+	let branchRegionRatio = nonMainRegions / data.stats.exploration.explorationRatePercent.regionsVisited.overall;
+	branchRegionRatio = (branchRegionRatio + branchRegionRatio) / 2; // real it in so it doesnt get too swingy
+	data.engagement.exploration = 
+		(0.22 * ( data.stats.exploration.explorationRatePercent.overall / 120 ) )
+		+
+		(0.33 * branchRegionRatio )
+		+
+		(0.05 * (data.stats.exploration.explorationRatePercent.preDiscoveredAreas / data.performance.regionsVisited.count) )
+		+ 
+		(0.1 * (data.stats.exploration.explorationRatePercent.knownExitsTaken / data.performance.regionsVisited.count) )
+		+
+		(0.1 * ( (data.stats.exploration.scrapSearched * 1.5 ) / engagement_divisor) )
+		+
+		(0.1 * ( (data.stats.intel.derelictLogsRecovered * 1.5 ) / engagement_divisor) )
+		+
+		(0.1 * ( ( data.performance.prototypesIdentified.count / 8 ) / engagement_divisor ) )
+		;
+	
+	// STEALTH
+	let distress_per_floor = (	(data.stats.alert.constructionImpeded * 2) + 
+		(data.stats.alert.haulersReinforced * 2) + 
+		data.stats.stealth.distressSignals +
+		-data.stats.stealth.communicationsJammed.overall
+		) / engagement_divisor;
+	data.engagement.stealth = 
+		( 0.2 * (Math.max( 0, 1200 - data.stats.alert.peakInfluence.overall ) / 1200) )
+		+
+		( 0.35 * (Math.max( 0, 800 - data.stats.alert.peakInfluence.averageInfluence ) / 800) )
+		+
+		( 0.15 * (Math.max( 0, 20 - (data.stats.stealth.timesSpotted.overall / engagement_divisor) ) / 20) )
+		+
+		( 0.15 * (Math.max( 0, 5 - distress_per_floor ) / 5) )
+		+
+		(0.15 * ( (2*data.stats.stealth.timesSpotted.tacticalRetreats) / data.stats.stealth.timesSpotted.overall) )
+		;
+		
+	// BUILD
+	let levels_ascended = 11 + data.route.entries[ data.route.entries.length-1 ].location.depth;
+	let avg_build_rating = (data.peakState.rating / ( levels_ascended + levels_ascended*0.1 ) ) / 20; // 250 is theoretical "pretty decent" build
+	let slot_rating = Math.max( 0, data.stats.build.averageSlotUsagePercent.overall - 80 ) / 20; // anything less than 80 is just bad.
+	let avg_performance = 0;
+	for ( let k in data.metricPerformance ) {
+		avg_performance += data.metricPerformance[k].pct;
+	}
+	avg_performance /= 100 * Object.entries(data.metricPerformance).length;
+	avg_performance /= levels_ascended;
+	avg_performance *= 20;
+	data.engagement.build = 
+		( 0.3 * slot_rating )
+		+
+		( 0.3 * avg_build_rating )
+		+
+		( 0.4 * avg_performance )
+		;
+	
+	// ALLIES
+	data.engagement.allies = 
+		(0.35 * ( (data.stats.allies.totalAllies.overall / 4) / engagement_divisor))
+		+
+		( 0.25 * ( data.stats.allies.totalAllies.largestGroup / 30 ) )
+		+
+		(0.2 * ( (data.stats.allies.allyAttacks.overall / 16) / engagement_divisor))
+		+
+		(0.2 * ( (data.stats.allies.allyAttacks.kills / 3) / engagement_divisor))
+		;
+		
+	// format for progress bars
+	for ( k in data.engagement ) {
+		let pct = data.engagement[k] * 100;
+		let classname = 'poor';
+		if ( pct >= 100 ) { classname = 'best'; }
+		else if ( pct > 75 ) { classname = 'excl'; }
+		else if ( pct >= 50 ) { classname = 'good'; }
+		else if ( pct >= 25 ) { classname = 'avg'; }
+		data.engagement[k] = { val: pct, classname: classname };
+	} 
+	
+	// -------------/\----- ENGAGEMENT -----/\---------------
+	
+							
 	// Badges
 	CalculateBadges(data);
 	
@@ -1164,7 +1324,13 @@ function ChangePane(pane) {
 				app.scoresheet.charts.actions_chart_labels,
 				'actionsChart',
 				{ sort:true, undatafy: true, addpct:true, legendPos:'left', chartType: 'doughnut', colors:'pie', aspectRatio:2 }
-				) );				
+				) );
+			app.charts.push( DrawGenericChart( 
+				app.scoresheet.charts.alert_chart_data, 
+				app.scoresheet.charts.chart_map_labels,
+				'alertChart',
+				{ legend:false, chartType: 'line', tension: 0.4, aspectRatio:2 }
+				) );							
 			if ( app.analysis ) {
 				app.charts.push( DrawSparkChart(
 					'scoreSparkChart',
@@ -1654,12 +1820,6 @@ function ChangePane(pane) {
 		else if ( pane === 'stealth' ) {
 			app.charts.push( DrawStealthChart(app.scoresheet.charts.stealth_chart_data, app.scoresheet.charts.chart_map_labels) );
 			app.charts.push( DrawAdvAlertGraph(app.scoresheet.charts.adv_alert_chart_data, app.scoresheet.charts.chart_map_labels) );
-			// app.charts.push( DrawGenericChart( 
-			// 	app.scoresheet.charts.alert_chart_data, 
-			// 	app.scoresheet.charts.chart_map_labels,
-			// 	'alertChart',
-			// 	{ legend:false, chartType: 'line', tension: 0.4, aspectRatio:2 }
-			// 	) );			
 			app.charts.push( DrawGenericChart( 
 				app.scoresheet.charts.alertlevel_chart_data,
 				app.scoresheet.charts.alertlevel_chart_labels,
@@ -2408,7 +2568,7 @@ function DrawDamageInflictedChart( data, labels, include_allies=true ) {
 
 function DrawSparkChart( canvasID, data, myval ) {
 	if ( !data || data.length <= 1 ) { 
-		console.log("No data for spark chart " + canvasID);
+		// console.log("No data for spark chart " + canvasID);
 		return false; 
 	}
 	// let least = data[0][0];
@@ -2669,8 +2829,8 @@ function DrawGenericChart( data, labels, elementID, options ) {
 			? d.color
 			: ( (data.length > 1 && bgcolors.length && bgcolors.length > 1) ? bgcolors[color_counter++] : bgcolors)
 			),
-		borderWidth: 0,
-		fill: ('fill' in d ? d.fill : true),
+		borderWidth: (options.chartType == 'line' ? 2 : 0 ),
+		fill: ('fill' in d ? (!!d.fill) : true),
 		tension: (options.tension || 0),
 	}) );
 	const config = {

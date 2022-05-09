@@ -377,7 +377,7 @@
 								</table>
 							</div>
 						</div>
-					</div>
+					</div>	
 					
 					<div class="container-fluid mt-5 mb-5 g-0">
 						<div class="row row-cols-1 row-cols-md-3 g-4">
@@ -518,11 +518,36 @@
 						</div>
 					</div>
 
+					<h2>Engagement</h2>
+					<p><span class="badge bg-secondary">BETA</span> Engagement measures your blended performance across a variety of metrics, averaged by the number and type of locations you explored.</p>
+					<table class="table">
+						<tr v-for="(v,k) in scoresheet.engagement">
+							<th>{{k.Undatafy()}}</th>
+							<td>{{v.val.toFixed()}}%</td>
+							<td>
+								<div class="progress">
+									<div class="progress-bar bg-secondary" role="progressbar" :class="scoresheet.engagement[k].classname" :style="{width:`${scoresheet.engagement[k].val}%`}"></div>
+								</div>
+								<span class="text-muted" v-if="k=='combat'">Hostiles destroyed, damage inflicted, volleys fired, melee strikes</span>
+								<span class="text-muted" v-else-if="k=='hacking'">Number and variety of authorized and unauthorized machine hacks, hacking success rate</span>
+								<span class="text-muted" v-else-if="k=='exploration'">Map tiles revealed, branches visited, known exits, found locations, prototypes identified, scrap and derelict logs found</span>
+								<span class="text-muted" v-else-if="k=='stealth'">Max and average alert level, times spotted, tactical retreats, jamming, distress signals</span>
+								<span class="text-muted" v-else-if="k=='allies'">Number of allies, army strength, ally attacks and kills</span>
+								<span class="text-muted" v-else-if="k=='build'">Average build rating, slot utilization, peak performance metrics</span>
+							</td>
+						</tr>
+					</table>
+					
 					<h2>Turns Taken</h2>
 					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
 						<canvas id="turnsTakenChart"></canvas>
 					</div>
 					
+					<h2>Alert Influence</h2>
+					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+						<canvas id="alertChart"></canvas>
+					</div>
+										
 					<h2>Actions</h2>
 					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
 						<p class="text-sm text-center text-muted">(click a label to show/hide category)</p>
@@ -1454,9 +1479,7 @@
 				<template v-if="pane=='stealth'">
 					
 					<h2>Alert Influence</h2>
-					<!-- <div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
-						<canvas id="alertChart"></canvas>
-					</div> -->
+
 					<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
 						<canvas id="advAlertChart"></canvas>
 					</div>
