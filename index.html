@@ -255,7 +255,7 @@
 									<td>{{row.name}}</td>
 									<td>#{{row.gameNumber}}</td>
 									<td>{{row.win ? 'ASCENDED' : row.finalmap}}</td>
-									<td>{{row.score.toLocaleString()}}</td>
+									<td>{{(row.score||0).toLocaleString()}}</td>
 									<td>{{row.date}}</td>
 								</tr>
 							</table>
@@ -403,7 +403,7 @@
 								<div class="card statbox h-100">
 									<div class="card-header">Actions Per Minute</div>
 									<div class="card-body text-success numeric">
-										<span class="card-text">{{scoresheet.stats.actions.cadence.toFixed(0)}}</span>
+										<span class="card-text">{{(scoresheet.stats.actions.cadence||0).toFixed(0)}}</span>
 										<canvas id="cadenceSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
@@ -431,7 +431,7 @@
 								<div class="card statbox h-100">
 									<div class="card-header">Regions Visited</div>
 									<div class="card-body text-success numeric">
-										<span class="card-text">{{scoresheet.performance.regionsVisited.count}}</span>
+										<span class="card-text">{{scoresheet.performance.regionsVisited.count||0}}</span>
 										<canvas id="regionsVisitedSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
@@ -457,7 +457,7 @@
 								<div class="card statbox h-100">
 									<div class="card-header">Alien Techs Used</div>
 									<div class="card-body text-success numeric">
-										<span class="card-text">{{scoresheet.performance.alienTechUsed.count}}</span>
+										<span class="card-text">{{scoresheet.performance.alienTechUsed.count||0}}</span>
 										<canvas id="alienTechsUsedSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
@@ -474,7 +474,7 @@
 								<div class="card statbox h-100">
 									<div class="card-header">NPCs Murdered</div>
 									<div class="card-body text-success numeric">
-										<span class="card-text">{{scoresheet.stats.kills.uniquesNpcsDestroyed}}</span>
+										<span class="card-text">{{scoresheet.stats.kills.uniquesNpcsDestroyed||0}}</span>
 										<canvas id="NPCsMurduredSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
@@ -492,7 +492,7 @@
 								<div class="card statbox h-100">
 									<div class="card-header">Largest Army</div>
 									<div class="card-body text-success numeric">
-										<span class="card-text">{{scoresheet.stats.allies.totalAllies.largestGroup}}</span>
+										<span class="card-text">{{scoresheet.stats.allies.totalAllies.largestGroup||0}}</span>
 										<canvas id="largestArmySparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
@@ -501,7 +501,7 @@
 								<div class="card statbox h-100">
 									<div class="card-header">Most Corruption</div>
 									<div class="card-body text-success numeric">
-										<span class="card-text">{{scoresheet.stats.combat.highestCorruption.overall}}%</span>
+										<span class="card-text">{{scoresheet.stats.combat.highestCorruption.overall||0}}%</span>
 										<canvas id="mostCorruptionSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
@@ -510,7 +510,7 @@
 								<div class="card statbox h-100">
 									<div class="card-header">Peak Build Rating</div>
 									<div class="card-body text-success numeric">
-										<span class="card-text">{{scoresheet.peakState.rating}}</span>
+										<span class="card-text">{{scoresheet.peakState.rating||0}}</span>
 										<canvas id="peakBuildSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
@@ -1144,7 +1144,7 @@
 								<div class="card statbox h-100">
 									<div class="card-header">Overflow Damage</div>
 									<div class="card-body text-success numeric">
-										<span class="card-text">{{ scoresheet.stats.combat.overflowDamagePercent.toFixed(1) }}%</span>
+										<span class="card-text">{{ (scoresheet.stats.combat.overflowDamagePercent||0).toFixed(1) }}%</span>
 										<canvas id="overflowDamageSparkChart" v-if="analysis"></canvas>	
 									</div>
 								</div>
@@ -1153,7 +1153,7 @@
 								<div class="card statbox h-100">
 									<div class="card-header">Accuracy</div>
 									<div class="card-body text-success numeric">
-										<span class="card-text">{{ scoresheet.stats.combat.accuracy.toFixed(1) }}%</span>
+										<span class="card-text">{{ (scoresheet.stats.combat.accuracy||0).toFixed(1) }}%</span>
 										<canvas id="accuracySparkChart"></canvas>
 									</div>
 								</div>
@@ -1201,7 +1201,7 @@
 									<div class="card statbox h-100">
 										<div class="card-header">Critical Kills</div>
 										<div class="card-body text-success numeric">
-											<span class="card-text">{{ scoresheet.stats.combat.shotsHitRobots.criticalKills }}</span>
+											<span class="card-text">{{ scoresheet.stats.combat.shotsHitRobots.criticalKills||0}}</span>
 											<canvas id="criticalKillsSparkChart" v-if="analysis"></canvas>
 										</div>
 									</div>
@@ -1210,7 +1210,7 @@
 									<div class="card statbox h-100">
 										<div class="card-header">Critical Hit Ratio</div>
 										<div class="card-body text-success numeric">
-											<span class="card-text" v-if="scoresheet.stats.combat.criticalHitPercent">{{ scoresheet.stats.combat.criticalHitPercent.toFixed(1) }}%</span>
+											<span class="card-text" v-if="scoresheet.stats.combat.criticalHitPercent">{{ (scoresheet.stats.combat?.criticalHitPercent||0).toFixed(1) }}%</span>
 											<span v-else>N/A</span>
 											<canvas id="criticalHitPctSparkChart" v-if="analysis"></canvas>
 										</div>
@@ -1249,7 +1249,7 @@
 								<div class="card statbox h-100">
 									<div class="card-header">Most Kills In One Turn</div>
 									<div class="card-body text-success numeric">
-										<span class="card-text">{{scoresheet.stats.kills.maxKillsInSingleTurn.overall}}</span>
+										<span class="card-text">{{scoresheet.stats.kills.maxKillsInSingleTurn.overall||0}}</span>
 										<canvas id="mostKillsInOneTurnSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
@@ -1310,7 +1310,7 @@
 								<div class="card statbox h-100">
 									<div class="card-header">Largest Army</div>
 									<div class="card-body text-success numeric">
-										<span class="card-text">{{scoresheet.stats.allies.totalAllies.largestGroup}}</span>
+										<span class="card-text">{{scoresheet.stats.allies.totalAllies.largestGroup||0}}</span>
 										<canvas id="largestArmySparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
@@ -1319,7 +1319,7 @@
 								<div class="card statbox h-100">
 									<div class="card-header">Best Ally Rating</div>
 									<div class="card-body text-success numeric">
-										<span class="card-text">{{scoresheet.stats.allies.totalAllies.highestRatedAlly}}</span>
+										<span class="card-text">{{scoresheet.stats.allies.totalAllies.highestRatedAlly||0}}</span>
 										<canvas id="bestAllySparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
@@ -1373,7 +1373,7 @@
 								<div class="card statbox h-100">
 									<div class="card-header">Orders Given</div>
 									<div class="card-body text-success numeric">
-										<span class="card-text">{{scoresheet.stats.allies.totalOrders.overall}}</span>
+										<span class="card-text">{{scoresheet.stats.allies.totalOrders.overall||0}}</span>
 										<canvas id="ordersGivenSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
@@ -1406,7 +1406,7 @@
 								<div class="card statbox h-100">
 									<div class="card-header">Sieges</div>
 									<div class="card-body text-success numeric">
-										<span class="card-text">{{ scoresheet.stats.combat.siegeActivations.overall }}</span>
+										<span class="card-text">{{ scoresheet.stats.combat.siegeActivations.overall||0 }}</span>
 										<canvas id="siegesSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
@@ -1617,7 +1617,7 @@
 								<div class="card statbox h-100">
 									<div class="card-header">Spaces Dug</div>
 									<div class="card-body text-success numeric">
-										<span class="card-text">{{scoresheet.stats.exploration.spacesDug}}</span>
+										<span class="card-text">{{scoresheet.stats.exploration.spacesDug||0}}</span>
 										<canvas id="spacesDugSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
@@ -1626,7 +1626,7 @@
 								<div class="card statbox h-100">
 									<div class="card-header">Cave-Ins</div>
 									<div class="card-body text-success numeric">
-										<span class="card-text">{{scoresheet.stats.exploration.spacesMoved.caveInsTriggered}}</span>
+										<span class="card-text">{{scoresheet.stats.exploration.spacesMoved.caveInsTriggered||0}}</span>
 										<canvas id="caveInsSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>

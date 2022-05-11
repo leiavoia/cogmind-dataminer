@@ -487,6 +487,54 @@ function AnalyzeScoresheet( data ) {
 	if ( data.header.specialMode != 'SPECIAL_MODE_RPGLIKE' ) { delete data.stats.rpglike; }	
 	
 	// incomplete scoresheets may be missing data
+
+	data.stats.hacking.hackingSkill = data.stats.hacking?.hackingSkill || 0;
+	data.stats.hacking.hackingSkill = data.stats.hacking?.hackingSkill || 0;
+	data.stats.hacking.hackingSkill = data.stats.hacking?.hackingSkill || 0;
+	data.stats.hacking.hackingSkill = data.stats.hacking?.hackingSkill || 0;
+	data.stats.hacking.hackingSkill = data.stats.hacking?.hackingSkill || 0;
+	data.stats.hacking.hackingSkill = data.stats.hacking?.hackingSkill || 0;
+	data.stats.intel.robotAnalysisTotal = data.stats.intel.robotAnalysisTotal || 0;
+	data.stats.intel.derelictLogsRecovered = data.stats.intel.derelictLogsRecovered || 0;
+	data.stats.traps.trapsTriggered.overall = data.stats.traps.trapsTriggered.overall || 0;
+	data.stats.alert.constructionImpeded = data.stats.alert.constructionImpeded || 0;
+	data.stats.alert.haulersReinforced = data.stats.alert.haulersReinforced || 0;
+	data.stats.stealth.distressSignals = data.stats.stealth.distressSignals || 0;
+	data.stats.stealth.timesSpotted.tacticalRetreats = data.stats.stealth.timesSpotted.tacticalRetreats || 0;
+	data.stats.stealth.timesSpotted.peakTrackingTotal = data.stats.stealth.timesSpotted.peakTrackingTotal || 0;
+	data.stats.alert.squadsDispatched.overall = data.stats.alert.squadsDispatched.overall || 0;
+	data.stats.stealth.timesSpotted.overall = data.stats.stealth.timesSpotted.overall || 0;
+	data.stats.alert.peakInfluence.overall = data.stats.alert.peakInfluence.overall || 0;
+	data.stats.hacking.partSchematicsAcquired.overall = data.stats.hacking.partSchematicsAcquired.overall || 0;
+	data.stats.hacking.totalHacks.databaseLockouts = data.stats.hacking.totalHacks.databaseLockouts || 0;
+	data.performance.valueDestroyed.count = data.performance.valueDestroyed.count || 0;
+	data.stats.machines.machinesDisabled.overall = data.stats.machines.machinesDisabled.overall || 0;
+	data.stats.combat.highestTemperature.overall = data.stats.combat.highestTemperature.overall || 0;
+	data.stats.combat.powerChainReactions = data.stats.combat.powerChainReactions || 0;
+	data.stats.combat.targetsRammed.overall = data.stats.combat.targetsRammed.overall || 0;
+	data.stats.allies.allyAttacks.kills = data.stats.allies.allyAttacks.kills || 0;
+	data.stats.allies.allyAttacks.totalDamage = data.stats.allies.allyAttacks.totalDamage || 0;
+	data.stats.allies.allyAttacks.overall = data.stats.allies.allyAttacks?.overall || 0;
+	data.stats.allies.totalAllies.highestRatedGroup = data.stats.allies.totalAllies?.highestRatedGroup || 0;
+	data.stats.combat.targetsRammed.crushed = data.stats.combat.targetsRammed?.crushed || 0;
+	data.stats.combat.robotsMelted.overall = data.stats.combat.robotsMelted?.overall || 0;
+	data.stats.combat.robotsCorrupted.overall = data.stats.combat.robotsCorrupted?.overall || 0;
+	data.stats.kills.bestKillStreak.overall = data.stats.kills.bestKillStreak?.overall || 0;
+	data.stats.kills.combatHostilesDestroyed.overall = data.stats.kills.combatHostilesDestroyed?.overall || 0;
+	data.stats.combat.shotsHitRobots.coreHits = data.stats.combat.shotsHitRobots?.coreHits || 0;
+	data.stats.combat.meleeAttacks.sneakAttacks.overall = data.stats.combat.meleeAttacks.sneakAttacks?.overall || 0;
+	data.stats.combat.meleeAttacks.overall = data.stats.combat.meleeAttacks?.overall || 0;
+	data.stats.combat.damageTaken.overall = data.stats.combat.damageTaken?.overall || 0;
+	data.stats.combat.damageInflicted.overall = data.stats.combat.damageInflicted?.overall || 0;
+	data.stats.combat.shotsFired.overall = data.stats.combat.shotsFired?.overall || 0;
+	data.stats.combat.volleysFired.overall = data.stats.combat.volleysFired?.overall || 0;
+	data.stats.exploration.spacesMoved.slowestSpeed = data.stats.exploration.spacesMoved?.slowestSpeed || 0;
+	data.stats.exploration.spacesMoved.fastestSpeed = data.stats.exploration.spacesMoved?.fastestSpeed || 0;
+	data.stats.exploration.spacesMoved.averageSpeed = data.stats.exploration.spacesMoved?.averageSpeed || 0;
+	data.stats.allies.totalAllies.overall = data.stats.allies.totalAllies?.overall || 0;
+	data.performance.robotsDestroyed.count = data.performance.robotsDestroyed?.count || 0;
+	data.performance.totalScore = data.performance?.totalScore || 0;
+	data.stats.exploration.turnsPassed = data.stats.exploration?.turnsPassed || 0;
 	data.stats.hacking.hackingSkill = data.stats.hacking?.hackingSkill || 0;
 	data.stats.hacking.totalHacks.successful = data.stats.hacking.totalHacks?.successful || 0;
 	data.stats.hacking.totalHacks.overall = data.stats.hacking.totalHacks?.overall || 0;
@@ -502,9 +550,21 @@ function AnalyzeScoresheet( data ) {
 	data.stats.bothacking.robotsHacked.overall = data.stats.bothacking?.robotsHacked?.overall || 0;
 	data.stats.stealth.communicationsJammed.overall = data.stats.stealth.communicationsJammed?.overall || 0;
 
-								
-								
-								
+	data.stats.exploration.explorationRatePercent.overall = data.stats.exploration.explorationRatePercent.overall || 0;
+	data.stats.exploration.explorationRatePercent.regionsVisited.overall = data.stats.exploration.explorationRatePercent.regionsVisited.overall || 0;
+	data.stats.exploration.explorationRatePercent.preDiscoveredAreas = data.stats.exploration.explorationRatePercent.preDiscoveredAreas || 0;
+	data.stats.exploration.explorationRatePercent.knownExitsTaken = data.stats.exploration.explorationRatePercent.knownExitsTaken || 0;
+	data.performance.regionsVisited.count = data.performance.regionsVisited.count || 0;
+	data.stats.exploration.scrapSearched = data.stats.exploration.scrapSearched || 0;
+	data.performance.prototypesIdentified.count = data.performance.prototypesIdentified.count || 0;
+	data.stats.intel.derelictLogsRecovered = data.stats.intel.derelictLogsRecovered || 0;
+	data.stats.alert.peakInfluence.averageInfluence = data.stats.alert.peakInfluence.averageInfluence || 0;
+	data.peakState.rating = data.peakState.rating || 0;
+	data.stats.build.averageSlotUsagePercent.overall = data.stats.build.averageSlotUsagePercent.overall || 0;
+	data.stats.allies.totalAllies.largestGroup = data.stats.allies.totalAllies.largestGroup || 0;
+	data.stats.allies.allyAttacks.overall = data.stats.allies.allyAttacks.overall || 0;
+	data.stats.allies.allyAttacks.kills = data.stats.allies.allyAttacks.kills || 0;
+		
 	// precompute single values
 	
 	// digging luck
@@ -1195,16 +1255,16 @@ function AnalyzeScoresheet( data ) {
 			nonMainRegions++;
 		}
 	}
-	let branchRegionRatio = nonMainRegions / data.stats.exploration.explorationRatePercent.regionsVisited.overall;
+	let branchRegionRatio = nonMainRegions / (data.stats.exploration.explorationRatePercent.regionsVisited.overall  || 1);
 	branchRegionRatio = (branchRegionRatio + branchRegionRatio) / 2; // real it in so it doesnt get too swingy
 	data.engagement.exploration = 
 		(0.22 * ( data.stats.exploration.explorationRatePercent.overall / 120 ) )
 		+
 		(0.33 * branchRegionRatio )
 		+
-		(0.05 * (data.stats.exploration.explorationRatePercent.preDiscoveredAreas / data.performance.regionsVisited.count) )
+		(0.05 * (data.stats.exploration.explorationRatePercent.preDiscoveredAreas / (data.performance.regionsVisited.count||1) ) )
 		+ 
-		(0.1 * (data.stats.exploration.explorationRatePercent.knownExitsTaken / data.performance.regionsVisited.count) )
+		(0.1 * (data.stats.exploration.explorationRatePercent.knownExitsTaken / (data.performance.regionsVisited.count||1)) )
 		+
 		(0.1 * ( (data.stats.exploration.scrapSearched * 1.5 ) / engagement_divisor) )
 		+
@@ -1212,7 +1272,6 @@ function AnalyzeScoresheet( data ) {
 		+
 		(0.1 * ( ( data.performance.prototypesIdentified.count / 8 ) / engagement_divisor ) )
 		;
-	
 	// STEALTH
 	let distress_per_floor = (	(data.stats.alert.constructionImpeded * 2) + 
 		(data.stats.alert.haulersReinforced * 2) + 
@@ -1228,19 +1287,20 @@ function AnalyzeScoresheet( data ) {
 		+
 		( 0.15 * (Math.max( 0, 5 - distress_per_floor ) / 5) )
 		+
-		(0.15 * ( (2*data.stats.stealth.timesSpotted.tacticalRetreats) / data.stats.stealth.timesSpotted.overall) )
+		(0.15 * ( (2*data.stats.stealth.timesSpotted.tacticalRetreats) / (data.stats.stealth.timesSpotted.overall||1)) )
 		;
 		
 	// BUILD
-	let levels_ascended = 11 + data.route.entries[ data.route.entries.length-1 ].location.depth;
-	let avg_build_rating = (data.peakState.rating / ( levels_ascended + levels_ascended*0.1 ) ) / 20; // 250 is theoretical "pretty decent" build
+	let curent_depth = data.route.entries.length ? data.route.entries[ data.route.entries.length-1 ].location.depth : -11;
+	let levels_ascended = 11 + curent_depth;
+	let avg_build_rating = (data.peakState.rating / (( levels_ascended + levels_ascended*0.1 )||1) ) / 20; // 250 is theoretical "pretty decent" build
 	let slot_rating = Math.max( 0, data.stats.build.averageSlotUsagePercent.overall - 80 ) / 20; // anything less than 80 is just bad.
 	let avg_performance = 0;
 	for ( let k in data.metricPerformance ) {
 		avg_performance += data.metricPerformance[k].pct;
 	}
 	avg_performance /= 100 * Object.entries(data.metricPerformance).length;
-	avg_performance /= levels_ascended;
+	avg_performance /= levels_ascended || 1;
 	avg_performance *= 20;
 	data.engagement.build = 
 		( 0.3 * slot_rating )
@@ -1263,7 +1323,7 @@ function AnalyzeScoresheet( data ) {
 		
 	// format for progress bars
 	for ( k in data.engagement ) {
-		let pct = data.engagement[k] * 100;
+		let pct = Math.max(data.engagement[k],0) * 100;
 		let classname = 'poor';
 		if ( pct >= 100 ) { classname = 'best'; }
 		else if ( pct > 75 ) { classname = 'excl'; }
