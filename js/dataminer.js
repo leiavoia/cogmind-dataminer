@@ -408,7 +408,7 @@ function DownloadDataminerDataAnalysis( app ) {
 			if ( app.scoresheet.flatstats ) {
 				for ( let i of app.scoresheet.flatstats ) {
 					if ( i[3] && app.analysis[i[3]] ) {
-						// [ truncated_key, value, depth, full_key, avg, min, max, diff, formatted_diff, diffclass ]
+						// [ truncated_key, value, depth, full_key, avg, min, max, diff, formatted_diff, diffclass, recordbreaker ]
 						let diff = (i[1] && app.analysis[i[3]].avg) ? (100* (i[1] - app.analysis[i[3]].avg) / app.analysis[i[3]].avg) : 0;
 						let diffclass = 'avg';
 						if ( diff > 400 ) { diffclass = 'plus400'; }
@@ -425,6 +425,7 @@ function DownloadDataminerDataAnalysis( app ) {
 						i.push( diff );
 						i.push( (diff > 0 ? '+' : '') + diff.toLocaleString(undefined, {minimumFractionDigits:0,maximumFractionDigits:2}) + '%' );
 						i.push( diffclass );
+						i.push( i[1] && app.analysis[i[3]].max && i[1] >= app.analysis[i[3]].max && i[5] != i[6] );
 					}
 				}
 			}
@@ -439,12 +440,20 @@ function DownloadDataminerDataAnalysis( app ) {
 				return {
 					name: name,
 					value: arr[1],
-					diff: arr[8]
+					diff: arr[8],
+					recordbreaker: arr[10]
 				};
 			};
 			// note: filtering out single-event items that tend to be uninteresting when the average is near zero.
 			app.scoresheet.hilites = app.scoresheet.flatstats.filter( i => i[7] > 0 && i[1] > 1 ).sort( (a,b) => b[7] - a[7] ).slice( 0, 19 ).map( mapper );
 			app.scoresheet.lowlites = app.scoresheet.flatstats.filter( i => i[7] < 0  ).sort( (a,b) => a[7] - b[7] ).slice( 0, 19 ).map( mapper );
+			app.scoresheet.spotlites = app.scoresheet.flatstats
+				.filter( i => i[10] 
+					&& i[5] != i[6] 
+					&& !i[3].match(/^(bonus|bestStates|performance\.evolutions)/i) 
+					&& !i[3].match(/(diggingLuck|mGuard|slotsEvolved)/i) 
+					)
+				.sort( (a,b) => b[7] - a[7] ).slice( 0, 19 ).map( mapper );
 		}
 	};		
 	return fetch( url ).then( rsp => {
@@ -2171,6 +2180,7 @@ function CalculateBadges(data) {
 				else if ( row.event.match(/Destroyed EX-DEC/i) ) { data.badges.push(['-DEC','Destroyed EX-DEC']); }
 				else if ( row.event.match(/Destroyed EX-BIN/i) ) { data.badges.push(['-BIN','Destroyed EX-BIN']); }
 				else if ( row.event.match(/Destroyed EX-HEX/i) ) { data.badges.push(['-HEX','Destroyed EX-HEX']); }
+				else if ( row.event.match(/Integrated with Sigix Exoskeleton/i) ) { data.badges.push(['Exo','Integrated with Sigix Exoskeleton']); }
 				else if ( row.event.match(/(Found|Identified) Megatreads/i) ) { data.badges.push(['Megatreads','Wore Megatreads']); }
 				else if ( row.event.match(/Sterilization system engaged/i) && map.location.map !== 'MAP_DSF' && map.location.map != 35 ) { // DSF doesnt count!
 					data.badges.push(['Sterilized','Activated floor sterilization system']); 
@@ -2242,7 +2252,7 @@ function CalculateBadges(data) {
 	if ( data.bonus.metR17AtResearch ) { data.badges.push(['R17 Incursion','Had a party in Research with Revision17']); }
 	if ( data.bonus.metWarlordAtResearch ) { data.badges.push(['Warlord Raid','Met Warlord in Research']); }
 	if ( data.bonus.hackedGodMode ) { data.badges.push(['God Mode','Hacked God Mode']); }
-	if ( data.bonus.activateExoskeleton ) { data.badges.push(['Exoskelly','Activated the Exoskeleton']); }
+	if ( data.bonus.activateExoskeleton ) { data.badges.push(['ExoWarrior','Activated the Exoskeleton']); }
 	if ( data.bonus.deliveredSgemp ) { data.badges.push(['SGEMP','Delivered the SGEMP to Zhirov']); }
 	if ( data.bonus.escapedWithSigix ) { data.badges.push(['SpaceBuddy','Escaped with the live Sigix']); }
 	if ( data.bonus.escapedWithExosigix ) { data.badges.push(['SpaceBuddy+','Escaped with the upgraded live Sigix']); }
