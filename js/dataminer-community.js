@@ -236,12 +236,12 @@ app = new Vue({
 			num: 50,
 			difficulty: (qsparams.difficulty || ''),
 			mode: (qsparams.mode || (qsparams.player ? '' : 'SPECIAL_MODE_NONE')),
-			version: (qsparams.version || (qsparams.player ? '' : 'Beta 11')),
+			version: (qsparams.version || (qsparams.player ? '' : 'Beta 11.x')),
 			player: (qsparams.player || ''),
 			winsonly: (qsparams.winsonly ? 1 : 0),
 			skipcache: (qsparams.skipcache ? 1 : 0),
 			label: (qsparams.label || ''),
-			
+			sort: (qsparams.sort || 'desc'),
 			difficulties: [],
 			versions: [],
 			players: [],
@@ -251,11 +251,12 @@ app = new Vue({
 			num: 50,
 			difficulty: (qsparams.difficulty || ''),
 			mode: (qsparams.mode || (qsparams.player ? '' : 'SPECIAL_MODE_NONE')),
-			version: (qsparams.version || (qsparams.player ? '' : 'Beta 11')),
+			version: (qsparams.version || (qsparams.player ? '' : 'Beta 11.x')),
 			player: (qsparams.player || ''),
 			winsonly: (qsparams.winsonly ? 1 : 0),
 			skipcache: (qsparams.skipcache ? 1 : 0),
 			label: (qsparams.label || ''),
+			sort: (qsparams.sort || 'desc')
 		}
 	}
 })
@@ -280,7 +281,7 @@ function LoadStatsFromServer( requestFunction='community', callback, autoChangeP
 
 	this.error_msg = null;
 	
-	let file = `dataminer.php?f=${requestFunction}&winsonly=${app.settings.winsonly}&mode=${app.settings.mode}&difficulty=${app.settings.difficulty}&version=${app.settings.version}&player=${app.settings.player}&skipcache=${app.settings.skipcache}&label=${app.settings.label}&num=${app.settings.num}`;
+	let file = `dataminer.php?f=${requestFunction}&winsonly=${app.settings.winsonly}&mode=${app.settings.mode}&difficulty=${app.settings.difficulty}&version=${app.settings.version}&player=${app.settings.player}&skipcache=${app.settings.skipcache}&label=${app.settings.label}&num=${app.settings.num}&sort=${app.settings.sort}`;
 	
 	if ( autoChangePanes ) { ChangePane('loading'); }
 	

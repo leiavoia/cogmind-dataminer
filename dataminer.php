@@ -30,6 +30,7 @@ if ( php_sapi_name() == "cli" || $force_webmode ) {
 // web mode
 else {
 
+	$sort = isset($_REQUEST['sort']) && strtolower($_REQUEST['sort']) == 'asc' ? 'ASC' : 'DESC';
 	$mode = Sanitize( isset($_REQUEST['mode']) ? $_REQUEST['mode'] : null );
 	$difficulty = Sanitize( isset($_REQUEST['difficulty']) && $_REQUEST['difficulty'] ? $_REQUEST['difficulty'] : null );
 	$version = Sanitize( isset($_REQUEST['version']) && $_REQUEST['version'] ? $_REQUEST['version'] : null );
@@ -40,7 +41,7 @@ else {
 	$skipcache = SanitizeInt( isset($_REQUEST['skipcache']) && $_REQUEST['skipcache'] ? 1 : 0 );
 	$f = Sanitize( isset($_REQUEST['f']) && $_REQUEST['f'] ? $_REQUEST['f'] : 'stats' );
 
-	$cache_hash = md5( implode(':',[$f,$mode,$difficulty,$version,$label,$player,$winsonly] ) );
+	$cache_hash = md5( implode(':',[$f,$mode,$difficulty,$version,$label,$player,$winsonly,$sort] ) );
 	$cache_file = CACHE_DIR . '/' . $cache_hash . '.json';
 	$cache_hit = 0;
 	
@@ -66,12 +67,12 @@ else {
 		
 		// topX data	
 		else if ( $f == 'topx' && $label ) {
-			$records = GetTopX( $label, $mode, $difficulty, $version, $player, $winsonly, 30 );
+			$records = GetTopX( $label, $mode, $difficulty, $version, $player, $winsonly, 30, $sort );
 		}
 		
 		// String statistics frequency. Used for things like cause-of-death frequency chart	
 		else if ( $f == 'strfreq' && $label ) {
-			$records = GetStringCounts( $label, $mode, $difficulty, $version, $player, $winsonly, 30 );
+			$records = GetStringCounts( $label, $mode, $difficulty, $version, $player, $winsonly, 30, $sort );
 		}
 		
 		// Community stats - a compilation of many other stats into one big glob
@@ -438,7 +439,10 @@ function GetGraphData( $label, $mode=null, $difficulty=null, $version=null, $pla
 	$hooks = [];
 	if ( $mode ) { $hooks []= " AND runs.mode = '" . addslashes($mode) . "' "; }
 	if ( $difficulty ) { $hooks []= " AND runs.difficulty = '" . addslashes($difficulty) . "' "; }
-	if ( $version ) { $hooks []= " AND runs.version = '" . addslashes($version) . "' "; }
+	if ( $version ) {
+		$version = str_replace('.x','%',$version);
+		$hooks []= " AND runs.version LIKE '" . addslashes($version) . "' "; 
+	}
 	if ( $player ) { $hooks []= " AND runs.player_id = (SELECT player_id FROM runs WHERE player_name = '" . addslashes($player) . "' LIMIT 1) "; }
 	if ( $winsonly ) { $hooks []= " AND runs.win = 1"; }
 	$records = [];
@@ -460,15 +464,18 @@ function GetGraphData( $label, $mode=null, $difficulty=null, $version=null, $pla
 }
 
 // topX data	
-function GetTopX( $label, $mode=null, $difficulty=null, $version=null, $player=null, $winsonly=false, $num=30 ) {
+function GetTopX( $label, $mode=null, $difficulty=null, $version=null, $player=null, $winsonly=false, $num=30, $sort='DESC' ) {
 	$hooks = [];
 	if ( $mode ) { $hooks []= " AND runs.mode = '" . addslashes($mode) . "' "; }
 	if ( $difficulty ) { $hooks []= " AND runs.difficulty = '" . addslashes($difficulty) . "' "; }
-	if ( $version ) { $hooks []= " AND runs.version = '" . addslashes($version) . "' "; }
+	if ( $version ) {
+		$version = str_replace('.x','%',$version);
+		$hooks []= " AND runs.version LIKE '" . addslashes($version) . "' "; 
+	}
 	if ( $player ) { $hooks []= " AND runs.player_id = (SELECT player_id FROM runs WHERE player_name = '" . addslashes($player) . "' LIMIT 1) "; }
 	// if ( $player ) { $hooks []= " AND runs.player_id = (SELECT player_id FROM runs WHERE player_name = '" . addslashes($player) . "' LIMIT 1) "; }
 	if ( $winsonly ) { $hooks []= " AND runs.win = 1 "; }
-	$sort = 'DESC';
+	$sort = $sort == 'ASC' ? 'ASC' : 'DESC';
 	$limit = $num ? " LIMIT $num " : NULL ;
 	$hooks = implode(' ', $hooks);
 	$records = [];
@@ -500,14 +507,17 @@ function GetTopX( $label, $mode=null, $difficulty=null, $version=null, $player=n
 }
 
 // String statistics frequency. Used for things like cause-of-death frequency chart	
-function GetStringCounts( $label, $mode=null, $difficulty=null, $version=null, $player=null, $winsonly=false, $num=30 ) {
+function GetStringCounts( $label, $mode=null, $difficulty=null, $version=null, $player=null, $winsonly=false, $num=30, $sort='DESC' ) {
 	$hooks = [];
 	if ( $mode ) { $hooks []= " AND runs.mode = '" . addslashes($mode) . "' "; }
 	if ( $difficulty ) { $hooks []= " AND runs.difficulty = '" . addslashes($difficulty) . "' "; }
-	if ( $version ) { $hooks []= " AND runs.version = '" . addslashes($version) . "' "; }
+	if ( $version ) {
+		$version = str_replace('.x','%',$version);
+		$hooks []= " AND runs.version LIKE '" . addslashes($version) . "' "; 
+	}
 	if ( $player ) { $hooks []= " AND runs.player_id = (SELECT player_id FROM runs WHERE player_name = '" . addslashes($player) . "' LIMIT 1) "; }
 	if ( $winsonly ) { $hooks []= " AND runs.win = 1"; }
-	$sort = 'DESC';
+	$sort = $sort == 'ASC' ? 'ASC' : 'DESC';
 	$limit = $num ? " LIMIT $num " : NULL ;
 	$hooks = implode(' ', $hooks);
 	$records = [];
@@ -539,7 +549,10 @@ function GetRunTimesGraphData( $mode=null, $difficulty=null, $version=null, $pla
 	$hooks = [];
 	if ( $mode ) { $hooks []= " AND runs.mode = '" . addslashes($mode) . "' "; }
 	if ( $difficulty ) { $hooks []= " AND runs.difficulty = '" . addslashes($difficulty) . "' "; }
-	if ( $version ) { $hooks []= " AND runs.version = '" . addslashes($version) . "' "; }
+	if ( $version ) {
+		$version = str_replace('.x','%',$version);
+		$hooks []= " AND runs.version LIKE '" . addslashes($version) . "' "; 
+	}
 	if ( $player ) { $hooks []= " AND runs.player_id = (SELECT player_id FROM runs WHERE player_name = '" . addslashes($player) . "' LIMIT 1) "; }
 	if ( $winsonly ) { $hooks []= " AND runs.win = 1"; }
 	$hooks = implode(' ', $hooks);
@@ -569,7 +582,10 @@ function GetWinLoss( $mode=null, $difficulty=null, $version=null, $player=null )
 	$hooks = [];
 	if ( $mode ) { $hooks []= " runs.mode = '" . addslashes($mode) . "' "; }
 	if ( $difficulty ) { $hooks []= " runs.difficulty = '" . addslashes($difficulty) . "' "; }
-	if ( $version ) { $hooks []= " runs.version = '" . addslashes($version) . "' "; }
+	if ( $version ) {
+		$version = str_replace('.x','%',$version);
+		$hooks []= " runs.version LIKE '" . addslashes($version) . "' "; 
+	}
 	if ( $player ) { $hooks []= " runs.player_name = '" . addslashes($player) . "' "; }
 	$hooks = $hooks ? (' WHERE ' . implode(' AND ', $hooks) ) : NULL;
 	$records = [];
@@ -672,7 +688,10 @@ function GetOnTheFlyNumericalStats( $label=null, $mode=null, $difficulty=null, $
 	$hooks = [];
 	if ( $mode ) { $hooks []= " AND runs.mode = '" . addslashes($mode) . "' "; }
 	if ( $difficulty ) { $hooks []= " AND runs.difficulty = '" . addslashes($difficulty) . "' "; }
-	if ( $version ) { $hooks []= " AND runs.version = '" . addslashes($version) . "' "; }
+	if ( $version ) {
+		$version = str_replace('.x','%',$version);
+		$hooks []= " AND runs.version LIKE '" . addslashes($version) . "' "; 
+	}
 	if ( $label ) { 
 		if ( is_array($label) ) {
 			$labels = array_map( function($x){ return sprintf('%u', crc32($x)); }, $label ); // mysql compatible CRC32
@@ -721,7 +740,10 @@ function GetRunsByPlayer( $mode=null, $difficulty=null, $version=null, $player=n
 	$hooks = [];
 	if ( $mode ) { $hooks []= " AND runs.mode = '" . addslashes($mode) . "' "; }
 	if ( $difficulty ) { $hooks []= " AND runs.difficulty = '" . addslashes($difficulty) . "' "; }
-	if ( $version ) { $hooks []= " AND runs.version = '" . addslashes($version) . "' "; }
+	if ( $version ) {
+		$version = str_replace('.x','%',$version);
+		$hooks []= " AND runs.version LIKE '" . addslashes($version) . "' "; 
+	}
 	if ( $player ) { $hooks []= " AND runs.player_id = (SELECT player_id FROM runs WHERE player_name = '" . addslashes($player) . "' LIMIT 1) "; }
 	if ( $winsonly ) { $hooks []= " AND runs.win = 1"; }
 	
@@ -749,7 +771,10 @@ function CountRuns( $mode=null, $difficulty=null, $version=null, $player=null, $
 	$hooks = [];
 	if ( $mode ) { $hooks []= " AND runs.mode = '" . addslashes($mode) . "' "; }
 	if ( $difficulty ) { $hooks []= " AND runs.difficulty = '" . addslashes($difficulty) . "' "; }
-	if ( $version ) { $hooks []= " AND runs.version = '" . addslashes($version) . "' "; }
+	if ( $version ) {
+		$version = str_replace('.x','%',$version);
+		$hooks []= " AND runs.version LIKE '" . addslashes($version) . "' "; 
+	}
 	if ( $player ) { $hooks []= " AND runs.player_id = (SELECT player_id FROM runs WHERE player_name = '" . addslashes($player) . "' LIMIT 1) "; }
 	if ( $winsonly ) { $hooks []= " AND runs.win = 1"; }
 	
@@ -768,7 +793,10 @@ function GamesPlayedByDay( $mode=null, $difficulty=null, $version=null, $player=
 	$hooks = [];
 	if ( $mode ) { $hooks []= " AND runs.mode = '" . addslashes($mode) . "' "; }
 	if ( $difficulty ) { $hooks []= " AND runs.difficulty = '" . addslashes($difficulty) . "' "; }
-	if ( $version ) { $hooks []= " AND runs.version = '" . addslashes($version) . "' "; }
+	if ( $version ) {
+		$version = str_replace('.x','%',$version);
+		$hooks []= " AND runs.version LIKE '" . addslashes($version) . "' "; 
+	}
 	if ( $player ) { $hooks []= " AND runs.player_id = (SELECT player_id FROM runs WHERE player_name = '" . addslashes($player) . "' LIMIT 1) "; }
 	if ( $winsonly ) { $hooks []= " AND runs.win = 1"; }
 	
@@ -847,9 +875,20 @@ function ListAllVersions() {
 	$records = [];
 	if ( $result->num_rows ) {
 		while( $row = $result->fetch_assoc() ) {
-			$records []= $row;
+			$records []= $row['version'];
 		}
 	}
+	// add some meta records
+	$metas = [];
+	foreach ( $records as $r ) {
+		$matches = [];
+		if ( preg_match('/(.*?\d+)/',$r,$matches) ) {
+			$major = $matches[1] . '.x';
+			$metas[$major] = true;
+		}
+	}
+	$records = array_merge($records,array_keys($metas));
+	rsort($records);
 	return $records;
 }
 		
@@ -1292,8 +1331,9 @@ function ScrapeURL( $url ) {
 			if ( $result && $result->num_rows ) { continue; }
 			$file = SCORESHEET_DOWNLOAD_DIR . '/' . $hash . '.json';
 			print $url . "\n";
-			Download( $url, $file );
-			if ( SCRAPE_FETCH_DELAY ) { sleep(SCRAPE_FETCH_DELAY); }
+			if ( Download( $url, $file ) && SCRAPE_FETCH_DELAY ) {
+				sleep(SCRAPE_FETCH_DELAY);
+			}
 		}
 	}
 }
@@ -1309,8 +1349,9 @@ function Download( $url, $file ) {
 		curl_setopt($curl, CURLOPT_FAILONERROR, 1); // don't give us false-positive garbage
 		$data = curl_exec($curl);
 		curl_close($curl);
-		file_put_contents($file,$data);
+		return !!file_put_contents($file,$data);
 		}
+	return false;
 	}
 	
 function PrintWithTS( $msg ) {
