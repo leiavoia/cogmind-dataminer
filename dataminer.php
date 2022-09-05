@@ -15,16 +15,19 @@ if ( !defined('DATAMINER_DB_USERNAME') ) { define('DATAMINER_DB_USERNAME', "root
 if ( !defined('DATAMINER_DB_PASSWORD') ) { define('DATAMINER_DB_PASSWORD', "docker"); }
 if ( !defined('DATAMINER_DB_DATABASE') ) { define('DATAMINER_DB_DATABASE', "dataminer"); }
 if ( !defined('DATAMINER_IP_WHITELIST') ) { define('DATAMINER_IP_WHITELIST', []); }
+if ( !defined('DATAMINER_MAX_SCORESHEET_CACHE_SIZE') ) { define('DATAMINER_MAX_SCORESHEET_CACHE_SIZE', 1000000000); }
+if ( !defined('DATAMINER_MAX_SCORESHEET_CACHE_AGE') ) { define('DATAMINER_MAX_SCORESHEET_CACHE_AGE', 90); }
 	
 $force_webmode = isset($_REQUEST['force']) && DATAMINER_IP_WHITELIST && in_array($_SERVER['REMOTE_ADDR'],DATAMINER_IP_WHITELIST);
 
 // CLI mode
 if ( php_sapi_name() == "cli" || $force_webmode ) {
-	$params = getopt( 'spac', [ 'scrape', 'process', 'analyze', 'chart' ] );
+	$params = getopt( 'spacx', [ 'scrape', 'process', 'analyze', 'chart', 'clean' ] );
 	if ( isset($params['s']) || isset($params['scrape']) || isset($_REQUEST['scrape']) ) { ScrapeScoresheets(); }
 	if ( isset($params['p']) || isset($params['process']) || isset($_REQUEST['process']) ) { ProcessScoresheets(); }
 	if ( isset($params['a']) || isset($params['analyze']) || isset($_REQUEST['analyze']) ) { AnalyzeDB(); }
 	if ( isset($params['c']) || isset($params['chart']) || isset($_REQUEST['chart']) ) { CreateChartData(); }
+	if ( isset($params['x']) || isset($params['clean']) || isset($_REQUEST['clean']) ) { FileCleanup(); }
 }
 
 // web mode
@@ -1353,6 +1356,43 @@ function Download( $url, $file ) {
 		}
 	return false;
 	}
+	
+function FileCleanup() {
+	// delete old stuff
+	PrintWithTS('Starting file cleanup.');
+	$output = [];
+	$resultcode = null;
+	exec('find ' . SCORESHEET_ARCHIVE_DIR . ' -name "*.json" -type f -mtime +' . DATAMINER_MAX_SCORESHEET_CACHE_AGE . ' -delete;', $output, $resultcode);
+	foreach ( $output as $line ) { print "\t$line\n"; }
+	$cache_size = GetDirectorySize(SCORESHEET_ARCHIVE_DIR);
+	if ( $cache_size > DATAMINER_MAX_SCORESHEET_CACHE_SIZE ) {
+		$files = glob(SCORESHEET_ARCHIVE_DIR . '/*.json');
+		foreach ( $files as &$f ) {
+			$f = ['file' => $f, 'size' => filesize($f) ];
+		}
+		usort($files, function($b,$a){ return $b['size'] - $a['size']; });
+		$sanity = 10;
+		while ( $cache_size > DATAMINER_MAX_SCORESHEET_CACHE_SIZE && --$sanity && $file = array_pop($files) ) {
+			unlink($file['file']);
+			$cache_size -= $file['size'];
+			print "\tdeleted {$file['file']}\n";
+		}
+	}
+	PrintWithTS('Finished file cleanup.');
+}
+
+function GetDirectorySize($path) {
+	$bytestotal = 0;
+	$path = realpath($path);
+	if ($path !== false && $path != '' && file_exists($path)) {
+		foreach ( new RecursiveIteratorIterator(
+			new RecursiveDirectoryIterator($path, FilesystemIterator::SKIP_DOTS)
+			) as $object) {
+			$bytestotal += $object->getSize();
+		}
+	}
+	return $bytestotal;
+}
 	
 function PrintWithTS( $msg ) {
 	print PrintTS() . $msg . "\n";
