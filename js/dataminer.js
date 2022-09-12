@@ -433,7 +433,7 @@ function DownloadDataminerDataAnalysis( app ) {
 			let mapper = function ( arr ) {
 				// clean the name up to be more readable
 				let name = arr[3].split('.').slice(1);
-				if ( name[0].match(/(combat|build|resources|hacking|exploration|intel|machines|traps|bothacking|stealth|alert|allies)/) ) { name.shift(); }
+				if ( name[0].match(/(combat|build|resources|hacking|exploration|intel|machines|traps|bothacking|stealth|alert|allies)/) && name.length > 2 ) { name.shift(); }
 				if ( name[1] && name[1].match('total') ) { name.splice(1,1); } // actions.total
 				if ( name[ name.length-1 ].match('overall') ) { name.pop(); }
 				name = name.map( _ => _.Undatafy() ).join(': ');
@@ -451,7 +451,7 @@ function DownloadDataminerDataAnalysis( app ) {
 				.filter( i => i[10] 
 					&& i[5] != i[6] 
 					&& !i[3].match(/^(bonus|bestStates|performance\.evolutions)/i) 
-					&& !i[3].match(/(diggingLuck|mGuard|slotsEvolved)/i) 
+					&& !i[3].match(/(diggingLuck|mGuard|slotsEvolved|hacking\.failed|maximumAlertLevel)/i) 
 					)
 				.sort( (a,b) => b[7] - a[7] ).slice( 0, 19 ).map( mapper );
 		}
