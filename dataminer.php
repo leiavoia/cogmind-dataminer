@@ -17,6 +17,8 @@ if ( !defined('DATAMINER_DB_DATABASE') ) { define('DATAMINER_DB_DATABASE', "data
 if ( !defined('DATAMINER_IP_WHITELIST') ) { define('DATAMINER_IP_WHITELIST', []); }
 if ( !defined('DATAMINER_MAX_SCORESHEET_CACHE_SIZE') ) { define('DATAMINER_MAX_SCORESHEET_CACHE_SIZE', 1000000000); }
 if ( !defined('DATAMINER_MAX_SCORESHEET_CACHE_AGE') ) { define('DATAMINER_MAX_SCORESHEET_CACHE_AGE', 90); }
+// use this on RAM-constricted systems:
+if ( !defined('DATAMINER_ANALYZE_PIECEMEAL') ) { define('DATAMINER_ANALYZE_PIECEMEAL', false); }
 	
 $force_webmode = isset($_REQUEST['force']) && DATAMINER_IP_WHITELIST && in_array($_SERVER['REMOTE_ADDR'],DATAMINER_IP_WHITELIST);
 
@@ -25,7 +27,7 @@ if ( php_sapi_name() == "cli" || $force_webmode ) {
 	$params = getopt( 'spacx', [ 'scrape', 'process', 'analyze', 'chart', 'clean' ] );
 	if ( isset($params['s']) || isset($params['scrape']) || isset($_REQUEST['scrape']) ) { ScrapeScoresheets(); }
 	if ( isset($params['p']) || isset($params['process']) || isset($_REQUEST['process']) ) { ProcessScoresheets(); }
-	if ( isset($params['a']) || isset($params['analyze']) || isset($_REQUEST['analyze']) ) { AnalyzeDB(); }
+	if ( isset($params['a']) || isset($params['analyze']) || isset($_REQUEST['analyze']) ) { AnalyzeDB(DATAMINER_ANALYZE_PIECEMEAL); }
 	if ( isset($params['c']) || isset($params['chart']) || isset($_REQUEST['chart']) ) { CreateChartData(); }
 	if ( isset($params['x']) || isset($params['clean']) || isset($_REQUEST['clean']) ) { FileCleanup(); }
 }
@@ -170,7 +172,7 @@ function ProcessScoresheets() {
 
 
 	
-function AnalyzeDB() { 
+function AnalyzeDB( $process_piecemeal=false ) { 
 
 	// set these if you want to limit recalculation to a subset
 	// $version = 'Beta 10.2';
@@ -197,7 +199,8 @@ function AnalyzeDB() {
 	$result = $db->query("START TRANSACTION;");
 	DBCheckForErrors( $result, $db );
 
-	// cleanup 
+	// cleanup
+	PrintWithTS("Doing cleanup ...");
 	if ( $version || $difficulty || $mode ) {
 		$result = $db->query("
 			DELETE FROM analysis where 1=1
@@ -213,50 +216,52 @@ function AnalyzeDB() {
 		
 	}
 
-	// reanalyze
-	$result = $db->query("
-		INSERT INTO analysis
-		SELECT
-			runstats.stat_id,
-			runs.version,
-			runs.difficulty,
-			runs.mode,
-			COUNT( runstats.value ) as `samples`,
-			COUNT( DISTINCT runstats.value ) as `uniq`,
-			MIN( CAST(runstats.value as DECIMAL(24,5)) ) as `min`,
-			MAX( CAST(runstats.value as DECIMAL(24,5)) ) as `max`,
-			ROUND( AVG( CAST(runstats.value as DECIMAL(24,5)) ), 3) as `avg`,
-			ROUND( STD( CAST(runstats.value as DECIMAL(24,5)) ), 3) as `std`,
-			0,
-			0,
-			0,
-			0,
-			0,
-			NULL as chartdata
-		FROM
-			runs,
-			runstats,
-			stats
-		WHERE runstats.stat_id = stats.id
-			AND runstats.run_id = runs.id
-			AND stats.type IN ('float','integer')
-			" . ( $version ? ("AND runs.version = '" . addslashes($version) . "'") : null ) . "
-			" . ( $difficulty ? ("AND runs.difficulty = '" . addslashes($difficulty) . "'") : null ) . "
-			" . ( $mode ? ("AND runs.mode = '" . addslashes($mode) . "'") : null ) . "
-			" . ( $label ? ("AND stats.id = CRC32('" . addslashes($label) . "')") : null ) . "
-		GROUP BY
-			stats.id,
-			runs.version,
-			runs.difficulty,
-			runs.mode
---		ORDER BY
---			stats.label,
---			runs.version,
---			runs.difficulty,
---			runs.mode
-		;");
-	DBCheckForErrors( $result, $db );
-
+	// reanalyze stats
+	// [!]TECHNICAL: this query runs fast compared to taking it piecemeal,
+	// but eats up a lot of RAM. Use piecemeal processing if RAM is constricted.
+	// $stat_ids = $process_piecemeal ? ListAllNumericStatIDs() : [null];
+	$stat_ids = ListAllNumericStatIDs();
+	$stat_counter = 0;
+	PrintWithTS("Analyzing " . count($stat_ids) . " stats...");
+	foreach ( $stat_ids as $stat_id ) {
+		// PrintWithTS("Analyzing (" . ++$stat_counter . "/" . count($stat_ids) . ") $stat_id ...");
+		$result = $db->query("
+			INSERT INTO analysis
+			SELECT
+				runstats.stat_id,
+				runs.version,
+				runs.difficulty,
+				runs.mode,
+				COUNT( runstats.value ) as `samples`,
+				COUNT( DISTINCT runstats.value ) as `uniq`,
+				MIN( CAST(runstats.value as DECIMAL(24,5)) ) as `min`,
+				MAX( CAST(runstats.value as DECIMAL(24,5)) ) as `max`,
+				ROUND( AVG( CAST(runstats.value as DECIMAL(24,5)) ), 3) as `avg`,
+				ROUND( STD( CAST(runstats.value as DECIMAL(24,5)) ), 3) as `std`,
+				0,
+				0,
+				0,
+				0,
+				0,
+				NULL as chartdata
+			FROM
+				runs,
+				runstats
+			WHERE runstats.stat_id = $stat_id
+				AND runstats.run_id = runs.id
+				" . ( $version ? ("AND runs.version = '" . addslashes($version) . "'") : null ) . "
+				" . ( $difficulty ? ("AND runs.difficulty = '" . addslashes($difficulty) . "'") : null ) . "
+				" . ( $mode ? ("AND runs.mode = '" . addslashes($mode) . "'") : null ) . "
+				" . ( $label ? ("AND stats.id = CRC32('" . addslashes($label) . "')") : null ) . "
+			GROUP BY
+				runstats.stat_id,
+				runs.version,
+				runs.difficulty,
+				runs.mode
+			;");
+		DBCheckForErrors( $result, $db );
+	}
+	
 	PrintWithTS("Doing secondary-analysis ...");
 	$result = $db->query("
 		UPDATE analysis
@@ -830,6 +835,20 @@ function ListAllStats() {
 	if ( $result->num_rows ) {
 		while( $row = $result->fetch_assoc() ) {
 			$records []= $row;
+		}
+	}
+	return $records;
+}
+
+// list all numeric stat IDs
+function ListAllNumericStatIDs() {
+	$db = DB();
+	$q = "SELECT id FROM stats WHERE type IN ('float','integer');";
+	$result = $db->query($q);
+	$records = [];
+	if ( $result->num_rows ) {
+		while( $row = $result->fetch_assoc() ) {
+			$records []= $row['id'];
 		}
 	}
 	return $records;
