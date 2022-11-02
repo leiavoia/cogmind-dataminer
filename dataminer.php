@@ -1129,7 +1129,7 @@ function AddRun( $hash, $data ) {
 	$data['stats.combat.dishoutRatio'] = $data['stats.combat.damageTaken.overall']
 		? min( 1000, 100 * $data['stats.combat.damageInflicted.overall'] / UseIfElse( $data['stats.combat.damageTaken.overall'], 1 ) )
 		: 100;
-	if ( $data['stats.combat.dishoutRatio'] >= 1000 ) { unset($data['stats.combat.dishoutRatio']); }
+	if ( $data['stats.combat.dishoutRatio'] >= 2500 ) { unset($data['stats.combat.dishoutRatio']); }
 
 	// failed hacks
 	$data['stats.hacking.failed'] = $data['stats.hacking.totalHacks.overall'] - $data['stats.hacking.totalHacks.successful'];
