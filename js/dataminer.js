@@ -294,6 +294,7 @@ app = new Vue({
 		filehash: filehash,
 		recentlyViewed: GetScoresheetList(),
 		ClearScoresheetList,
+		ForceComparisonToStandardSet
 	}
 })
 
@@ -302,6 +303,15 @@ let hash = window.location.search.trim().replace('?','').replace(/\s+/,'').repla
 if ( hash ) { LoadScoresheet(hash); }
 else { ChangePane('input'); }
 
+function ForceComparisonToStandardSet() {
+	ChangePane('loading');
+	CreateFlatStats(app.scoresheet); // have to rebuild these
+	DownloadDataminerDataAnalysis( app, true ).then( _ => { 
+		app.scoresheet.header.analysisNote = 'Forcing comparison to standard dataset.';
+		ChangePane('overview');
+	} );
+}
+				
 function LoadScoresheet( hash ) {
 
 	this.error_msg = null;
@@ -387,7 +397,7 @@ function LoadScoresheet( hash ) {
 	}
 }
 
-function DownloadDataminerDataAnalysis( app ) {
+function DownloadDataminerDataAnalysis( app, force_standard_set=false ) {
 	// TODO: don't re-download if categories are the same as what we have already
 	url = window.location.href
 		.replace( window.location.search, '' ) 
@@ -398,6 +408,9 @@ function DownloadDataminerDataAnalysis( app ) {
 		+ `&difficulty=${app.scoresheet.header.difficulty || 'DIFFICULTY_ROGUE'}`
 		+ `&mode=${app.scoresheet.header.specialMode || 'SPECIAL_MODE_NONE'}`
 		;
+	if ( force_standard_set ) {
+		url = 'dataminer.analysis.standard.b11.json';
+	}
 	let fetchHandler = data => {
 		if ( data ) {
 			if ( data['parts.inventory.slots']?.samples < 10 ) {
@@ -1347,6 +1360,16 @@ function AnalyzeScoresheet( data ) {
 	// Badges
 	CalculateBadges(data);
 	
+	CreateFlatStats(data);
+	
+	// update window & meta description
+    document.title = `Dataminer : ${data.header.playerName} : Game #${data.game.gameNumber}`;
+	let desc = 	(data.header.win ? 'ASCENDED! ' : 'DEFEAT! ') + data.header.runResult;
+	document.querySelector('meta[name="description"]').setAttribute("content", desc);
+	
+}
+
+function CreateFlatStats(data) {
 	// flatten data into something we can iterate over as table rows.
 	// NOTE: this copies the format returned by the Dataminer analysis file
 	// so you can make easy 1:1 comparisons
@@ -1357,12 +1380,6 @@ function AnalyzeScoresheet( data ) {
 		TabularizeData({bestStates: data.bestStates} ),
 		TabularizeData({classDistribution: data.classDistribution} )
 	);
-	
-	// update window & meta description
-    document.title = `Dataminer : ${data.header.playerName} : Game #${data.game.gameNumber}`;
-	let desc = 	(data.header.win ? 'ASCENDED! ' : 'DEFEAT! ') + data.header.runResult;
-	document.querySelector('meta[name="description"]').setAttribute("content", desc);
-	
 }
 
 function ChangePane(pane) {

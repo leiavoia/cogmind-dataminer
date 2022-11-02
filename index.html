@@ -371,12 +371,19 @@
 										<td>
 											{{analysis['parts.inventory.slots'].samples.toLocaleString()}} runs in dataset. 
 											{{scoresheet.header.analysisNote}}
+											<a style="text-decoration:underline; cursor:pointer;" v-on:click="ForceComparisonToStandardSet()" v-if="!scoresheet.header.analysisNote">Compare to standardized dataset instead</a>
 										</td>
 									</tr>
-									<tr v-if="analysis">
+									<tr v-if="analysis && analysis['parts.inventory.slots']">
 										<th><img src="img/graph_sample.png" alt="frequency graph sample" /></th>
 										<td class="text-muted">
 											Frequency graphs compare your run to community averages
+										</td>
+									</tr>
+									<tr v-if="!analysis || !analysis['parts.inventory.slots']">
+										<th>Comparisons</th>
+										<td>
+											<a style="text-decoration:underline; cursor:pointer;" v-on:click="ForceComparisonToStandardSet()" v-if="!scoresheet.header.analysisNote">Compare to standardized dataset instead</a>
 										</td>
 									</tr>
 								</table>
@@ -1664,7 +1671,7 @@
 							</tr>
 						</table>
 					</template>
-					<div class="row row-cols-sm-2 g-5" v-if="scoresheet.hilites && scoresheet.lowlites">
+					<div class="row row-cols-sm-2 g-5" v-if="scoresheet.hilites?.length && scoresheet.lowlites?.length">
 						<div class="col ">
 							<h2>Highs</h2>
 							<p class="muted">Highest stats relative to community averages.</p>
