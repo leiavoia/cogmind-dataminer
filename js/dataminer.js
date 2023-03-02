@@ -137,7 +137,19 @@ Chart.colors_by_key = {
 	guns: '#89a784', 
 	cannon: '#5647a2', 
 	cannons: '#5647a2', 
-	ramming: '#FFF'
+	ramming: '#FFF',
+    Burn: '#dba434',
+    Meltdown: '#aa1b36',
+    Destroy: 'rgba(55,123,196,1)',
+    Blast: '#324',
+    Corrupt: 'rgba(59,221,17,1)',
+    Smash: 'rgba(240,240,240,1)',
+    Sever: 'rgba(214,221,17,1)',
+    Puncture: 'rgba(192,55,196,1)',
+    Detonate: '#ff6ab6',
+	Sunder: '#999',
+	Intensity: '#73d0ff',
+	Phase: '#00744a',
 };
 
 Chart.SortPieData = function ( data, labels, colors=null ) { // coupled arrays
@@ -224,6 +236,7 @@ const map_names = {
 	MIN: 'Mines',
 	LOW: 'Lower Caves',
 	UPP: 'Upper Caves',
+	JUN: 'Junkyard',
 	SCR: 'Scrap',
 	RES: 'Research',
 	ACC: 'Access',
@@ -1847,7 +1860,7 @@ function ChangePane(pane) {
 						app.scoresheet.charts.criticals_pie_chart_data, 
 						app.scoresheet.charts.criticals_pie_chart_labels,
 						'criticalHitsPieChart',
-						{ sort:true, undatafy: true, addpct:true, legendPos:'left', chartType: 'doughnut', aspectRatio:2 /* , colors:'indexed' */ }
+						{ sort:true, undatafy: true, addpct:true, legendPos:'left', chartType: 'doughnut', aspectRatio:2 , colors:'indexed' }
 						) );
 				}
 				
@@ -2152,7 +2165,7 @@ function CalculateBadges(data) {
 		// notable places visited
 		let mapname = typeof(x.location.map)=='string' ? x.location.map.replace('MAP_','') : (x.location.map==35 ? 'DSF' : 'Unknown Map');
 		let nicename = map_names[mapname] || mapname;
-		if ( ['SCR','MAT','UPP','FAC','LOW','RES','ACC','PRO','MIN','Unknown Map'].indexOf(mapname) === -1 ) {
+		if ( ['JUN','SCR','MAT','UPP','FAC','LOW','RES','ACC','PRO','MIN','Unknown Map'].indexOf(mapname) === -1 ) {
 			data.badges.push([ nicename, 'Found ' + nicename]);
 		}
 		// farthest regular location
