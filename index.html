@@ -48,6 +48,8 @@
 			.badges .badge[class~='Zhirov'] { background-color: rgb(100, 160, 205); }
 			.badges .badge[class~='Dataminer'] { background-color: rgb(100, 160, 205); }
 			.badges .badge[class~='Warlord'] { background-color: rgb(131, 25, 25); }
+			.badges .badge[class~='ECA'] { background-color: rgb(131, 25, 25); }
+			.badges .badge[class~='W-Boys'] { background-color: rgb(131, 25, 25); }
 			.badges .badge[class~='Exiles'] { background-color: rgb(100, 160, 205); }
 			.badges .badge[class~='FarCom'] { background-color: rgb(100, 160, 205); }
 			.badges .badge[class~='Materials'] { background-color: #756a57; }
@@ -56,6 +58,7 @@
 			.badges .badge[class~='Cetus'] { background-color: rgb(179, 176, 14); }
 			.badges .badge[class~='Hub'] { background-color: rgb(179, 176, 14); }
 			.badges .badge[class~='Recycling'] { background-color: rgb(190, 164, 44); }
+			.badges .badge[class~='SE'] { background-color: rgb(190, 164, 44); }
 			.badges .badge[class~='Storage'] { background-color: rgb(209, 115, 37); }
 			.badges .badge[class~='DSF'] { background-color: rgb(209, 115, 37); }
 			.badges .badge[class~='Armory'] { background-color: rgb(216, 12, 12); }
@@ -80,6 +83,7 @@
 			.badges .badge[class*='W7'],
 			.badges .badge[class*='W8'],
 			.badges .badge[class*='W9'] { background-color: #169205; }
+			.badges .badge[class~='Impossible'],
 			.badges .badge[class~='Millionaire'] { 
 				background: 
 					radial-gradient(ellipse farthest-corner at right bottom, #FEDB37 0%, #FDB931 8%, #9f7928 30%, #8A6E2F 40%, transparent 80%),
@@ -906,19 +910,19 @@
 							</div>
 							<div class="col">
 								<div class="card statbox h-100">
-									<div class="card-header">Parts Repaired</div>
+									<div class="card-header">Botnets</div>
 									<div class="card-body text-success numeric">
-										<span class="card-text">{{scoresheet.stats.hacking.partsRepaired.overall.toLocaleString()}}</span>
-										<canvas id="partsRepairedSparkChart" v-if="analysis"></canvas>
+										<span class="card-text">{{scoresheet.stats.hacking.unauthorizedHacks.terminals.botnet.toLocaleString()}}</span>
+										<canvas id="botnetsSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>
 							<div class="col">
 								<div class="card statbox h-100">
-									<div class="card-header">Parts Recycled</div>
+									<div class="card-header">Parts Repaired</div>
 									<div class="card-body text-success numeric">
-										<span class="card-text">{{scoresheet.stats.hacking.partsRecycled.overall.toLocaleString()}}</span>
-										<canvas id="partsRecycledSparkChart" v-if="analysis"></canvas>
+										<span class="card-text">{{scoresheet.stats.hacking.partsRepaired.overall.toLocaleString()}}</span>
+										<canvas id="partsRepairedSparkChart" v-if="analysis"></canvas>
 									</div>
 								</div>
 							</div>

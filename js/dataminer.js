@@ -2,7 +2,7 @@
 ( function() {
 
 // turn this on if you want to search for "?filename.json" in local /data directory
-var use_local_dev = false;
+var use_local_dev = true;
 
 var app = null; // app is global? are you stupid?
 var filehash = null; // you fool!
@@ -575,6 +575,8 @@ function AnalyzeScoresheet( data ) {
 	data.stats.hacking.totalHacks.overall = data.stats.hacking.totalHacks?.overall || 0;
 	data.stats.hacking.hackingDetections.overall = data.stats.hacking.hackingDetections?.overall || 0;
 	data.stats.hacking.partsRepaired.overall = data.stats.hacking.partsRepaired?.overall || 0;
+	data.stats.hacking.unauthorizedHacks.terminals = data.stats.hacking.unauthorizedHacks?.terminals || {};
+	data.stats.hacking.unauthorizedHacks.terminals.botnet = data.stats.hacking.unauthorizedHacks?.terminals?.botnet || 0;
 	data.stats.hacking.partsRecycled.overall = data.stats.hacking.partsRecycled?.overall || 0;
 	data.stats.hacking.partsScanalyzed.overall = data.stats.hacking.partsScanalyzed?.overall || 0;
 	data.stats.hacking.partSchematicsAcquired.partsBuilt.overall = data.stats.hacking.partSchematicsAcquired.partsBuilt?.overall || 0;
@@ -1286,7 +1288,7 @@ function AnalyzeScoresheet( data ) {
 	// DSF, garrisons, or wastes in that number, but we do. Count manually.
 	let nonMainRegions = 0;
 	for ( map of data.route.entries ) {
-		if ( ['MAP_SCR','MAP_MAT','MAP_FAC','MAP_RES','MAP_ACC'].indexOf(map.location.map) < 0 ) {
+		if ( ['MAP_JUN','MAP_SCR','MAP_MAT','MAP_FAC','MAP_RES','MAP_ACC'].indexOf(map.location.map) < 0 ) {
 			nonMainRegions++;
 		}
 	}
@@ -2078,9 +2080,9 @@ function ChangePane(pane) {
 					app.scoresheet.stats.hacking.partsRepaired.overall
 					) );
 				app.charts.push( DrawSparkChart(
-					'partsRecycledSparkChart',
-					app.analysis['stats.hacking.partsRecycled.overall']?.chartdata,
-					app.scoresheet.stats.hacking.partsRecycled.overall
+					'botnetsSparkChart',
+					app.analysis['stats.hacking.unauthorizedHacks.terminals.botnet']?.chartdata,
+					app.scoresheet.stats.hacking.unauthorizedHacks.terminals.botnet
 					) );
 				app.charts.push( DrawSparkChart(
 					'partsScannedSparkChart',
@@ -2175,10 +2177,10 @@ function CalculateBadges(data) {
 		}
 	}
 
-	// history logs snooping
+	// history log snooping
 	for ( let map of data.route.entries ) {
 		if ( map.historyEvents ) {
-			for ( row of map.historyEvents ) { 
+			for ( const [row_index,row] of map.historyEvents.entries() ) { 
 				if ( row.event.match(/convoy interrupted/i) ) { data.badges.push(['Yauled','Interrupted a cargo convoy']); }
 				else if ( row.event.match(/stolen by Master Thief/i) ) { data.badges.push(['Robbed','Got robbed by a master thief']); }
 				else if ( row.event.match(/Stole (three|two) prototypes/i) ) { data.badges.push(['Thief','Stole from Exiles']); }
@@ -2210,8 +2212,21 @@ function CalculateBadges(data) {
 				else if ( row.event.match(/Destroyed EX-DEC/i) ) { data.badges.push(['-DEC','Destroyed EX-DEC']); }
 				else if ( row.event.match(/Destroyed EX-BIN/i) ) { data.badges.push(['-BIN','Destroyed EX-BIN']); }
 				else if ( row.event.match(/Destroyed EX-HEX/i) ) { data.badges.push(['-HEX','Destroyed EX-HEX']); }
+				else if ( row.event.match(/Found Scrap Engine/i) ) { data.badges.push(['SE','Found a Scrap Engine']); }
+				else if ( row.event.match(/Found Encrypted Comm Array/i) ) { data.badges.push(['ECA','Found a Warlord Encrypted Comm Array']); }
+				else if ( row.event.match(/Joined by Warlord .* squad/i) ) { data.badges.push(['W-Boys','Summoned Warlord-affiliated squads']); }
+				else if ( row.event.match(/Fired Drained L-Cannon/i) ) { 
+					data.badges.push(['DLC','Fired a Drained L-Cannon']); 
+					// also look for an "Impossible!" Arch kill
+					for ( let i=Math.max(row_index-10,0); i < Math.max(row_index+10,map.historyEvents.length); i++ ) { 
+						if ( map.historyEvents[i].event.match(/Destroyed Architect/i) && row.turn == map.historyEvents[i].turn ) {
+							data.badges.push(['Impossible','Destroyed Architect with a Drained L-Cannon.']);
+						}
+					}
+				}
 				else if ( row.event.match(/Integrated with Sigix Exoskeleton/i) ) { data.badges.push(['Exo','Integrated with Sigix Exoskeleton']); }
 				else if ( row.event.match(/(Found|Identified) Megatreads/i) ) { data.badges.push(['Megatreads','Wore Megatreads']); }
+				else if ( row.event.match(/(Found|Identified) Vortex Field Projector/i) ) { data.badges.push(['VFP','Wore Vortex Field Projector']); }
 				else if ( row.event.match(/Sterilization system engaged/i) && map.location.map !== 'MAP_DSF' && map.location.map != 35 ) { // DSF doesnt count!
 					data.badges.push(['Sterilized','Activated floor sterilization system']); 
 				}
@@ -2275,10 +2290,10 @@ function CalculateBadges(data) {
 	if ( data.bonus.pacifist ) { data.badges.push(['Pacifist','Pacifist challenge']); }
 	if ( data.bonus.usedDataConduit ) { data.badges.push(['DC','Plugged into the Data Conduit']); }
 	if ( data.bonus.exposedGolemChamber ) { data.badges.push(['GOLEM','Exposed the GOLEM chamber']); }
-	if ( data.bonus.a7ReachedMainframe ) { data.badges.push(['A7Mainframe','Led A7 to the Cetus Mainframe alive']); }
+	if ( data.bonus.a7ReachedMainframe ) { data.badges.push(['Mainframe','Led A7 to the Cetus Mainframe alive']); }
 	if ( data.bonus.metR17AtCetus ) { data.badges.push(['R17','Met Revision17 at Cetus']); }
 	if ( data.bonus.readDecryptedArchives ) { data.badges.push(['Decrypted','Decrypted the Archives']); }
-	if ( data.bonus.decryptedA0Command ) { data.badges.push(['Decrypted Lab','Decrypted the A0 command']); }
+	if ( data.bonus.decryptedA0Command ) { data.badges.push(['Lab Leak','Decrypted the A0 command']); }
 	if ( data.bonus.metR17AtResearch ) { data.badges.push(['R17 Incursion','Had a party in Research with Revision17']); }
 	if ( data.bonus.metWarlordAtResearch ) { data.badges.push(['Warlord Raid','Met Warlord in Research']); }
 	if ( data.bonus.hackedGodMode ) { data.badges.push(['God Mode','Hacked God Mode']); }
