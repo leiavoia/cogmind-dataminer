@@ -2,7 +2,7 @@
 ( function() {
 
 // turn this on if you want to search for "?filename.json" in local /data directory
-var use_local_dev = true;
+var use_local_dev = false;
 
 var app = null; // app is global? are you stupid?
 var filehash = null; // you fool!
@@ -679,8 +679,15 @@ function AnalyzeScoresheet( data ) {
 		},
 		chart_map_labels: [],
 		core_chart_data: [],
-		// build_chart_data: [],
-		damage_received_chart_data: [],
+		damage_received_chart_data: {
+			parts: [],
+			core: [],
+			absorbedByShields: [],
+			reducedBySiegeMode: [],
+			redirectedToCore: [],
+			redirectedToShielding: [],
+			regenRepairParts: []
+		},
 		avg_speed_data: [],
 		minmax_speed_data: [], // pairs of [min,max]
 		prop_chart_data: {}, // by type
@@ -816,8 +823,24 @@ function AnalyzeScoresheet( data ) {
 		data.charts.turns_chart_data.push( map.stats.actions.total.overall );
 		
 		// damage received
-		data.charts.damage_received_chart_data.push( map.stats.combat.damageTaken.overall );
-		
+		// note: not all indexes are present for every map area, so iterate over the "overall" list instead
+		// data.charts.damage_received_chart_data.push( map.stats.combat.damageTaken.overall );
+		for ( let k in data.charts.damage_received_chart_data ) {
+			let v = map.stats.combat.damageTaken[k] || 0;
+			// "core" can be POD or be a sub object ("core": { "overall": 0, "player2Percentage": 0 })
+			if ( k === 'core' && typeof map.stats.combat.damageTaken[k] === 'object' ) {
+				v = map.stats.combat.damageTaken[k]?.overall || 0;
+			}
+			// "parts" must be calculated
+			else if ( k === 'parts' ) {
+				let core = typeof map.stats.combat.damageTaken.core === 'object' 
+					? map.stats.combat.damageTaken.core.overall
+					: map.stats.combat.damageTaken.core;
+				v = ( map.stats.combat.damageTaken.overall || 0 ) - (core||0);
+			}
+			data.charts.damage_received_chart_data[k].push(v);
+		}		
+						
 		// core
 		// data.charts.core_chart_data.push( map.stats.combat.coreRemainingPercent || 100 ); //BUG in stat tracking. branches record zero?
 		
@@ -1867,10 +1890,31 @@ function ChangePane(pane) {
 				}
 				
 				app.charts.push( DrawGenericChart( 
-					app.scoresheet.charts.damage_received_chart_data, 
+					[
+						{
+							label: 'Parts',
+							color: '#b93f3f',
+							data: app.scoresheet.charts.damage_received_chart_data.parts
+						},
+						{
+							label: 'Core',
+							color: '#62C462',
+							data: app.scoresheet.charts.damage_received_chart_data.core
+						},
+						{
+							label: 'Absorbed By Shields',
+							color: '#377BC4',
+							data: app.scoresheet.charts.damage_received_chart_data.absorbedByShields
+						},
+						{
+							label: 'Reduced by Siege',
+							color: '#D6DD11',
+							data: app.scoresheet.charts.damage_received_chart_data.reducedBySiegeMode
+						},
+					],				
 					app.scoresheet.charts.chart_map_labels,
 					'damageReceivedChart',
-					{ legend:false, chartType: 'bar', aspectRatio:3, colors:'#b93f3f' }
+					{ legend:true, chartType: 'bar', stacked:true, aspectRatio:2 }
 					) );
 							
 				app.charts.push( DrawGenericChart( 
@@ -2217,10 +2261,16 @@ function CalculateBadges(data) {
 				else if ( row.event.match(/Joined by Warlord .* squad/i) ) { data.badges.push(['W-Boys','Summoned Warlord-affiliated squads']); }
 				else if ( row.event.match(/Fired Drained L-Cannon/i) ) { 
 					data.badges.push(['DLC','Fired a Drained L-Cannon']); 
+					// runia hack
+					if ( app.filehash == 'NqKDXkNv4e2NUuaXi' ) {
+						data.badges.push(['Impossible','Destroyed Architect with a Drained L-Cannon.']);
+					} 
 					// also look for an "Impossible!" Arch kill
-					for ( let i=Math.max(row_index-10,0); i < Math.max(row_index+10,map.historyEvents.length); i++ ) { 
-						if ( map.historyEvents[i].event.match(/Destroyed Architect/i) && row.turn == map.historyEvents[i].turn ) {
-							data.badges.push(['Impossible','Destroyed Architect with a Drained L-Cannon.']);
+					else {
+						for ( let i=Math.max(row_index-10,0); i < Math.min(row_index+10,map.historyEvents.length); i++ ) { 
+							if ( map.historyEvents[i].event.match(/Destroyed Architect/i) && row.turn == map.historyEvents[i].turn ) {
+								data.badges.push(['Impossible','Destroyed Architect with a Drained L-Cannon.']);
+							}
 						}
 					}
 				}
@@ -2293,7 +2343,7 @@ function CalculateBadges(data) {
 	if ( data.bonus.a7ReachedMainframe ) { data.badges.push(['Mainframe','Led A7 to the Cetus Mainframe alive']); }
 	if ( data.bonus.metR17AtCetus ) { data.badges.push(['R17','Met Revision17 at Cetus']); }
 	if ( data.bonus.readDecryptedArchives ) { data.badges.push(['Decrypted','Decrypted the Archives']); }
-	if ( data.bonus.decryptedA0Command ) { data.badges.push(['Lab Leak','Decrypted the A0 command']); }
+	if ( data.bonus.decryptedA0Command ) { data.badges.push(['Lab Leak','Decrypted terminals in the Hidden Lab']); }
 	if ( data.bonus.metR17AtResearch ) { data.badges.push(['R17 Incursion','Had a party in Research with Revision17']); }
 	if ( data.bonus.metWarlordAtResearch ) { data.badges.push(['Warlord Raid','Met Warlord in Research']); }
 	if ( data.bonus.hackedGodMode ) { data.badges.push(['God Mode','Hacked God Mode']); }
