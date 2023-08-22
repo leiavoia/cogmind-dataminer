@@ -236,6 +236,7 @@ const map_names = {
 	MIN: 'Mines',
 	LOW: 'Lower Caves',
 	UPP: 'Upper Caves',
+	SUB: 'Sub Caves',
 	JUN: 'Junkyard',
 	SCR: 'Scrap',
 	RES: 'Research',
@@ -2256,6 +2257,8 @@ function CalculateBadges(data) {
 				else if ( row.event.match(/Destroyed EX-DEC/i) ) { data.badges.push(['-DEC','Destroyed EX-DEC']); }
 				else if ( row.event.match(/Destroyed EX-BIN/i) ) { data.badges.push(['-BIN','Destroyed EX-BIN']); }
 				else if ( row.event.match(/Destroyed EX-HEX/i) ) { data.badges.push(['-HEX','Destroyed EX-HEX']); }
+				else if ( row.event.match(/Met VL-GR5/i) ) { data.badges.push(['VL-GR5','Met VL-GR5']); }
+				else if ( row.event.match(/Met 7R-MNS/i) ) { data.badges.push(['7R-MNS','Met 7R-MNS']); }
 				else if ( row.event.match(/Found Scrap Engine/i) ) { data.badges.push(['SE','Found a Scrap Engine']); }
 				else if ( row.event.match(/Found Encrypted Comm Array/i) ) { data.badges.push(['ECA','Found a Warlord Encrypted Comm Array']); }
 				else if ( row.event.match(/Joined by Warlord .* squad/i) ) { data.badges.push(['W-Boys','Summoned Warlord-affiliated squads']); }
