@@ -28,7 +28,7 @@ if ( php_sapi_name() == "cli" || $force_webmode ) {
 	if ( isset($params['s']) || isset($params['scrape']) || isset($_REQUEST['scrape']) ) { ScrapeScoresheets(); }
 	if ( isset($params['p']) || isset($params['process']) || isset($_REQUEST['process']) ) { ProcessScoresheets(); }
 	if ( isset($params['a']) || isset($params['analyze']) || isset($_REQUEST['analyze']) ) { AnalyzeDB(DATAMINER_ANALYZE_PIECEMEAL); }
-	if ( isset($params['c']) || isset($params['chart']) || isset($_REQUEST['chart']) ) { CreateChartData(); }
+	if ( isset($params['c']) || isset($params['chart']) || isset($_REQUEST['chart']) ) { CreateChartData(DATAMINER_ANALYZE_PIECEMEAL); }
 	if ( isset($params['x']) || isset($params['clean']) || isset($_REQUEST['clean']) ) { FileCleanup(); }
 }
 
@@ -171,19 +171,70 @@ function ProcessScoresheets() {
 }
 
 
-	
 function AnalyzeDB( $process_piecemeal=false ) { 
+	// take it in pieces if we have a large database
+	if ( $process_piecemeal ) { 
+		$sigs = ListAllRecentRunSignatures(5);
+		foreach ( $sigs as $sig ) {
+			AnalyzeDB_signature( $sig['version'], $sig['difficulty'], $sig['mode'] );
+		}
+	}
+	// do the whole thing at once (ok for small datasets)
+	else {
+		AnalyzeDB_signature();
+	}
+	
+	// secondary analysis
+	$db = DB();
+	$sigmas = 3;
+	PrintWithTS("Doing secondary-analysis ...");
+	$result = $db->query("
+		UPDATE analysis
+		SET 
+			stdmax = IF( `max` > `avg` + std*$sigmas, `avg` + std*$sigmas, `max`),
+			stdmin = IF( `min` < `avg` + std*-$sigmas, `avg` + std*-$sigmas, `min`),
+			stdrange = IF( `max` > `avg` + std*$sigmas, `avg` + std*$sigmas, `max`) - IF( `min` < `avg` + std*-$sigmas, `avg` + std*-$sigmas, `min`),
+			-- segments = IF( LEAST( uniq, 20 ) > 0 AND seglen < 1, 1, FLOOR(LEAST( uniq, 20 )) ),
+			segments = LEAST( uniq, 20 ),
+			seglen = (IF( `max` > `avg` + std*$sigmas, `avg` + std*$sigmas, `max`) - IF( `min` < `avg` + std*-$sigmas, `avg` + std*-$sigmas, `min`))
+				/ LEAST( uniq, 20 )
+			;
+		");
+	DBCheckForErrors( $result, $db );
+	
+	$result = $db->query("
+		UPDATE analysis, stats
+		-- SET seglen = IF( seglen < 1, 1, IF( stdrange < 20, 1, ROUND(seglen) ) ),  
+		--	-- IF( LEAST( GREATEST(stdrange,uniq), 20 ) > 0 AND seglen < 1, 1, FLOOR(LEAST( GREATEST(stdrange,uniq), 20 )) ),
+		--	segments = IF( seglen < 1, LEAST( GREATEST(stdrange,uniq), 20 ), segments )
+		SET stdmax = IF( max <= 20, max, stdmax ),
+			stdrange = (IF( max <= 20, max, IF( max > `avg` + std*3, `avg` + std*3, max)) - IF( `min` < `avg` + std*-3, `avg` + std*-3, `min`)),
+			-- segments = IF( seglen < 1, LEAST( GREATEST(stdrange,uniq), 20 ), segments ),
+			-- expands to: 
+			segments = IF( IF( seglen < 1, LEAST( GREATEST(stdrange,uniq)+1, 20 ), segments ) < 20 AND IF( seglen < 1, 1, IF( stdrange < 20, 1, ROUND(seglen) ) ) = 1, LEAST( GREATEST(stdrange,uniq), 20 ), IF( seglen < 1, LEAST( GREATEST(stdrange,uniq)+1, 20 ), segments ) ),
+			seglen = IF( seglen < 1, 1, IF( stdrange < 20, 1, ROUND(seglen) ) )
+		WHERE analysis.stat_id = stats.id
+		AND stats.type = 'integer'
+		");
+	DBCheckForErrors( $result, $db );
+	
+	$result = $db->query("COMMIT;");
+	
+	// manual fix for `stats.intel.robotAnalysisTotal` which has 
+	// an extreme endpoint when players access Data Conduit
+	$result = $db->query("
+		UPDATE analysis
+		SET seglen = 1, segments = LEAST(max,20)
+		WHERE stat_id = 2757541041
+		");
+			
+	PrintWithTS("Analysis finished.");
+		
+}
 
-	// set these if you want to limit recalculation to a subset
-	// $version = 'Beta 10.2';
-	// $difficulty = 'DIFFICULTY_ROGUE';
-	// $mode = 'SPECIAL_MODE_NONE';
-	// $label = 'stats.exploration.spacesMoved.averageSpeed';
-	$version = '';
-	$difficulty = '';
-	$mode = '';
-	$label = '';
-	$sigmas = 3; // moved to DB
+// leaving all params blank will reanalyze entire database. might be hard to swallow.
+function AnalyzeDB_signature( $version=null, $difficulty=null, $mode=null, $label=null ) { 
+	
 	$db = DB();
 
 	// print PrintTS() . "Analyzing numeric stats...\n";
@@ -194,14 +245,14 @@ function AnalyzeDB( $process_piecemeal=false ) {
 	// $result = $db->query("CALL CreateChartData();");
 	// DBCheckForErrors( $result, $db );
 
-	PrintWithTS("Starting DB analysis");
+	PrintWithTS("Starting DB analysis : $version $difficulty $mode $label");
 
 	$result = $db->query("START TRANSACTION;");
 	DBCheckForErrors( $result, $db );
 
 	// cleanup
 	PrintWithTS("Doing cleanup ...");
-	if ( $version || $difficulty || $mode ) {
+	if ( $version || $difficulty || $mode || $label ) {
 		$result = $db->query("
 			DELETE FROM analysis where 1=1
 			" . ( $version ? ("AND analysis.version = '" . addslashes($version) . "'") : null ) . "
@@ -213,7 +264,6 @@ function AnalyzeDB( $process_piecemeal=false ) {
 	}
 	else { // nukemall
 		$result = $db->query(" TRUNCATE analysis; ");
-		
 	}
 
 	// reanalyze stats
@@ -261,74 +311,39 @@ function AnalyzeDB( $process_piecemeal=false ) {
 			;");
 		DBCheckForErrors( $result, $db );
 	}
-	
-	PrintWithTS("Doing secondary-analysis ...");
-	$result = $db->query("
-		UPDATE analysis
-		SET 
-			stdmax = IF( `max` > `avg` + std*$sigmas, `avg` + std*$sigmas, `max`),
-			stdmin = IF( `min` < `avg` + std*-$sigmas, `avg` + std*-$sigmas, `min`),
-			stdrange = IF( `max` > `avg` + std*$sigmas, `avg` + std*$sigmas, `max`) - IF( `min` < `avg` + std*-$sigmas, `avg` + std*-$sigmas, `min`),
-			-- segments = IF( LEAST( uniq, 20 ) > 0 AND seglen < 1, 1, FLOOR(LEAST( uniq, 20 )) ),
-			segments = LEAST( uniq, 20 ),
-			seglen = (IF( `max` > `avg` + std*$sigmas, `avg` + std*$sigmas, `max`) - IF( `min` < `avg` + std*-$sigmas, `avg` + std*-$sigmas, `min`))
-				/ LEAST( uniq, 20 )
-			;
-		");
-	DBCheckForErrors( $result, $db );
-	
-	$result = $db->query("
-		UPDATE analysis, stats
-		-- SET seglen = IF( seglen < 1, 1, IF( stdrange < 20, 1, ROUND(seglen) ) ),  
-		--	-- IF( LEAST( GREATEST(stdrange,uniq), 20 ) > 0 AND seglen < 1, 1, FLOOR(LEAST( GREATEST(stdrange,uniq), 20 )) ),
-		--	segments = IF( seglen < 1, LEAST( GREATEST(stdrange,uniq), 20 ), segments )
-		SET stdmax = IF( max <= 20, max, stdmax ),
-			stdrange = (IF( max <= 20, max, IF( max > `avg` + std*3, `avg` + std*3, max)) - IF( `min` < `avg` + std*-3, `avg` + std*-3, `min`)),
-			-- segments = IF( seglen < 1, LEAST( GREATEST(stdrange,uniq), 20 ), segments ),
-			-- expands to: 
-			segments = IF( IF( seglen < 1, LEAST( GREATEST(stdrange,uniq)+1, 20 ), segments ) < 20 AND IF( seglen < 1, 1, IF( stdrange < 20, 1, ROUND(seglen) ) ) = 1, LEAST( GREATEST(stdrange,uniq), 20 ), IF( seglen < 1, LEAST( GREATEST(stdrange,uniq)+1, 20 ), segments ) ),
-			seglen = IF( seglen < 1, 1, IF( stdrange < 20, 1, ROUND(seglen) ) )
-		WHERE analysis.stat_id = stats.id
-		AND stats.type = 'integer'
-		");
-	DBCheckForErrors( $result, $db );
-	
-	$result = $db->query("COMMIT;");
-	
-	// manual fix for `stats.intel.robotAnalysisTotal` which has 
-	// an extreme endpoint when players access Data Conduit
-	$result = $db->query("
-		UPDATE analysis
-		SET seglen = 1, segments = LEAST(max,20)
-		WHERE stat_id = 2757541041
-		");
-			
-	PrintWithTS("Analysis finished.");
+
 }
 
-function CreateChartData() {
-	// set these if you want to limit recalculation to a subset
-	// $version = 'Beta 10.2';
-	// $difficulty = 'DIFFICULTY_ROGUE';
-	// $mode = 'SPECIAL_MODE_NONE';
-	// $label = 'stats.exploration.spacesMoved.averageSpeed';
-	$version = '';
-	$difficulty = '';
-	$mode = '';
-	$label = '';
+function CreateChartData( $process_piecemeal ) {
+
+	$db = DB();
+
+	// set up temporary counting table
+	// $db->query("FLUSH TABLES WITH READ LOCK;");
+	$result = $db->query("CREATE TEMPORARY TABLE nums (n int);");
+	$result = $db->query("INSERT INTO nums VALUES (0), (1), (2), (3), (4), (5), (6), (7), (8), (9), (10), (11), (12), (13), (14), (15), (16), (17), (18), (19), (20);");
+	
+	// take it in pieces if we have a large database
+	if ( $process_piecemeal ) { 
+		$sigs = ListAllRecentRunSignatures(5);
+		foreach ( $sigs as $sig ) {
+			CreateChartData_signature( $sig['version'], $sig['difficulty'], $sig['mode'] );
+		}
+	}
+	// do the whole thing at once (ok for small datasets)
+	else {
+		CreateChartData_signature();
+	}
+	PrintWithTS("Charting finished.");
+}
+
+function CreateChartData_signature( $version=null, $difficulty=null, $mode=null, $label=null ) {
 	$min_samples = 1; // moved to DB
 	$db = DB();
 
 	// // -------------- SEGMENTS -----------------------------
 	
-	PrintWithTS("Segmenting numerical stats ...");
-
-	// set up temporary counting table
-	// $db->query("FLUSH TABLES WITH READ LOCK;");
-	$result = $db->query("CREATE TEMPORARY TABLE nums (n int);");
-	
-	$result = $db->query("INSERT INTO nums VALUES (0), (1), (2), (3), (4), (5), (6), (7), (8), (9), (10), (11), (12), (13), (14), (15), (16), (17), (18), (19), (20);");
-	
+	PrintWithTS("Segmenting numerical stats: $version $difficulty $mode $label");
 
 	$result = $db->query("START TRANSACTION;");
 	DBCheckForErrors( $result, $db );
@@ -350,19 +365,18 @@ function CreateChartData() {
 				analysis.mode,						
 				FLOOR( (CAST( runstats.value as DECIMAL(24,5) ) - analysis.stdmin) / IF(analysis.seglen,analysis.seglen,1) ) as segment,
 				CAST( runstats.value as DECIMAL(24,5) ) as value
-			FROM runstats, analysis, runs, stats
+			FROM runstats, analysis, runs
 			WHERE runs.id = runstats.run_id
+				AND runstats.stat_id = analysis.stat_id
+				AND runstats.stat_id IN ( SELECT id FROM stats WHERE type IN ('float','integer') ) 
 				AND CAST(runstats.value as DECIMAL(24,5)) BETWEEN analysis.stdmin AND analysis.stdmax
-				AND analysis.stat_id = runstats.stat_id
-				AND analysis.version = runs.version
-				AND analysis.difficulty = runs.difficulty
-				AND analysis.mode = runs.mode
-				AND analysis.stat_id = stats.id
-				AND stats.type IN ('float','integer')
-				" . ( $version ? ("AND analysis.version = '" . addslashes($version) . "'") : null ) . "
-				" . ( $difficulty ? ("AND analysis.difficulty = '" . addslashes($difficulty) . "'") : null ) . "
-				" . ( $mode ? ("AND analysis.mode = '" . addslashes($mode) . "'") : null ) . "
-				" . ( $label ? ("AND stats.id = CRC32('" . addslashes($label) . "')") : null ) . "
+				AND runs.version = analysis.version
+				AND runs.difficulty = analysis.difficulty
+				AND runs.mode = analysis.mode
+				" . ( $version ? ("AND runs.version = '" . addslashes($version) . "'") : null ) . "
+				" . ( $difficulty ? ("AND runs.difficulty = '" . addslashes($difficulty) . "'") : null ) . "
+				" . ( $mode ? ("AND runs.mode = '" . addslashes($mode) . "'") : null ) . "
+				" . ( $label ? ("AND runstats.stat_id = CRC32('" . addslashes($label) . "')") : null ) . "
 		) as sub
 		GROUP BY sub.stat_id, sub.version, sub.difficulty, sub.mode, sub.segment;
 	");
@@ -429,11 +443,17 @@ function CreateChartData() {
 			AND analysis.version = '{$record['version']}'
 			AND analysis.difficulty = '{$record['difficulty']}'
 			AND analysis.mode = '{$record['mode']}'
+			AND analysis.chartdata IS NULL
 			;");
 		DBCheckForErrors( $result, $db );
+		if ( $record_count && $record_count % 1000 === 0 ) {
+			$db->query("COMMIT;");
+			$db->query("START TRANSACTION;");
+			}
 	}
+	
+	$result = $db->query("DROP TABLE segments;");
 	$db->query("COMMIT;");
-	PrintWithTS("Charting finished.");
 }
 
 
@@ -849,6 +869,20 @@ function ListAllNumericStatIDs() {
 	if ( $result->num_rows ) {
 		while( $row = $result->fetch_assoc() ) {
 			$records []= $row['id'];
+		}
+	}
+	return $records;
+}
+
+// provides a list of [version, difficulty, mode] for recently completed runs
+function ListAllRecentRunSignatures( $days = 3 ) {
+	$db = DB();
+	$q = "SELECT DISTINCT version, difficulty, mode FROM runs WHERE date >= CURRENT_TIMESTAMP - INTERVAL $days day;";
+	$result = $db->query($q);
+	$records = [];
+	if ( $result->num_rows ) {
+		while( $row = $result->fetch_assoc() ) {
+			$records []= $row;
 		}
 	}
 	return $records;
