@@ -90,9 +90,18 @@ else {
 			$records = ListAllStats();
 		}
 		
-		// default numerical stats mode
+		// get meta data about whats in the database to populate UI menues	
+		else if ( $f == 'metadata' ) {
+			$records = GetMetaDataForMenues();
+		}
+		
 		else {
-			$records = GetNumericalStats( $label, $mode, $difficulty, $version, $player, $winsonly, 30 );
+			// look for a preconfigured query
+			$records = CallConfiguredStatQuery( $f, [ $mode, $difficulty, $version, $player, $winsonly ] );
+			// default to numerical stats mode
+			if ( !$records ) { 
+				$records = GetNumericalStats( $label, $mode, $difficulty, $version, $player, $winsonly, 30 );
+			}
 		}
 		
 		// JSON presto!
@@ -573,6 +582,17 @@ function GetStringCounts( $label, $mode=null, $difficulty=null, $version=null, $
 	return $records;
 }
 
+function GetAvgRunTime( $mode=null, $difficulty=null, $version=null, $player=null, $winsonly=false ) {
+	$data = GetRunTimesGraphData( $mode, $difficulty, $version, $player, $winsonly );
+	$playtime_total_minutes = 0;
+	$playtime_total_runs = 0;
+	foreach ( $data as $r ) {
+		$playtime_total_minutes += $r['minutes'] * $r['num'];
+		$playtime_total_runs += $r['num'];
+	}
+	return $playtime_total_runs ? round( $playtime_total_minutes / $playtime_total_runs ) : 0;
+}
+
 function GetRunTimesGraphData( $mode=null, $difficulty=null, $version=null, $player=null, $winsonly=false ) {
 	$hooks = [];
 	if ( $mode ) { $hooks []= " AND runs.mode = '" . addslashes($mode) . "' "; }
@@ -948,7 +968,138 @@ function ListAllVersions() {
 	return $records;
 }
 		
+// this maps data labels to function calls to get the data		
+function CallConfiguredStatQuery( $label, $params ) {
+	static $queryConfig = [
+		'num_runs' => [ 'f' => 'CountRuns', 'params' => [] ],
+		'wintypes' => [ 'f' => 'GetStringCounts', 'params' => ['game.winType'] ],
+		'winloss' => [ 'f' => 'GetWinLoss', 'params' => [] ],
+		'highscores' => [ 'f' => 'GetTopX', 'params' => ['performance.totalScore'] ],
+		'runtimesChartData' => [ 'f' => 'GetRunTimesGraphData', 'params' => [] ],
+		'runtimeAvg' => [ 'f' => 'GetAvgRunTime', 'params' => [] ],
+		'playerRuns' => [ 'f' => 'GetRunsByPlayer', 'params' => [] ],
+		'runsByDay' => [ 'f' => 'GamesPlayedByDay', 'params' => [] ],
+		'causeOfDeath' => [ 'f' => 'GetStringCounts', 'params' => ['header.causeOfDeath'] ],
+		'itemOfDeath' => [ 'f' => 'GetStringCounts', 'params' => ['header.itemOfDeath'] ],
+		'favorites.power.overall' => [ 'f' => 'GetStringCounts', 'params' => ['favorites.power.overall'] ],
+		'favorites.power.engine' => [ 'f' => 'GetStringCounts', 'params' => ['favorites.power.engine'] ],
+		'favorites.power.powerCore' => [ 'f' => 'GetStringCounts', 'params' => ['favorites.power.powerCore'] ],
+		'favorites.power.reactor' => [ 'f' => 'GetStringCounts', 'params' => ['favorites.power.reactor'] ],
+		'favorites.propulsion.overall' => [ 'f' => 'GetStringCounts', 'params' => ['favorites.propulsion.overall'] ],
+		'favorites.propulsion.treads' => [ 'f' => 'GetStringCounts', 'params' => ['favorites.propulsion.treads'] ],
+		'favorites.propulsion.leg' => [ 'f' => 'GetStringCounts', 'params' => ['favorites.propulsion.leg'] ],
+		'favorites.propulsion.wheel' => [ 'f' => 'GetStringCounts', 'params' => ['favorites.propulsion.wheel'] ],
+		'favorites.propulsion.hoverUnit' => [ 'f' => 'GetStringCounts', 'params' => ['favorites.propulsion.hoverUnit'] ],
+		'favorites.propulsion.flightUnit' => [ 'f' => 'GetStringCounts', 'params' => ['favorites.propulsion.flightUnit'] ],
+		'favorites.utility.overall' => [ 'f' => 'GetStringCounts', 'params' => ['favorites.utility.overall'] ],
+		'favorites.utility.device' => [ 'f' => 'GetStringCounts', 'params' => ['favorites.utility.device'] ],
+		'favorites.utility.storage' => [ 'f' => 'GetStringCounts', 'params' => ['favorites.utility.storage'] ],
+		'favorites.utility.processor' => [ 'f' => 'GetStringCounts', 'params' => ['favorites.utility.processor'] ],
+		'favorites.utility.hackware' => [ 'f' => 'GetStringCounts', 'params' => ['favorites.utility.hackware'] ],
+		'favorites.utility.protection' => [ 'f' => 'GetStringCounts', 'params' => ['favorites.utility.protection'] ],
+		'favorites.utility.artifact' => [ 'f' => 'GetStringCounts', 'params' => ['favorites.utility.artifact'] ],
+		'favorites.weapon.overall' => [ 'f' => 'GetStringCounts', 'params' => ['favorites.weapon.overall'] ],
+		'favorites.weapon.energyGun' => [ 'f' => 'GetStringCounts', 'params' => ['favorites.weapon.energyGun'] ],
+		'favorites.weapon.energyCannon' => [ 'f' => 'GetStringCounts', 'params' => ['favorites.weapon.energyCannon'] ],
+		'favorites.weapon.ballisticGun' => [ 'f' => 'GetStringCounts', 'params' => ['favorites.weapon.ballisticGun'] ],
+		'favorites.weapon.ballisticCannon' => [ 'f' => 'GetStringCounts', 'params' => ['favorites.weapon.ballisticCannon'] ],
+		'favorites.weapon.launcher' => [ 'f' => 'GetStringCounts', 'params' => ['favorites.weapon.launcher'] ],
+		'favorites.weapon.specialWeapon' => [ 'f' => 'GetStringCounts', 'params' => ['favorites.weapon.specialWeapon'] ],
+		'favorites.weapon.impactWeapon' => [ 'f' => 'GetStringCounts', 'params' => ['favorites.weapon.impactWeapon'] ],
+		'favorites.weapon.slashingWeapon' => [ 'f' => 'GetStringCounts', 'params' => ['favorites.weapon.slashingWeapon'] ],
+		'favorites.weapon.piercingWeapon' => [ 'f' => 'GetStringCounts', 'params' => ['favorites.weapon.piercingWeapon'] ],
+		'favorites.weapon.specialMeleeWeapon' => [ 'f' => 'GetStringCounts', 'params' => ['favorites.weapon.specialMeleeWeapon'] ],
+		'machinesAccessed' => [ 'f' => 'GetOnTheFlyNumericalStats', 'params' => [ 'stats.hacking.machinesAccessed.%'] ],
+		'terminalHacks' => [ 'f' => 'GetOnTheFlyNumericalStats', 'params' => [ 'stats.hacking.terminalHacks.%'] ],
+		'fabricatorHacks' => [ 'f' => 'GetOnTheFlyNumericalStats', 'params' => [ 'stats.hacking.fabricatorHacks.%'] ],
+		'repairStationHacks' => [ 'f' => 'GetOnTheFlyNumericalStats', 'params' => [ 'stats.hacking.repairStationHacks.%'] ],
+		'recyclingUnitHacks' => [ 'f' => 'GetOnTheFlyNumericalStats', 'params' => [ 'stats.hacking.recyclingUnitHacks.%'] ],
+		'scanalyzerHacks' => [ 'f' => 'GetOnTheFlyNumericalStats', 'params' => [ 'stats.hacking.scanalyzer%'] ],
+		'garrisonAccessHacks' => [ 'f' => 'GetOnTheFlyNumericalStats', 'params' => [ 'stats.hacking.garrisonAccessHacks.%'] ],
+		'unauthorizedHacks' => [ 'f' => 'GetOnTheFlyNumericalStats', 'params' => [ 'stats.hacking.unauthorizedHacks.%'] ],
+		'classesDestroyed' => [ 'f' => 'GetOnTheFlyNumericalStats', 'params' => [ 'stats.kills.classesDestroyed.%'] ],
+		'alertLevels' => [ 'f' => 'GetOnTheFlyNumericalStats', 'params' => [ 'stats.alert.maximumAlertLevel.%'] ],
+		'squadsDispatched' => [ 'f' => 'GetOnTheFlyNumericalStats', 'params' => [ 'stats.alert.squadsDispatched.%'] ],
+		'bothacks' => [ 'f' => 'GetOnTheFlyNumericalStats', 'params' => [ 'stats.bothacking.robotHacksApplied.%'] ],
+		'robotsHacked' => [ 'f' => 'GetOnTheFlyNumericalStats', 'params' => [ 'stats.bothacking.robotsHacked.%'] ],
+		'machinesHacked' => [ 'f' => 'GetOnTheFlyNumericalStats', 'params' => [ [
+			'stats.hacking.totalHacks.fabricators',
+			'stats.hacking.totalHacks.repairStations',
+			'stats.hacking.totalHacks.scanalyzers',
+			'stats.hacking.totalHacks.recyclingUnits',
+			'stats.hacking.totalHacks.terminals',
+			'stats.hacking.totalHacks.garrisonAccess',
+			] ] ],
+		'spacesMoved' => [ 'f' => 'GetOnTheFlyNumericalStats', 'params' => [ [
+			'stats.exploration.spacesMoved.treads',
+			'stats.exploration.spacesMoved.legs',
+			'stats.exploration.spacesMoved.wheels',
+			'stats.exploration.spacesMoved.hover',
+			'stats.exploration.spacesMoved.flight',
+			'stats.exploration.spacesMoved.core',
+			'stats.exploration.spacesMoved.overall',
+			] ] ],
+		'attacksByWeaponType' => [ 'f' => 'GetOnTheFlyNumericalStats', 'params' => [ [
+			'stats.combat.shotsFired.gun',
+			'stats.combat.shotsFired.cannon',
+			'stats.combat.shotsFired.launcher',
+			'stats.combat.shotsFired.special',
+			'stats.combat.meleeAttacks.overall',
+			] ] ],
+		'attacksByDamageType' => [ 'f' => 'GetOnTheFlyNumericalStats', 'params' => [ [
+			'stats.combat.shotsFired.phasic',
+			'stats.combat.shotsFired.kinetic',
+			'stats.combat.shotsFired.entropic',
+			'stats.combat.shotsFired.thermal',
+			'stats.combat.shotsFired.electromagnetic',
+			'stats.combat.shotsFired.explosive',
+			// 'stats.combat.shotsFired.slashing', // Runia's throwing claymores technically a slashing type
+			'stats.combat.meleeAttacks.slashing',
+			'stats.combat.meleeAttacks.piercing',
+			'stats.combat.meleeAttacks.impact',
+			] ] ],
+		'damageByWeaponType' => [ 'f' => 'GetOnTheFlyNumericalStats', 'params' => [ [
+			'stats.combat.damageInflicted.guns',
+			'stats.combat.damageInflicted.cannons',
+			'stats.combat.damageInflicted.explosions',
+			'stats.combat.damageInflicted.melee',
+			'stats.combat.damageInflicted.ramming',
+			] ] ],
+		'damageByDamageType' => [ 'f' => 'GetOnTheFlyNumericalStats', 'params' => [ [
+			'stats.combat.damageInflicted.phasic',
+			'stats.combat.damageInflicted.kinetic',
+			'stats.combat.damageInflicted.entropic',
+			'stats.combat.damageInflicted.thermal',
+			'stats.combat.damageInflicted.electromagnetic',
+			'stats.combat.damageInflicted.explosive',
+			'stats.combat.damageInflicted.slashing',
+			'stats.combat.damageInflicted.piercing',
+			'stats.combat.damageInflicted.impact',
+			] ] ],
+		];
+		
+	if ( isset( $queryConfig[$label] ) ) {
+		$q = $queryConfig[$label];
+		$params = is_array($params) ? $params : [];
+		$params = array_merge( $q['params'], $params );
+		return call_user_func( $q['f'], ...$params ); 
+	}
+	else {
+		return false;
+	}
+}
+function GetMetaDataForMenues() {
+	return [
+		'stat_labels' => ListAllStats(),
+		'difficulties' => ['DIFFICULTY_ROGUE', 'DIFFICULTY_ADVENTURER', 'DIFFICULTY_EXPLORER'],
+		'versions' => ListAllVersions(),
+		'players' => ListAllPlayers(),
+		'modes' => ListAllModes(),
+	];
+}
+		
 function GetCommunityStats( $mode=null, $difficulty=null, $version=null, $player=null, $winsonly=false, $num=30 ) {
+	$stdparams = [ $mode, $difficulty, $version, $player, $winsonly ];		
 	$data = [
 		'request' => [
 			'mode' => $mode,
@@ -964,125 +1115,63 @@ function GetCommunityStats( $mode=null, $difficulty=null, $version=null, $player
 			'versions' => ListAllVersions(),
 			'players' => ListAllPlayers(),
 			'modes' => ListAllModes(),
-			
-			'num_runs' => CountRuns( $mode, $difficulty, $version, $player, $winsonly ),
-			
-			'wintypes' => GetStringCounts('game.winType', $mode, $difficulty, $version, $player, true ),
-			'winloss' => GetWinLoss( $mode, $difficulty, $version, $player ),
-			'highscores' => GetTopX( 'performance.totalScore', $mode, $difficulty, $version, $player, $winsonly, $num ),
-			'runtimesChartData' => GetRunTimesGraphData( $mode, $difficulty, $version, $player, $winsonly ),
-			'causeOfDeath' => GetStringCounts('header.causeOfDeath', $mode, $difficulty, $version, $player, false, $num ),
-			'itemOfDeath' => GetStringCounts('header.itemOfDeath', $mode, $difficulty, $version, $player, false, $num ),
-			'favorites.power.overall' => GetStringCounts('favorites.power.overall', $mode, $difficulty, $version, $player, $winsonly, 10 ),
-			'favorites.power.engine' => GetStringCounts('favorites.power.engine', $mode, $difficulty, $version, $player, $winsonly, 10 ),
-			'favorites.power.powerCore' => GetStringCounts('favorites.power.powerCore', $mode, $difficulty, $version, $player, $winsonly, 10 ),
-			'favorites.power.reactor' => GetStringCounts('favorites.power.reactor', $mode, $difficulty, $version, $player, $winsonly, 10 ),
-			'favorites.propulsion.overall' => GetStringCounts('favorites.propulsion.overall', $mode, $difficulty, $version, $player, $winsonly, 10 ),
-			'favorites.propulsion.treads' => GetStringCounts('favorites.propulsion.treads', $mode, $difficulty, $version, $player, $winsonly, 10 ),
-			'favorites.propulsion.leg' => GetStringCounts('favorites.propulsion.leg', $mode, $difficulty, $version, $player, $winsonly, 10 ),
-			'favorites.propulsion.wheel' => GetStringCounts('favorites.propulsion.wheel', $mode, $difficulty, $version, $player, $winsonly, 10 ),
-			'favorites.propulsion.hoverUnit' => GetStringCounts('favorites.propulsion.hoverUnit', $mode, $difficulty, $version, $player, $winsonly, 10 ),
-			'favorites.propulsion.flightUnit' => GetStringCounts('favorites.propulsion.flightUnit', $mode, $difficulty, $version, $player, $winsonly, 10 ),
-			'favorites.utility.overall' => GetStringCounts('favorites.utility.overall', $mode, $difficulty, $version, $player, $winsonly, 10 ),
-			'favorites.utility.device' => GetStringCounts('favorites.utility.device', $mode, $difficulty, $version, $player, $winsonly, 10 ),
-			'favorites.utility.storage' => GetStringCounts('favorites.utility.storage', $mode, $difficulty, $version, $player, $winsonly, 10 ),
-			'favorites.utility.processor' => GetStringCounts('favorites.utility.processor', $mode, $difficulty, $version, $player, $winsonly, 10 ),
-			'favorites.utility.hackware' => GetStringCounts('favorites.utility.hackware', $mode, $difficulty, $version, $player, $winsonly, 10 ),
-			'favorites.utility.protection' => GetStringCounts('favorites.utility.protection', $mode, $difficulty, $version, $player, $winsonly, 10 ),
-			'favorites.utility.artifact' => GetStringCounts('favorites.utility.artifact', $mode, $difficulty, $version, $player, $winsonly, 10 ),
-			'favorites.weapon.overall' => GetStringCounts('favorites.weapon.overall', $mode, $difficulty, $version, $player, $winsonly, 10 ),
-			'favorites.weapon.energyGun' => GetStringCounts('favorites.weapon.energyGun', $mode, $difficulty, $version, $player, $winsonly, 10 ),
-			'favorites.weapon.energyCannon' => GetStringCounts('favorites.weapon.energyCannon', $mode, $difficulty, $version, $player, $winsonly, 10 ),
-			'favorites.weapon.ballisticGun' => GetStringCounts('favorites.weapon.ballisticGun', $mode, $difficulty, $version, $player, $winsonly, 10 ),
-			'favorites.weapon.ballisticCannon' => GetStringCounts('favorites.weapon.ballisticCannon', $mode, $difficulty, $version, $player, $winsonly, 10 ),
-			'favorites.weapon.launcher' => GetStringCounts('favorites.weapon.launcher', $mode, $difficulty, $version, $player, $winsonly, 10 ),
-			'favorites.weapon.specialWeapon' => GetStringCounts('favorites.weapon.specialWeapon', $mode, $difficulty, $version, $player, $winsonly, 10 ),
-			'favorites.weapon.impactWeapon' => GetStringCounts('favorites.weapon.impactWeapon', $mode, $difficulty, $version, $player, $winsonly, 10 ),
-			'favorites.weapon.slashingWeapon' => GetStringCounts('favorites.weapon.slashingWeapon', $mode, $difficulty, $version, $player, $winsonly, 10 ),
-			'favorites.weapon.piercingWeapon' => GetStringCounts('favorites.weapon.piercingWeapon', $mode, $difficulty, $version, $player, $winsonly, 10 ),
-			'favorites.weapon.specialMeleeWeapon' => GetStringCounts('favorites.weapon.specialMeleeWeapon', $mode, $difficulty, $version, $player, $winsonly, 10 ),
-			
-			'machinesAccessed' => GetOnTheFlyNumericalStats( 'stats.hacking.machinesAccessed.%', $mode, $difficulty, $version, $player, $winsonly ),
-			'terminalHacks' => GetOnTheFlyNumericalStats( 'stats.hacking.terminalHacks.%', $mode, $difficulty, $version, $player, $winsonly ),
-			'fabricatorHacks' => GetOnTheFlyNumericalStats( 'stats.hacking.fabricatorHacks.%', $mode, $difficulty, $version, $player, $winsonly ),
-			'repairStationHacks' => GetOnTheFlyNumericalStats( 'stats.hacking.repairStationHacks.%', $mode, $difficulty, $version, $player, $winsonly ),
-			'recyclingUnitHacks' => GetOnTheFlyNumericalStats( 'stats.hacking.recyclingUnitHacks.%', $mode, $difficulty, $version, $player, $winsonly ),
-			'scanalyzerHacks' => GetOnTheFlyNumericalStats( 'stats.hacking.scanalyzer%', $mode, $difficulty, $version, $player, $winsonly ),
-			'garrisonAccessHacks' => GetOnTheFlyNumericalStats( 'stats.hacking.garrisonAccessHacks.%', $mode, $difficulty, $version, $player, $winsonly ),
-			'unauthorizedHacks' => GetOnTheFlyNumericalStats( 'stats.hacking.unauthorizedHacks.%', $mode, $difficulty, $version, $player, $winsonly ),
-			
-			'classesDestroyed' => GetOnTheFlyNumericalStats( 'stats.kills.classesDestroyed.%', $mode, $difficulty, $version, $player, $winsonly ),
-			
-			'alertLevels' => GetOnTheFlyNumericalStats( 'stats.alert.maximumAlertLevel.%', $mode, $difficulty, $version, $player, $winsonly ),
-			
-			'squadsDispatched' => GetOnTheFlyNumericalStats( 'stats.alert.squadsDispatched.%', $mode, $difficulty, $version, $player, $winsonly ),
-			
-			'bothacks' => GetOnTheFlyNumericalStats( 'stats.bothacking.robotHacksApplied.%', $mode, $difficulty, $version, $player, $winsonly ),
-			'robotsHacked' => GetOnTheFlyNumericalStats( 'stats.bothacking.robotsHacked.%', $mode, $difficulty, $version, $player, $winsonly ),
 					
-				
-			'machinesHacked' => GetOnTheFlyNumericalStats( [
-				'stats.hacking.totalHacks.fabricators',
-				'stats.hacking.totalHacks.repairStations',
-				'stats.hacking.totalHacks.scanalyzers',
-				'stats.hacking.totalHacks.recyclingUnits',
-				'stats.hacking.totalHacks.terminals',
-				'stats.hacking.totalHacks.garrisonAccess',
-				], $mode, $difficulty, $version, $player, $winsonly ),
-			
-			'spacesMoved' => GetOnTheFlyNumericalStats( [
-				'stats.exploration.spacesMoved.treads',
-				'stats.exploration.spacesMoved.legs',
-				'stats.exploration.spacesMoved.wheels',
-				'stats.exploration.spacesMoved.hover',
-				'stats.exploration.spacesMoved.flight',
-				'stats.exploration.spacesMoved.core',
-				'stats.exploration.spacesMoved.overall',
-				], $mode, $difficulty, $version, $player, $winsonly ),
-			
-			'attacksByWeaponType' => GetOnTheFlyNumericalStats( [
-				'stats.combat.shotsFired.gun',
-				'stats.combat.shotsFired.cannon',
-				'stats.combat.shotsFired.launcher',
-				'stats.combat.shotsFired.special',
-				'stats.combat.meleeAttacks.overall',
-				], $mode, $difficulty, $version, $player, $winsonly ),
-				
-			'attacksByDamageType' => GetOnTheFlyNumericalStats( [
-				'stats.combat.shotsFired.phasic',
-				'stats.combat.shotsFired.kinetic',
-				'stats.combat.shotsFired.entropic',
-				'stats.combat.shotsFired.thermal',
-				'stats.combat.shotsFired.electromagnetic',
-				'stats.combat.shotsFired.explosive',
-				// 'stats.combat.shotsFired.slashing', // Runia's throwing claymores technically a slashing type
-				'stats.combat.meleeAttacks.slashing',
-				'stats.combat.meleeAttacks.piercing',
-				'stats.combat.meleeAttacks.impact',
-				], $mode, $difficulty, $version, $player, $winsonly ),
-			
-			'damageByWeaponType' => GetOnTheFlyNumericalStats( [
-				'stats.combat.damageInflicted.guns',
-				'stats.combat.damageInflicted.cannons',
-				'stats.combat.damageInflicted.explosions',
-				'stats.combat.damageInflicted.melee',
-				'stats.combat.damageInflicted.ramming',
-				], $mode, $difficulty, $version, $player, $winsonly ),
-				
-			'damageByDamageType' => GetOnTheFlyNumericalStats( [
-				'stats.combat.damageInflicted.phasic',
-				'stats.combat.damageInflicted.kinetic',
-				'stats.combat.damageInflicted.entropic',
-				'stats.combat.damageInflicted.thermal',
-				'stats.combat.damageInflicted.electromagnetic',
-				'stats.combat.damageInflicted.explosive',
-				'stats.combat.damageInflicted.slashing',
-				'stats.combat.damageInflicted.piercing',
-				'stats.combat.damageInflicted.impact',
-				], $mode, $difficulty, $version, $player, $winsonly ),
-
-		]
-	];
+			'num_runs' => CallConfiguredStatQuery( 'num_runs', $stdparams ),
+			'wintypes' => CallConfiguredStatQuery( 'wintypes', [ $mode, $difficulty, $version, $player, true ] ),
+			'winloss' => CallConfiguredStatQuery( 'winloss', [$mode, $difficulty, $version, $player] ),
+			'highscores' => CallConfiguredStatQuery( 'highscores', [...$stdparams, $num] ),
+			'runtimesChartData' => CallConfiguredStatQuery( 'runtimesChartData', [...$stdparams, $num] ),
+			'causeOfDeath' => CallConfiguredStatQuery( 'causeOfDeath', [...$stdparams, $num] ),
+			'itemOfDeath' => CallConfiguredStatQuery( 'itemOfDeath', [...$stdparams, $num] ),
+			'favorites.power.overall' => CallConfiguredStatQuery( 'favorites.power.overall', [...$stdparams, 10] ),
+			'favorites.power.engine' => CallConfiguredStatQuery( 'favorites.power.engine', [...$stdparams, 10] ),
+			'favorites.power.powerCore' => CallConfiguredStatQuery( 'favorites.power.powerCore', [...$stdparams, 10] ),
+			'favorites.power.reactor' => CallConfiguredStatQuery( 'favorites.power.reactor', [...$stdparams, 10] ),
+			'favorites.propulsion.overall' => CallConfiguredStatQuery( 'favorites.propulsion.overall', [...$stdparams, 10] ),
+			'favorites.propulsion.treads' => CallConfiguredStatQuery( 'favorites.propulsion.treads', [...$stdparams, 10] ),
+			'favorites.propulsion.leg' => CallConfiguredStatQuery( 'favorites.propulsion.leg', [...$stdparams, 10] ),
+			'favorites.propulsion.wheel' => CallConfiguredStatQuery( 'favorites.propulsion.wheel', [...$stdparams, 10] ),
+			'favorites.propulsion.hoverUnit' => CallConfiguredStatQuery( 'favorites.propulsion.hoverUnit', [...$stdparams, 10] ),
+			'favorites.propulsion.flightUnit' => CallConfiguredStatQuery( 'favorites.propulsion.flightUnit', [...$stdparams, 10] ),
+			'favorites.utility.overall' => CallConfiguredStatQuery( 'favorites.utility.overall', [...$stdparams, 10] ),
+			'favorites.utility.device' => CallConfiguredStatQuery( 'favorites.utility.device', [...$stdparams, 10] ),
+			'favorites.utility.storage' => CallConfiguredStatQuery( 'favorites.utility.storage', [...$stdparams, 10] ),
+			'favorites.utility.processor' => CallConfiguredStatQuery( 'favorites.utility.processor', [...$stdparams, 10] ),
+			'favorites.utility.hackware' => CallConfiguredStatQuery( 'favorites.utility.hackware', [...$stdparams, 10] ),
+			'favorites.utility.protection' => CallConfiguredStatQuery( 'favorites.utility.protection', [...$stdparams, 10] ),
+			'favorites.utility.artifact' => CallConfiguredStatQuery( 'favorites.utility.artifact', [...$stdparams, 10] ),
+			'favorites.weapon.overall' => CallConfiguredStatQuery( 'favorites.weapon.overall', [...$stdparams, 10] ),
+			'favorites.weapon.energyGun' => CallConfiguredStatQuery( 'favorites.weapon.energyGun', [...$stdparams, 10] ),
+			'favorites.weapon.energyCannon' => CallConfiguredStatQuery( 'favorites.weapon.energyCannon', [...$stdparams, 10] ),
+			'favorites.weapon.ballisticGun' => CallConfiguredStatQuery( 'favorites.weapon.ballisticGun', [...$stdparams, 10] ),
+			'favorites.weapon.ballisticCannon' => CallConfiguredStatQuery( 'favorites.weapon.ballisticCannon', [...$stdparams, 10] ),
+			'favorites.weapon.launcher' => CallConfiguredStatQuery( 'favorites.weapon.launcher', [...$stdparams, 10] ),
+			'favorites.weapon.specialWeapon' => CallConfiguredStatQuery( 'favorites.weapon.specialWeapon', [...$stdparams, 10] ),
+			'favorites.weapon.impactWeapon' => CallConfiguredStatQuery( 'favorites.weapon.impactWeapon', [...$stdparams, 10] ),
+			'favorites.weapon.slashingWeapon' => CallConfiguredStatQuery( 'favorites.weapon.slashingWeapon', [...$stdparams, 10] ),
+			'favorites.weapon.piercingWeapon' => CallConfiguredStatQuery( 'favorites.weapon.piercingWeapon', [...$stdparams, 10] ),
+			'favorites.weapon.specialMeleeWeapon' => CallConfiguredStatQuery( 'favorites.weapon.specialMeleeWeapon', [...$stdparams, 10] ),
+			'machinesAccessed' => CallConfiguredStatQuery( 'machinesAccessed', $stdparams ),
+			'terminalHacks' => CallConfiguredStatQuery( 'terminalHacks', $stdparams ),
+			'fabricatorHacks' => CallConfiguredStatQuery( 'fabricatorHacks', $stdparams ),
+			'repairStationHacks' => CallConfiguredStatQuery( 'repairStationHacks', $stdparams ),
+			'recyclingUnitHacks' => CallConfiguredStatQuery( 'recyclingUnitHacks', $stdparams ),
+			'scanalyzerHacks' => CallConfiguredStatQuery( 'scanalyzerHacks', $stdparams ),
+			'garrisonAccessHacks' => CallConfiguredStatQuery( 'garrisonAccessHacks', $stdparams ),
+			'unauthorizedHacks' => CallConfiguredStatQuery( 'unauthorizedHacks', $stdparams ),
+			'classesDestroyed' => CallConfiguredStatQuery( 'classesDestroyed', $stdparams ),
+			'alertLevels' => CallConfiguredStatQuery( 'alertLevels', $stdparams ),
+			'squadsDispatched' => CallConfiguredStatQuery( 'squadsDispatched', $stdparams ),
+			'bothacks' => CallConfiguredStatQuery( 'bothacks', $stdparams ),
+			'robotsHacked' => CallConfiguredStatQuery( 'robotsHacked', $stdparams ),
+			'machinesHacked' => CallConfiguredStatQuery( 'machinesHacked', $stdparams ),
+			'spacesMoved' => CallConfiguredStatQuery( 'spacesMoved', $stdparams ),
+			'attacksByWeaponType' => CallConfiguredStatQuery( 'attacksByWeaponType', $stdparams ),
+			'attacksByDamageType' => CallConfiguredStatQuery( 'attacksByDamageType', $stdparams ),
+			'damageByWeaponType' => CallConfiguredStatQuery( 'damageByWeaponType', $stdparams ),
+			'damageByDamageType' => CallConfiguredStatQuery( 'damageByDamageType', $stdparams ),
+			]
+		];
 	
 	// play time averages
 	$playtime_total_minutes = 0;
@@ -1327,7 +1416,7 @@ function SanitizeInt( $x ) {
 
 // recursively converts numeric strings to actual number types (int, float).
 function AutoCastNumbers( &$array ) { 
-	return array_walk_recursive( $array, function (&$v, $k) { 
+	$cb = function (&$v, $k) { 
 		// certain pseudo-numbers like zipcodes may have leading zeros. These are NOT numeric.
 		if ( is_string($v) && strlen($v)>1 && $v[0]==='0' && $v[1]!=='.' ) { return $v; }
 		// there are also certain known keys (like zipcodes) that should never be numeric.
@@ -1339,8 +1428,15 @@ function AutoCastNumbers( &$array ) {
 			$v = ( is_nan($n) || !is_finite($n) ) ? $v : $n;
 			}
 		return $v;
-		});
+	};
+	if ( is_array($array) ) {
+		array_walk_recursive( $array, $cb );
 	}
+	else {
+		$junk = null;
+		$array = $cb($array,$junk);
+	}
+}
 	
 function GetURLs() {
 	$urls = [];

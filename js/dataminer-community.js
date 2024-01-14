@@ -1,11 +1,7 @@
 // WORST. JAVASCRIPT. EVER.
 ( function() {
 
-// turn this on if you want to search for "?filename.json" in local /data directory
-var use_local_dev = false;
-
 var app = null; // app is global? are you stupid?
-var filehash = null; // you fool!
 
 // chart defaults
 Chart.defaults.color = '#FFF';
@@ -14,30 +10,6 @@ Chart.defaults.elements.line.borderColor = '#41A34F';
 Chart.defaults.elements.bar.backgroundColor = '#41A34F';
 Chart.defaults.elements.bar.borderColor = '#41A34F';
 Chart.defaults.elements.point.radius = 0;
-// add this if you want pie chart labels
-// Chart.register(ChartDataLabels);
-// Chart.defaults.plugins.datalabels = {
-// 	display: 'auto',
-// 	// formatter: (val, ctx) => {
-// 	// 	return ctx.chart.data.labels[ctx.dataIndex];
-// 	// },
-// 	formatter: (val, ctx) => {
-// 		console.log(ctx);
-// 		return /* ctx.dataIndex + ': ' +  */ Math.round(val*100) + '%';
-// 	}	,
-// 	// backgroundColor: function(context) {
-// 	// 	return context.dataset.backgroundColor;
-// 	// },			
-// 	color: '#fff',
-// 	backgroundColor: '#00000055',
-// 	borderRadius: 3,
-// 	borderColor: '#3A3F44',
-// 	borderWidth:1,
-// 	padding: { top:3, bottom:2, left:5, right:5 },
-// 	anchor: 'end',
-// 	// clamp:true,
-// 	// clip:false
-// 	}
 Chart.pie_colors = [ // you should not be adding stuff in like this. 
 	'#2fa533', // green
 	'#26bfc7', // cyan
@@ -150,40 +122,6 @@ Chart.SortPieData = function ( data, labels, colors=null ) { // coupled arrays
 	}
 }
 
-const map_names = {
-	FAC: 'Factory',
-	MIN: 'Mines',
-	LOW: 'Lower Caves',
-	UPP: 'Upper Caves',
-	SCR: 'Scrap',
-	RES: 'Research',
-	ACC: 'Access',
-	COM: 'Command',
-	AC0: 'A0',
-	LAB: 'Lab',
-	SEC: 'Section 7',
-	ZIO: 'Zion',
-	DEE: 'ZDC',
-	TES: 'Testing',
-	QUA: 'Quarantine',
-	PRO: 'Proxy Caves',
-	ZHI: 'Zhirov',
-	DAT: 'Dataminer',
-	WAR: 'Warlord',
-	EXI: 'Exiles',
-	MAT: 'Materials',
-	EXT: 'Extension',
-	ARC: 'Archives',
-	CET: 'Cetus',
-	HUB: 'Hub',
-	REC: 'Recycling',
-	STO: 'Storage',
-	ARM: 'Armory',
-	WAS: 'Waste',
-	GAR: 'Garrison',
-	DSF: 'DSF', 35: 'DSF', // bug for Beta11-X8 data format not updated yet
-};
-
 function Undatafy() { 
 	return this
 		// .replace(/((?<!^)[A-Z](?![A-Z]))(?=\S)/g, ' $1') // doesn't work on iOS :-(
@@ -207,6 +145,344 @@ function Undatafy() {
 }
 String.prototype.Undatafy = Undatafy; // you're bad for doing this
 
+// this provides configuration that ties together HTTP requests for data
+// with charts and graphs that need to be updated. Then you can just queue
+// updates by name and the configuration here does all the stuff.
+let notOverall = x => !x.label.match(/overall$/);
+let updatesConfig = {
+	runsByDay: {
+		requests: [
+			'runsByDay'
+		],
+		draw: function () {
+			if ( !app.settings.player && app.stats.data.runsByDay?.length ) {
+				app.charts.push( DrawRunsByDayChart( 
+					app.stats.data.runsByDay.map( x => ({x:x.date, y:x.num}) )
+					) );
+			}		
+		}		
+	},
+	playerRuns: {
+		requests: [
+			'playerRuns'
+		],
+		draw: function () {
+			if ( app.settings.player && app.stats.data.playerRuns?.length ) {
+				app.charts.push( DrawPlayerRunsChart( 
+					app.stats.data.playerRuns.map( x => ({ x:x.date, y:x.score }) ),
+					app.stats.data.playerRuns.map( x => {
+						if ( x.win ) return Chart.colors_by_key['win'];
+						else if ( x.final_depth < -7 ) return Chart.colors_by_key['materials'];
+						else if ( x.final_depth < -3 ) return Chart.colors_by_key['factory'];
+						else if ( x.final_depth < -1 ) return Chart.colors_by_key['research'];
+						else if ( x.final_map == 'COM' ) return Chart.colors_by_key['command'];
+						else if ( x.final_map == 'AC0' ) return Chart.colors_by_key['a0'];
+						return Chart.colors_by_key['access'];
+					} ),
+				) );
+			}	
+		}		
+	},
+	winloss: {
+		requests: [ 'winloss' ],
+		draw: function () {
+			// console.log('theoretically we have winloss data now',app.stats);
+			app.charts.push( DrawWinLossPieChart( 
+				[	app.stats.data.winloss.wins, 
+					app.stats.data.winloss.access,
+					app.stats.data.winloss.research,
+					app.stats.data.winloss.factory,
+					app.stats.data.winloss.materials,
+				], 
+				['Wins','Access','Research','Factory','Materials']
+				) 
+			);	
+		}		
+	},
+	wintypes: {
+		requests: [ 'wintypes' ],
+		draw: function () {
+				app.charts.push( DrawWinTypesPieChart( 
+					app.stats.data.wintypes.map( x => x.num ),
+					app.stats.data.wintypes.map( x => 'W' + x.value )
+					) );
+			
+		}		
+	},
+	runtimesChartData: {
+		requests: [ 'runtimesChartData' ],
+		draw: function () {
+			app.charts.push( DrawPlaytimeChart( 
+				app.stats.data.runtimesChartData.filter( x => x.minutes < 500 ).map( x => ({x:x.minutes, y:x.num}) )
+			) );		
+		}		
+	},
+	spacesMoved: {
+		requests: [ 'spacesMoved' ],
+		draw: function () {
+			let spacesMoved = app.stats.data.spacesMoved.filter( x => x.label != 'stats.exploration.spacesMoved.overall' );
+			app.charts.push( DrawGenericChart(
+				spacesMoved.map( x => x.sum ),
+				spacesMoved.map( x => x.label.replace('stats.exploration.spacesMoved.','') ),
+				'spacesMovedPieChart',
+				{ sort:true, colors: 'indexed', undatafy: true, addpct:true, legendPos:'left', aspectRatio:1.75 }
+				) );	
+		}		
+	},
+	machinesAccessed: {
+		requests: [ 'machinesAccessed' ],
+		draw: function () {
+			app.charts.push( DrawGenericChart( 
+				app.stats.data.machinesAccessed.filter(notOverall).map( x => x.sum ) ,
+				app.stats.data.machinesAccessed.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
+				'machinesAccessChart',
+				{ sort:true, colors: 'indexed', undatafy: true, addpct:true, legendPos:'top', aspectRatio:1, chartType: 'doughnut' }
+				) );			
+		}		
+	},
+	machinesHacked: {
+		requests: [ 'machinesHacked' ],
+		draw: function () {
+			app.charts.push( DrawGenericChart( 
+				app.stats.data.machinesHacked.filter(notOverall).map( x => x.sum ) ,
+				app.stats.data.machinesHacked.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
+				'machinesHackedChart',
+				{ sort:true, colors: 'indexed', undatafy: true, addpct:true, legendPos:'top', aspectRatio:1, chartType: 'doughnut' }
+				) );			
+		}		
+	},
+	terminalHacks: {
+		requests: [ 'terminalHacks' ],
+		draw: function () {
+			app.charts.push( DrawGenericChart( 
+				app.stats.data.terminalHacks.filter(notOverall).map( x => x.sum ) ,
+				app.stats.data.terminalHacks.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
+				'terminalHacksChart',
+				{ sort:true,  undatafy: true, addpct:true, legend:false, aspectRatio:0.75, flipAxes:true, chartType: 'bar' }
+				) );			
+		}		
+	},
+	fabricatorHacks: {
+		requests: [ 'fabricatorHacks' ],
+		draw: function () {
+			app.charts.push( DrawGenericChart( 
+				app.stats.data.fabricatorHacks.filter(notOverall).map( x => x.sum ) ,
+				app.stats.data.fabricatorHacks.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
+				'fabricatorHacksChart',
+				{ sort:true, undatafy: true, addpct:true, legendPos:'left', aspectRatio:2, chartType: 'pie' }
+				) );			
+		}		
+	},
+	repairStationHacks: {
+		requests: [ 'repairStationHacks' ],
+		draw: function () {
+			app.charts.push( DrawGenericChart( 
+				app.stats.data.repairStationHacks.filter(notOverall).map( x => x.sum ) ,
+				app.stats.data.repairStationHacks.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
+				'repairStationHacksChart',
+				{ sort:true, undatafy: true, addpct:true, legendPos:'left', aspectRatio:2, chartType: 'pie' }
+				) );			
+		}		
+	},
+	recyclingUnitHacks: {
+		requests: [ 'recyclingUnitHacks' ],
+		draw: function () {
+			app.charts.push( DrawGenericChart( 
+				app.stats.data.recyclingUnitHacks.filter(notOverall).map( x => x.sum ) ,
+				app.stats.data.recyclingUnitHacks.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
+				'recyclingUnitHacksChart',
+				{ sort:true, undatafy: true, addpct:true, legendPos:'left', aspectRatio:2, chartType: 'pie' }
+				) );			
+		}		
+	},
+	scanalyzerHacks: {
+		requests: [ 'scanalyzerHacks' ],
+		draw: function () {
+			app.charts.push( DrawGenericChart( 
+				app.stats.data.scanalyzerHacks.filter(notOverall).map( x => x.sum ) ,
+				app.stats.data.scanalyzerHacks.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
+				'scanalyzerHacksChart',
+				{ sort:true, undatafy: true, addpct:true, legendPos:'left', aspectRatio:2, chartType: 'pie' }
+				) );			
+		}		
+	},
+	garrisonAccessHacks: {
+		requests: [ 'garrisonAccessHacks' ],
+		draw: function () {
+			app.charts.push( DrawGenericChart( 
+				app.stats.data.garrisonAccessHacks.filter(notOverall).map( x => x.sum ) ,
+				app.stats.data.garrisonAccessHacks.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
+				'garrisonAccessHacksChart',
+				{ sort:true, undatafy: true, addpct:true, legendPos:'left', aspectRatio:2, chartType: 'pie' }
+				) );			
+		}		
+	},
+	unauthorizedHacks: {
+		requests: [ 'unauthorizedHacks' ],
+		draw: function () {
+			// this chart gets special colors
+			app.charts.push( DrawGenericChart( 
+				app.stats.data.unauthorizedHacks.filter(notOverall).map( x => x.sum ) ,
+				app.stats.data.unauthorizedHacks.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
+				'unauthorizedHacksChart',
+				{ sort:true,  undatafy: true, addpct:true, legend:false, aspectRatio:1, flipAxes:true, chartType: 'bar', colors:
+					app.stats.data.unauthorizedHacks.filter(notOverall).map( x => { 
+						if ( x.label.match(/terminals/) ) { return Chart.colors_by_key['terminals'] } 
+						if ( x.label.match(/fabricators/) ) { return Chart.colors_by_key['fabricators'] } 
+						if ( x.label.match(/repairStations/) ) { return Chart.colors_by_key['repairStations'] } 
+						if ( x.label.match(/scanalyzers/) ) { return Chart.colors_by_key['scanalyzers'] } 
+						if ( x.label.match(/garrisonAccess/) ) { return Chart.colors_by_key['garrisonAccess'] } 
+						if ( x.label.match(/recyclingUnits/) ) { return Chart.colors_by_key['recyclingUnits'] } 
+						return Chart.colors_by_key['terminals'];
+					}) 
+				} ) );			
+		}		
+	},
+	robotsHacked: {
+		requests: [ 'robotsHacked' ],
+		draw: function () {
+			app.charts.push( DrawGenericChart( 
+				app.stats.data.robotsHacked.filter(notOverall).map( x => x.sum ) ,
+				app.stats.data.robotsHacked.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
+				'robotsHackedChart',
+				{ sort:true, undatafy: true, addpct:true, legendPos:'left', aspectRatio:2, chartType: 'pie' }
+				) );			
+		}		
+	},
+	bothacks: {
+		requests: [ 'bothacks' ],
+		draw: function () {
+			app.charts.push( DrawGenericChart( 
+				app.stats.data.bothacks.filter(notOverall).map( x => x.sum ) ,
+				app.stats.data.bothacks.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
+				'bothacksChart',
+				{ sort:true, undatafy: true, addpct:true, legend:false, aspectRatio:0.6, flipAxes:true, chartType: 'bar' }
+				) );			
+		}		
+	},
+	attacksByWeaponType: {
+		requests: [ 'attacksByWeaponType' ],
+		draw: function () {
+			app.charts.push( DrawGenericChart( 
+				app.stats.data.attacksByWeaponType.map( x => x.sum ) ,
+				app.stats.data.attacksByWeaponType.map( x => x.label.replace(/^.*\./,'').replace('overall','melee') ),
+				'attacksByWeaponTypeChart',
+				{ sort:true, colors: 'indexed', undatafy: true, addpct:true, legendPos:'top', aspectRatio:1 }
+				) );			
+		}		
+	},
+	attacksByDamageType: {
+		requests: [ 'attacksByDamageType' ],
+		draw: function () {
+			app.charts.push( DrawGenericChart( 
+				app.stats.data.attacksByDamageType.map( x => x.sum ) ,
+				app.stats.data.attacksByDamageType.map( x => x.label.replace(/^.*\./,'') ),
+				'attacksByDamageTypeChart',
+				{ sort:true, colors: 'indexed', undatafy: true, addpct:true, legendPos:'top', aspectRatio:1 }
+				) );			
+		}		
+	},
+	damageByWeaponType: {
+		requests: [ 'damageByWeaponType' ],
+		draw: function () {
+			app.charts.push( DrawGenericChart( 
+				app.stats.data.damageByWeaponType.map( x => x.sum ) ,
+				app.stats.data.damageByWeaponType.map( x => x.label.replace(/^.*\./,'') ),
+				'damageByWeaponTypeChart',
+				{ sort:true, colors: 'indexed', undatafy: true, addpct:true, legendPos:'top', aspectRatio:1 }
+				) );			
+		}		
+	},
+	damageByDamageType: {
+		requests: [ 'damageByDamageType' ],
+		draw: function () {
+			app.charts.push( DrawGenericChart( 
+				app.stats.data.damageByDamageType.map( x => x.sum ) ,
+				app.stats.data.damageByDamageType.map( x => x.label.replace(/^.*\./,'') ),
+				'damageByDamageTypeChart',
+				{ sort:true, colors: 'indexed', undatafy: true, addpct:true, legendPos:'top', aspectRatio:1 }
+				) );			
+		}		
+	},
+	classesDestroyed: {
+		requests: [ 'classesDestroyed' ],
+		draw: function () {
+			app.charts.push( DrawGenericChart( 
+				app.stats.data.classesDestroyed.filter(notOverall).map( x => x.sum ) ,
+				app.stats.data.classesDestroyed.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
+				'botsDestroyedChart',
+				{ sort:true, colors: 'pie', undatafy: true, addpct:true, legend:false, aspectRatio:0.5, flipAxes:true, chartType:'bar' }
+				) );			
+		}		
+	},
+	squadsDispatched: {
+		requests: [ 'squadsDispatched' ],
+		draw: function () {
+			app.charts.push( DrawGenericChart( 
+				app.stats.data.squadsDispatched.filter(notOverall).map( x => x.sum ) ,
+				app.stats.data.squadsDispatched.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
+				'squadsDispatchedChart',
+				{ sort:true, colors: 'pie', undatafy: true, addpct:true, legendPos:'left', aspectRatio:1.75 }
+				) );			
+		}		
+	},
+	alertLevels: {
+		requests: [ 'alertLevels' ],
+		draw: function () {
+			// app.stats.data.alertLevels.sort( (a,b) => b.sorting - a.sorting );
+			app.charts.push( DrawGenericChart( 
+				app.stats.data.alertLevels.filter(notOverall).map( x => x.sum ) ,
+				app.stats.data.alertLevels.filter(notOverall).map( x => x.label.replace(/^.*\./,'').replace('lowSecurityPercent','lowSecurity') ),
+				'alertLevelsChart',
+				{ sort:true, colors: 'pie', undatafy: true, addpct:true, legendPos:'left', aspectRatio:1.75 }
+				) );			
+		}		
+	},	
+	metadata: {
+		requests: [ 'metadata' ],
+		draw: function () {
+			// unwrap multiple keyed data structures we got from server
+			for ( let k in app.stats.data.metadata ) {
+				app.stats.data[k] = app.stats.data.metadata[k];
+			}
+			delete(app.stats.data.metadata);
+		}		
+	},	
+}
+
+// returns a promise you can chain
+function QueueUpdate(name) {
+	app.spinners[name] = true; 
+	
+	// get a configured query, likely something that needs to draw a chart
+	if ( updatesConfig.hasOwnProperty(name) ) {
+		return Promise.all( updatesConfig[name].requests.map( 
+			reqname => LoadStatsFromServer( reqname, data => {
+				if ( data ) { 
+					app.stats.data[reqname] = data;
+				}
+			}, false )
+		) )
+		.then( _ => { 
+			app.spinners[name] = false; 
+			updatesConfig[name].draw();
+	 	});
+	}
+	// skip the config and just get raw data, usually for tabular output
+	else {
+		return LoadStatsFromServer( name, data => {
+			if ( data ) { 
+				app.stats.data[name] = data;
+			}
+		} , false )
+		.then( _ => { 
+			app.spinners[name] = false; 
+	 	});		
+	}
+}
+
+
+
 // ======== NOW LETS ACTUALLY GET SOME WORK DONE ==========
 
 // URL query string params
@@ -219,8 +495,50 @@ app = new Vue({
 	data: { 
 		analysis: null, // populates when request for JSON succeeds
 		pane: null, // dont set to 'overview' by default. graphs need to be prompted to draw
-		stats: { data: { num_runs:0 } }, // to be populated by server
+		stats: { // to be populated by server later, however we need some hooks for vue.js up front
+			data: { 
+				num_runs:0,
+				runtimeAvg:0,
+				playerRuns:[],
+				versions:[],
+				difficulties:[],
+				modes:[],
+				players:[],
+				highscores:[],
+				causeOfDeath:[],
+				itemOfDeath:[],
+				'favorites.power.overall': [],
+				'favorites.power.engine': [],
+				'favorites.power.powerCore': [],
+				'favorites.power.reactor': [],
+				'favorites.propulsion.overall': [],
+				'favorites.propulsion.treads': [],
+				'favorites.propulsion.leg': [],
+				'favorites.propulsion.wheel': [],
+				'favorites.propulsion.hoverUnit': [],
+				'favorites.propulsion.flightUnit': [],
+				'favorites.utility.overall': [],
+				'favorites.utility.device': [],
+				'favorites.utility.storage': [],
+				'favorites.utility.processor': [],
+				'favorites.utility.hackware': [],
+				'favorites.utility.protection': [],
+				'favorites.utility.artifact': [],
+				'favorites.weapon.overall': [],
+				'favorites.weapon.energyGun': [],
+				'favorites.weapon.energyCannon': [],
+				'favorites.weapon.ballisticGun': [],
+				'favorites.weapon.ballisticCannon': [],
+				'favorites.weapon.launcher': [],
+				'favorites.weapon.specialWeapon': [],
+				'favorites.weapon.impactWeapon': [],
+				'favorites.weapon.slashingWeapon': [],
+				'favorites.weapon.piercingWeapon': [],
+				'favorites.weapon.specialMeleeWeapon': [],
+			} 
+		}, 
 		ChangePane,
+		QueueUpdate,
 		UpdateStats,
 		selectStatLookup,
 		toggleSettingsMenu,
@@ -232,11 +550,40 @@ app = new Vue({
 		showStatLookupFilter: false,
 		charts: [],
 		error_msg: null,
+		// add `label`:true to make a spinner appear, remove afterward 
+		// TECHNICAL: vue.js needs all options to be present upfront to maintain reactivity 
+		spinners: {
+			runsByDay:false,
+			playerRuns:false,
+			winloss:false,
+			wintypes:false,
+			runtimesChartData:false,
+			spacesMoved:false,
+			machinesAccessed:false,
+			machinesHacked:false,
+			terminalHacks:false,
+			fabricatorHacks:false,
+			repairStationHacks:false,
+			recyclingUnitHacks:false,
+			scanalyzerHacks:false,
+			garrisonAccessHacks:false,
+			unauthorizedHacks:false,
+			robotsHacked:false,
+			bothacks:false,
+			attacksByWeaponType:false,
+			attacksByDamageType:false,
+			damageByWeaponType:false,
+			damageByDamageType:false,
+			classesDestroyed:false,
+			squadsDispatched:false,
+			alertLevels:false,
+			metadata:false,		
+		}, 
 		settings: {
 			num: 50,
 			difficulty: (qsparams.difficulty || ''),
 			mode: (qsparams.mode || (qsparams.player ? '' : 'SPECIAL_MODE_NONE')),
-			version: (qsparams.version || (qsparams.player ? '' : 'Beta 11.x')),
+			version: (qsparams.version || (qsparams.player ? '' : 'Beta 12.x')),
 			player: (qsparams.player || ''),
 			winsonly: (qsparams.winsonly ? 1 : 0),
 			skipcache: (qsparams.skipcache ? 1 : 0),
@@ -251,7 +598,7 @@ app = new Vue({
 			num: 50,
 			difficulty: (qsparams.difficulty || ''),
 			mode: (qsparams.mode || (qsparams.player ? '' : 'SPECIAL_MODE_NONE')),
-			version: (qsparams.version || (qsparams.player ? '' : 'Beta 11.x')),
+			version: (qsparams.version || (qsparams.player ? '' : 'Beta 12.x')),
 			player: (qsparams.player || ''),
 			winsonly: (qsparams.winsonly ? 1 : 0),
 			skipcache: (qsparams.skipcache ? 1 : 0),
@@ -261,20 +608,24 @@ app = new Vue({
 	}
 })
 
-UpdateStats();
+// start by showing the loading screen
+ChangePane('loading');
 
+// get the basic metadata that we need to show the menus, then display the overview
+QueueUpdate('metadata').then( _ => ChangePane('overview') );
+
+// run this function when a menu selection changes. update settings and
+// refresh the content of the currently displayed pane
 function UpdateStats() {
+	let temp = app.pane;
 	ChangePane('loading');
-	for ( k in app.settingsForm ) {
+	// copy the selected settings from the form into the application settings
+	for ( let k in app.settingsForm ) {
 		app.settings[k] = app.settingsForm[k];
 	}
 	app.showSettingsMenu = false;
-	LoadStatsFromServer( 'community', data => {
-		if ( data ) { 
-			app.stats = data;
-			ChangePane('overview');
-		}
-	});
+	// reacquire the data from the server for the pane we were just on
+	ChangePane( temp );
 }
 
 function LoadStatsFromServer( requestFunction='community', callback, autoChangePanes=true ) {
@@ -285,7 +636,8 @@ function LoadStatsFromServer( requestFunction='community', callback, autoChangeP
 	
 	if ( autoChangePanes ) { ChangePane('loading'); }
 	
-	fetch( file ).then( rsp => {
+	return fetch( file )
+	.then( rsp => {
 		if ( !rsp.ok || !rsp.body || String(rsp.status).match(/^(4|5)/) ) {
 			if ( autoChangePanes ) { ChangePane('overview'); }
 			app.error_msg = 'Server statistics not available. Could not lock coordinates for planetary alignment matrix transform, or possibly server is busted.';
@@ -309,99 +661,6 @@ function toggleSettingsMenu() {
 	}
 	app.showSettingsMenu = !app.showSettingsMenu;
 }
-
-// function DownloadDataminerDataAnalysis( app ) {
-// 	// TODO: don't re-download if categories are the same as what we have already
-// 	url = window.location.href
-// 		.replace( window.location.search, '' ) 
-// 		.replace( /#.*/, '' ) 
-// 		.replace('.html','')
-// 		+ 'dataminer.php'
-// 		+ `?version=${app.scoresheet.header.version}`
-// 		+ `&difficulty=${app.scoresheet.header.difficulty}`
-// 		+ `&mode=${app.scoresheet.header.specialMode}`
-// 		;
-// 	let fetchHandler = data => {
-// 		if ( data ) {
-// 			if ( data['parts.inventory.slots']?.samples < 10 ) {
-// 				throw new Error('Not enough samples in peer group.')
-// 			}
-// 			app.analysis = data;
-// 			// Analyze comps
-// 			if ( app.scoresheet.flatstats ) {
-// 				for ( let i of app.scoresheet.flatstats ) {
-// 					if ( i[3] && app.analysis[i[3]] ) {
-// 						// [ truncated_key, value, depth, full_key, avg, min, max, diff, formatted_diff, diffclass ]
-// 						let diff = (i[1] && app.analysis[i[3]].avg) ? (100* (i[1] - app.analysis[i[3]].avg) / app.analysis[i[3]].avg) : 0;
-// 						let diffclass = 'avg';
-// 						if ( diff > 400 ) { diffclass = 'plus400'; }
-// 						else if ( diff > 200 ) { diffclass = 'plus200'; }
-// 						else if ( diff > 100 ) { diffclass = 'plus100'; }
-// 						else if ( diff > 50 ) { diffclass = 'plus50'; }
-// 						else if ( diff < -90 ) { diffclass = 'minus90'; }
-// 						else if ( diff < -75 ) { diffclass = 'minus75'; }
-// 						else if ( diff < -50 ) { diffclass = 'minus50'; }
-// 						else if ( diff < -25 ) { diffclass = 'minus25'; }
-// 						i.push( (app.analysis[i[3]].avg || 0).toLocaleString(undefined, {minimumFractionDigits:0,maximumFractionDigits:(app.analysis[i[3]].avg >= 100 ? 0 : 2)}) );
-// 						i.push( (app.analysis[i[3]].min || 0).toLocaleString(undefined, {minimumFractionDigits:0,maximumFractionDigits:(app.analysis[i[3]].min >= 100 ? 0 : 2)}) );
-// 						i.push( (app.analysis[i[3]].max || 0).toLocaleString(undefined, {minimumFractionDigits:0,maximumFractionDigits:(app.analysis[i[3]].max >= 100 ? 0 : 2)}) );
-// 						i.push( diff );
-// 						i.push( (diff > 0 ? '+' : '') + diff.toLocaleString(undefined, {minimumFractionDigits:0,maximumFractionDigits:2}) + '%' );
-// 						i.push( diffclass );
-// 					}
-// 				}
-// 			}
-// 			// sort the comps for interesting hilites
-// 			let mapper = function ( arr ) {
-// 				// clean the name up to be more readable
-// 				let name = arr[3].split('.').slice(1);
-// 				if ( name[0].match(/(combat|build|resources|hacking|exploration|intel|machines|traps|bothacking|stealth|alert|allies)/) ) { name.shift(); }
-// 				if ( name[1] && name[1].match('total') ) { name.splice(1,1); } // actions.total
-// 				if ( name[ name.length-1 ].match('overall') ) { name.pop(); }
-// 				name = name.map( _ => _.Undatafy() ).join(': ');
-// 				return {
-// 					name: name,
-// 					value: arr[1],
-// 					diff: arr[8]
-// 				};
-// 			};
-// 			// note: filtering out single-event items that tend to be uninteresting when the average is near zero.
-// 			app.scoresheet.hilites = app.scoresheet.flatstats.filter( i => i[7] > 0 && i[1] > 1 ).sort( (a,b) => b[7] - a[7] ).slice( 0, 19 ).map( mapper );
-// 			app.scoresheet.lowlites = app.scoresheet.flatstats.filter( i => i[7] < 0  ).sort( (a,b) => a[7] - b[7] ).slice( 0, 19 ).map( mapper );
-// 		}
-// 	};		
-// 	return fetch( url ).then( rsp => {
-// 		if ( !rsp.ok || !rsp.body || String(rsp.status).match(/^(4|5|204)/) ) {
-// 			throw new Error('Error when trying to get analysis file.');
-// 		}		
-// 		app.scoresheet.header.analysisFile = url;
-// 		return rsp.json();
-// 	})
-// 	.then( fetchHandler )
-// 	.catch( error => {
-// 		// we couldn't download the live database version. 
-// 		// see if we can fall back to a local static file.
-// 		let static_file = 'dataminer.analysis.standard.b11.json';
-// 		if ( app.scoresheet.header.version.match(/beta 10/) ) {
-// 			static_file = 'dataminer.analysis.standard.b10.json';
-// 		}
-// 		return fetch( static_file ).then( rsp => {
-// 			let json = rsp.json();
-// 			// couldnt get file
-// 			if ( !rsp.ok || !rsp.body || String(rsp.status).match(/^(4|5|204)/) ) {
-// 				app.error_msg = 'Could not get dataminer analysis file. I tried, though. I really did.';
-// 				return false;
-// 			}
-// 			app.scoresheet.header.analysisFile = static_file;
-// 			app.scoresheet.header.analysisNote = 'Using standard comparison analysis file. Exact peer group not available.';
-// 			return json;
-// 		})
-// 		.then( fetchHandler )
-// 		.catch( error => {
-// 			app.error_msg = 'Error when trying to get file: ' + error;
-// 		});
-// 	});	
-// }
 
 function validateLookupFilter() {
 	// make sure the thing typed into the search box actually exists
@@ -459,224 +718,83 @@ function ChangePane(pane) {
 	app.pane = pane;
 	// draw charts that need the rendered HTML to be present first
 	Vue.nextTick( _ => {
-		
-		let notOverall = x => !x.label.match(/overall$/);
-		
+		QueueUpdate('num_runs'); // needs to update on every page
 		if ( pane === 'build' ) {
-			let spacesMoved = app.stats.data.spacesMoved.filter( x => x.label != 'stats.exploration.spacesMoved.overall' );
-			app.charts.push( DrawGenericChart(
-				spacesMoved.map( x => x.sum ),
-				spacesMoved.map( x => x.label.replace('stats.exploration.spacesMoved.','') ),
-				'spacesMovedPieChart',
-				{ sort:true, colors: 'indexed', undatafy: true, addpct:true, legendPos:'left', aspectRatio:1.75 }
-				) );
+			QueueUpdate('spacesMoved').then( _ => {
+				QueueUpdate('favorites.propulsion.overall');
+				QueueUpdate('favorites.propulsion.treads');
+				QueueUpdate('favorites.propulsion.leg');
+				QueueUpdate('favorites.propulsion.wheel');
+				QueueUpdate('favorites.propulsion.hoverUnit');
+				QueueUpdate('favorites.propulsion.flightUnit');
+			}).then( _ => {
+				QueueUpdate('favorites.weapon.overall');
+				QueueUpdate('favorites.weapon.energyGun');
+				QueueUpdate('favorites.weapon.energyCannon');
+				QueueUpdate('favorites.weapon.ballisticGun');
+				QueueUpdate('favorites.weapon.ballisticCannon');
+				QueueUpdate('favorites.weapon.launcher');
+				QueueUpdate('favorites.weapon.specialWeapon');
+				QueueUpdate('favorites.weapon.impactWeapon');
+				QueueUpdate('favorites.weapon.slashingWeapon');
+				QueueUpdate('favorites.weapon.piercingWeapon');
+				QueueUpdate('favorites.weapon.specialMeleeWeapon');		
+			}).then( _ => {
+				QueueUpdate('favorites.power.overall');
+				QueueUpdate('favorites.power.engine');
+				QueueUpdate('favorites.power.powerCore');
+				QueueUpdate('favorites.power.reactor');
+			}).then( _ => {
+				QueueUpdate('favorites.utility.overall');
+				QueueUpdate('favorites.utility.device');
+				QueueUpdate('favorites.utility.storage');
+				QueueUpdate('favorites.utility.processor');
+				QueueUpdate('favorites.utility.hackware');
+				QueueUpdate('favorites.utility.protection');
+				QueueUpdate('favorites.utility.artifact');
+			});
 		}
-		
 		else if ( pane === 'overview' ) {
-		
-			app.charts.push( DrawWinLossPieChart( 
-				[	app.stats.data.winloss.wins, 
-					// app.stats.data.winloss.losses,
-					app.stats.data.winloss.access,
-					app.stats.data.winloss.research,
-					app.stats.data.winloss.factory,
-					app.stats.data.winloss.materials,
-				], 
-				['Wins','Access','Research','Factory','Materials']
-				) );
-				
-			app.charts.push( DrawWinTypesPieChart( 
-				app.stats.data.wintypes.map( x => x.num ),
-				app.stats.data.wintypes.map( x => 'W' + x.value )
-				) );
-				
-			app.charts.push( DrawPlaytimeChart( 
-				app.stats.data.runtimesChartData.filter( x => x.minutes < 500 ).map( x => ({x:x.minutes, y:x.num}) )
-			) );		
-			
-			if ( app.settings.player && app.stats.data.playerRuns ) {
-				app.charts.push( DrawPlayerRunsChart( 
-					app.stats.data.playerRuns.map( x => ({ x:x.date, y:x.score }) ),
-					app.stats.data.playerRuns.map( x => {
-						if ( x.win ) return Chart.colors_by_key['win'];
-						else if ( x.final_depth < -7 ) return Chart.colors_by_key['materials'];
-						else if ( x.final_depth < -3 ) return Chart.colors_by_key['factory'];
-						else if ( x.final_depth < -1 ) return Chart.colors_by_key['research'];
-						else if ( x.final_map == 'COM' ) return Chart.colors_by_key['command'];
-						else if ( x.final_map == 'AC0' ) return Chart.colors_by_key['a0'];
-						return Chart.colors_by_key['access'];
-					} ),
-				) );
-			}	
-			
-			if ( !app.settings.player && app.stats.data.runsByDay?.length ) {
-				app.charts.push( DrawRunsByDayChart( 
-					app.stats.data.runsByDay.map( x => ({x:x.date, y:x.num}) )
-					) );
-			}	
+			Promise.all( [
+				app.settings.player ? QueueUpdate('playerRuns') : QueueUpdate('runsByDay'),
+				QueueUpdate('runtimeAvg'),
+				QueueUpdate('winloss'),
+				QueueUpdate('wintypes'),
+			]).then( _ => { 
+				QueueUpdate('runtimesChartData');
+				QueueUpdate('causeOfDeath');
+				QueueUpdate('itemOfDeath');
+				QueueUpdate('highscores');
+			});
 		}
-		
 		else if ( pane === 'hacking' ) {
-		
-			app.charts.push( DrawGenericChart( 
-				app.stats.data.machinesAccessed.filter(notOverall).map( x => x.sum ) ,
-				app.stats.data.machinesAccessed.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
-				'machinesAccessChart',
-				{ sort:true, colors: 'indexed', undatafy: true, addpct:true, legendPos:'top', aspectRatio:1, chartType: 'doughnut' }
-				) );
-				
-			app.charts.push( DrawGenericChart( 
-				app.stats.data.machinesHacked.filter(notOverall).map( x => x.sum ) ,
-				app.stats.data.machinesHacked.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
-				'machinesHackedChart',
-				{ sort:true, colors: 'indexed', undatafy: true, addpct:true, legendPos:'top', aspectRatio:1, chartType: 'doughnut' }
-				) );
-				
-			app.charts.push( DrawGenericChart( 
-				app.stats.data.terminalHacks.filter(notOverall).map( x => x.sum ) ,
-				app.stats.data.terminalHacks.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
-				'terminalHacksChart',
-				{ sort:true,  undatafy: true, addpct:true, legend:false, aspectRatio:0.75, flipAxes:true, chartType: 'bar' }
-				) );
-				
-			app.charts.push( DrawGenericChart( 
-				app.stats.data.fabricatorHacks.filter(notOverall).map( x => x.sum ) ,
-				app.stats.data.fabricatorHacks.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
-				'fabricatorHacksChart',
-				{ sort:true, undatafy: true, addpct:true, legendPos:'left', aspectRatio:2, chartType: 'pie' }
-				) );
-				
-			app.charts.push( DrawGenericChart( 
-				app.stats.data.repairStationHacks.filter(notOverall).map( x => x.sum ) ,
-				app.stats.data.repairStationHacks.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
-				'repairStationHacksChart',
-				{ sort:true, undatafy: true, addpct:true, legendPos:'left', aspectRatio:2, chartType: 'pie' }
-				) );
-				
-			app.charts.push( DrawGenericChart( 
-				app.stats.data.recyclingUnitHacks.filter(notOverall).map( x => x.sum ) ,
-				app.stats.data.recyclingUnitHacks.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
-				'recyclingUnitHacksChart',
-				{ sort:true, undatafy: true, addpct:true, legendPos:'left', aspectRatio:2, chartType: 'pie' }
-				) );
-				
-			app.charts.push( DrawGenericChart( 
-				app.stats.data.scanalyzerHacks.filter(notOverall).map( x => x.sum ) ,
-				app.stats.data.scanalyzerHacks.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
-				'scanalyzerHacksChart',
-				{ sort:true, undatafy: true, addpct:true, legendPos:'left', aspectRatio:2, chartType: 'pie' }
-				) );
-				
-			app.charts.push( DrawGenericChart( 
-				app.stats.data.garrisonAccessHacks.filter(notOverall).map( x => x.sum ) ,
-				app.stats.data.garrisonAccessHacks.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
-				'garrisonAccessHacksChart',
-				{ sort:true, undatafy: true, addpct:true, legendPos:'left', aspectRatio:2, chartType: 'pie' }
-				) );
-				
-			// this chart gets special colors
-			app.charts.push( DrawGenericChart( 
-				app.stats.data.unauthorizedHacks.filter(notOverall).map( x => x.sum ) ,
-				app.stats.data.unauthorizedHacks.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
-				'unauthorizedHacksChart',
-				{ sort:true,  undatafy: true, addpct:true, legend:false, aspectRatio:1, flipAxes:true, chartType: 'bar', colors:
-					app.stats.data.unauthorizedHacks.filter(notOverall).map( x => { 
-						if ( x.label.match(/terminals/) ) { return Chart.colors_by_key['terminals'] } 
-						if ( x.label.match(/fabricators/) ) { return Chart.colors_by_key['fabricators'] } 
-						if ( x.label.match(/repairStations/) ) { return Chart.colors_by_key['repairStations'] } 
-						if ( x.label.match(/scanalyzers/) ) { return Chart.colors_by_key['scanalyzers'] } 
-						if ( x.label.match(/garrisonAccess/) ) { return Chart.colors_by_key['garrisonAccess'] } 
-						if ( x.label.match(/recyclingUnits/) ) { return Chart.colors_by_key['recyclingUnits'] } 
-						return Chart.colors_by_key['terminals'];
-					}) 
-				} ) );
-				
-			app.charts.push( DrawGenericChart( 
-				app.stats.data.robotsHacked.filter(notOverall).map( x => x.sum ) ,
-				app.stats.data.robotsHacked.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
-				'robotsHackedChart',
-				{ sort:true, undatafy: true, addpct:true, legendPos:'left', aspectRatio:2, chartType: 'pie' }
-				) );
-				
-			app.charts.push( DrawGenericChart( 
-				app.stats.data.bothacks.filter(notOverall).map( x => x.sum ) ,
-				app.stats.data.bothacks.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
-				'bothacksChart',
-				{ sort:true, undatafy: true, addpct:true, legend:false, aspectRatio:0.6, flipAxes:true, chartType: 'bar' }
-				) );
-				
+			Promise.all( [
+				QueueUpdate('machinesAccessed'),
+				QueueUpdate('machinesHacked'),
+			]).then( _ => { 
+				QueueUpdate('terminalHacks');
+			}).then( _ => { 
+				QueueUpdate('fabricatorHacks');
+				QueueUpdate('repairStationHacks');
+				QueueUpdate('recyclingUnitHacks');
+				QueueUpdate('scanalyzerHacks');
+				QueueUpdate('garrisonAccessHacks');
+			}).then( _ => { 
+				QueueUpdate('unauthorizedHacks');
+				QueueUpdate('robotsHacked');
+				QueueUpdate('bothacks');
+			});
 		}
-		
 		else if ( pane === 'combat' ) {
-				
-			app.charts.push( DrawGenericChart( 
-				app.stats.data.attacksByWeaponType.map( x => x.sum ) ,
-				app.stats.data.attacksByWeaponType.map( x => x.label.replace(/^.*\./,'').replace('overall','melee') ),
-				'attacksByWeaponTypeChart',
-				{ sort:true, colors: 'indexed', undatafy: true, addpct:true, legendPos:'top', aspectRatio:1 }
-				) );
-										
-			app.charts.push( DrawGenericChart( 
-				app.stats.data.attacksByDamageType.map( x => x.sum ) ,
-				app.stats.data.attacksByDamageType.map( x => x.label.replace(/^.*\./,'') ),
-				'attacksByDamageTypeChart',
-				{ sort:true, colors: 'indexed', undatafy: true, addpct:true, legendPos:'top', aspectRatio:1 }
-				) );
-										
-			app.charts.push( DrawGenericChart( 
-				app.stats.data.damageByWeaponType.map( x => x.sum ) ,
-				app.stats.data.damageByWeaponType.map( x => x.label.replace(/^.*\./,'') ),
-				'damageByWeaponTypeChart',
-				{ sort:true, colors: 'indexed', undatafy: true, addpct:true, legendPos:'top', aspectRatio:1 }
-				) );
-										
-			app.charts.push( DrawGenericChart( 
-				app.stats.data.damageByDamageType.map( x => x.sum ) ,
-				app.stats.data.damageByDamageType.map( x => x.label.replace(/^.*\./,'') ),
-				'damageByDamageTypeChart',
-				{ sort:true, colors: 'indexed', undatafy: true, addpct:true, legendPos:'top', aspectRatio:1 }
-				) );
-										
-			app.charts.push( DrawGenericChart( 
-				app.stats.data.classesDestroyed.filter(notOverall).map( x => x.sum ) ,
-				app.stats.data.classesDestroyed.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
-				'botsDestroyedChart',
-				{ sort:true, colors: 'pie', undatafy: true, addpct:true, legend:false, aspectRatio:0.5, flipAxes:true, chartType:'bar' }
-				) );
-										
-			app.charts.push( DrawGenericChart( 
-				app.stats.data.squadsDispatched.filter(notOverall).map( x => x.sum ) ,
-				app.stats.data.squadsDispatched.filter(notOverall).map( x => x.label.replace(/^.*\./,'') ),
-				'squadsDispatchedChart',
-				{ sort:true, colors: 'pie', undatafy: true, addpct:true, legendPos:'left', aspectRatio:1.75 }
-				) );
-									
-			// // change labels and sort a bit:
-			// for ( let x of app.stats.data.alertLevels ) {
-			// 	switch ( x.label ) {
-			// 		case 'lowSecurityPercent': { x.sorting=0; x.label = 'Low Security'; break; }
-			// 		case 'level1': { x.sorting=1; x.label = 'Level 1'; break; }
-			// 		case 'level2': { x.sorting=2; x.label = 'Level 2'; break; }
-			// 		case 'level3': { x.sorting=3; x.label = 'Level 3'; break; }
-			// 		case 'level4': { x.sorting=4; x.label = 'Level 4'; break; }
-			// 		case 'level5': { x.sorting=5; x.label = 'Level 5'; break; }
-			// 		case 'highSecurity': { x.sorting=6; x.label = 'High Security'; break; }
-			// 		case 'maxSecurity': { x.sorting=7; x.label = 'Maximum Security'; break; }
-			// 		default: ;;
-			// 	}
-			// }
-			// app.stats.data.alertLevels.sort( (a,b) => b.sorting - a.sorting );
-			app.charts.push( DrawGenericChart( 
-				app.stats.data.alertLevels.filter(notOverall).map( x => x.sum ) ,
-				app.stats.data.alertLevels.filter(notOverall).map( x => x.label.replace(/^.*\./,'').replace('lowSecurityPercent','lowSecurity') ),
-				'alertLevelsChart',
-				{ sort:true, colors: 'pie', undatafy: true, addpct:true, legendPos:'left', aspectRatio:1.75 }
-				) );
-			
-	
+			QueueUpdate('alertLevels').then( _ => {
+				QueueUpdate('attacksByWeaponType');
+				QueueUpdate('attacksByDamageType');
+				QueueUpdate('damageByWeaponType');
+				QueueUpdate('damageByDamageType');
+				QueueUpdate('classesDestroyed');
+				QueueUpdate('squadsDispatched');
+			});
 		}
-		
-		
 	});
 }
 

@@ -103,7 +103,7 @@
 						Wins Only: <b>{{settings.winsonly ? 'YES' : 'NO'}}</b>
 						<button type="button" class="btn btn-secondary rounded-pill btn-sm px-2 py-0 m-2" @click="toggleSettingsMenu()" >Change Dataset</button>
 					</template>
-					<template v-else-if="stats">
+					<template v-else="stats.data.versions.length">
 						<form @submit.prevent="UpdateStats()">
 							<div class="row mb-3">
 								<label for="inputEmail3" class="col-sm-2 col-form-label">Version:</label>
@@ -169,10 +169,10 @@
 				</nav>
 				
 				<template v-if="stats && !stats.data.num_runs && pane!='loading'">
-					<p class="alert alert-warning">No data found. Try changing the filters.</p>
+					<p class="alert alert-warning">No data found. Try changing the filters. [{{stats.data.num_runs}}] [{{pane}}]</p>
 				</template>
 				
-				<template v-else>
+				<template>
 								
 					<!-- overview pane -->			
 					<template v-if="pane=='overview'" >		
@@ -181,6 +181,7 @@
 							<h2>Player Runs <span class="text-secondary">({{settings.player}})</span></h2>
 							<p>Runs on Record: <b>{{stats.data.playerRuns.length}}</b></p>
 							<div class="container-fluid px-5 py-4 mt-5 mb-2 bg-primary text-light rounded">
+								<div class="spinner-border text-secondary" role="status" v-if="spinners.playerRuns"></div>
 								<canvas id="playerRunsChart"></canvas>
 							</div>
 							<p class="mt-2"><!-- fake chart legend -->
@@ -198,6 +199,7 @@
 							<h2>Runs <span class="text-secondary">By Day</span></h2>
 							<p>Runs on Record: <b>{{stats.data.num_runs.toLocaleString()}}</b></p>
 							<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+								<div class="spinner-border text-secondary" role="status" v-if="spinners.runsByDay"></div>
 								<canvas id="runsByDayChart"></canvas>
 							</div>
 						</template>
@@ -206,36 +208,27 @@
 							<div class="row row-cols-sm-2 g-5">
 								<div class="col" v-if="!settings.winsonly">
 									<h3 class="text-center mt-0">Wins / Losses</h3>
+									<div class="spinner-border text-secondary" role="status" v-if="spinners.winloss"></div>
 									<canvas id="winlossPieChart"></canvas>
 								</div>
 								<div class="col">
 									<h3 class="text-center mt-0">Win Types</h3>
+									<div class="spinner-border text-secondary" role="status" v-if="spinners.wintypes"></div>
 									<canvas id="wintypePieChart"></canvas>
 								</div>
 							</div>
 						</div>
 						
 						<h2>Game Play Time <span class="text-secondary">(Minutes)</span></h2>
-						<p>Average Play Time: <b>{{stats.data.runtimeAvg.toLocaleString()}} minutes</b></p>
+						<p>Average Play Time: <b>{{stats?.data?.runtimeAvg?.toLocaleString()}} minutes</b></p>
 						<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+							<div class="spinner-border text-secondary" role="status" v-if="spinners.runtimesChartData"></div>
 							<canvas id="playtimeChart"></canvas>
 						</div>
-						
-						<!-- <div class="container-fluid mt-5 mb-5 g-0">
-							<div class="row row-cols-1 row-cols-md-3 g-4">
-								<div class="col">
-									<div class="card statbox h-100">
-										<div class="card-header">Average Play Time</div>
-										<div class="card-body text-success numeric">
-											<span class="card-text">{{stats.data.runtimeAvg.toLocaleString()}}m</span>
-										</div>
-									</div>
-								</div>
-							</div>
-						</div> -->
-											
+																	
 						<h2>High Scores</h2>
-						<table class="table text-nowrap">
+						<div class="spinner-border text-secondary" role="status" v-if="!stats.data.highscores"></div>
+						<table class="table text-nowrap" v-if="stats.data.highscores">
 							<tr>
 								<th>Score</th>
 								<th>Player</th>
@@ -284,6 +277,7 @@
 						<h1 class="mt-5">Mobility</h1>
 						<p>This chart shows which propulsion types players use to actually move.</p>
 						<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+							<div class="spinner-border text-secondary" role="status" v-if="spinners.spacesMoved"></div>
 							<canvas id="spacesMovedPieChart"></canvas>
 						</div>					
 
@@ -550,12 +544,14 @@
 						<h1 class="mt-5">Time Spent at Alert Level</h1>
 						<p>The average percentage times that players spend at various alert levels</p>
 						<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+							<div class="spinner-border text-secondary" role="status" v-if="spinners.alertLevels"></div>
 							<canvas id="alertLevelsChart"></canvas>
 						</div>
 				
 						<h1 class="mt-5">Squads Dispatched</h1>
 						<p>Squads dispatched in response to various player actions. It does not include regular patrols.
 						<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+							<div class="spinner-border text-secondary" role="status" v-if="spinners.squadsDispatched"></div>
 							<canvas id="squadsDispatchedChart"></canvas>
 						</div>
 						
@@ -566,10 +562,12 @@
 							<div class="row row-cols-sm-2 g-5">
 								<div class="col">
 									<h3 class="text-center mt-0">Weapon Type</h3>
+									<div class="spinner-border text-secondary" role="status" v-if="spinners.attacksByWeaponType"></div>
 									<canvas id="attacksByWeaponTypeChart"></canvas>
 								</div>
 								<div class="col">
 									<h3 class="text-center mt-0">Damage Type</h3>
+									<div class="spinner-border text-secondary" role="status" v-if="spinners.attacksByDamageType"></div>
 									<canvas id="attacksByDamageTypeChart"></canvas>
 								</div>
 							</div>
@@ -581,10 +579,12 @@
 							<div class="row row-cols-sm-2 g-5">
 								<div class="col">
 									<h3 class="text-center mt-0">Weapon Type</h3>
+									<div class="spinner-border text-secondary" role="status" v-if="spinners.damageByWeaponType"></div>
 									<canvas id="damageByWeaponTypeChart"></canvas>
 								</div>
 								<div class="col">
 									<h3 class="text-center mt-0">Damage Type</h3>
+									<div class="spinner-border text-secondary" role="status" v-if="spinners.damageByDamageType"></div>
 									<canvas id="damageByDamageTypeChart"></canvas>
 								</div>
 							</div>
@@ -592,6 +592,7 @@
 							
 						<h1 class="mt-5">Bots Destroyed <span class="text-secondary">By Class</span></h1>
 						<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+							<div class="spinner-border text-secondary" role="status" v-if="spinners.classesDestroyed"></div>
 							<canvas id="botsDestroyedChart"></canvas>
 						</div>
 						
@@ -607,10 +608,12 @@
 							<div class="row row-cols-sm-2 g-5">
 								<div class="col">
 									<h3 class="text-center mt-0">Machines Accessed</h3>
+									<div class="spinner-border text-secondary" role="status" v-if="spinners.machinesAccessed"></div>
 									<canvas id="machinesAccessChart"></canvas>
 								</div>
 								<div class="col">
 									<h3 class="text-center mt-0">Machines Hacked</h3>
+									<div class="spinner-border text-secondary" role="status" v-if="spinners.machinesHacked"></div>
 									<canvas id="machinesHackedChart"></canvas>
 								</div>
 							</div>
@@ -622,26 +625,32 @@
 							<div class="row row-cols-sm-1 g-5">
 								<div class="col">
 									<h3 class="text-center">Terminals</h3>
+									<div class="spinner-border text-secondary" role="status" v-if="spinners.terminalHacks"></div>
 									<canvas id="terminalHacksChart"></canvas>
 								</div>
 								<div class="col">
 									<h3 class="text-center">Fabricators</h3>
+									<div class="spinner-border text-secondary" role="status" v-if="spinners.fabricatorHacks"></div>
 									<canvas id="fabricatorHacksChart"></canvas>
 								</div>
 								<div class="col">
 									<h3 class="text-center">Repair Stations</h3>
+									<div class="spinner-border text-secondary" role="status" v-if="spinners.repairStationHacks"></div>
 									<canvas id="repairStationHacksChart"></canvas>
 								</div>
 								<div class="col">
 									<h3 class="text-center">Recycling Units</h3>
+									<div class="spinner-border text-secondary" role="status" v-if="spinners.recyclingUnitHacks"></div>
 									<canvas id="recyclingUnitHacksChart"></canvas>
 								</div>
 								<div class="col">
 									<h3 class="text-center">Scanalyzers</h3>
+									<div class="spinner-border text-secondary" role="status" v-if="spinners.scanalyzerHacks"></div>
 									<canvas id="scanalyzerHacksChart"></canvas>
 								</div>
 								<div class="col">
 									<h3 class="text-center">Garrisons</h3>
+									<div class="spinner-border text-secondary" role="status" v-if="spinners.garrisonAccessHacks"></div>
 									<canvas id="garrisonAccessHacksChart"></canvas>
 								</div>
 							</div>
@@ -650,6 +659,7 @@
 						<h1 class="mt-5">Unauthorized Hacks</h1>
 						
 						<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+							<div class="spinner-border text-secondary" role="status" v-if="spinners.unauthorizedHacks"></div>
 							<canvas id="unauthorizedHacksChart"></canvas>
 						</div>
 						
@@ -657,11 +667,13 @@
 						
 						<h2>Bots Hacked</h2>
 						<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+							<div class="spinner-border text-secondary" role="status" v-if="spinners.robotsHacked"></div>
 							<canvas id="robotsHackedChart"></canvas>
 						</div>
 						
 						<h2>Bothacks Applied</h2>
 						<div class="container-fluid px-5 py-4 mt-5 mb-5 bg-primary text-light rounded">
+							<div class="spinner-border text-secondary" role="status" v-if="spinners.bothacks"></div>
 							<canvas id="bothacksChart"></canvas>
 						</div>
 												
