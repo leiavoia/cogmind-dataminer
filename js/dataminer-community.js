@@ -450,8 +450,38 @@ let updatesConfig = {
 	},	
 }
 
+function CurrentCacheSignature(label) {
+	return app.settings.difficulty + 
+	'-' + app.settings.mode + 
+	'-' + app.settings.version + 
+	'-' + app.settings.player + 
+	'-' + app.settings.winsonly;
+}
+
+function RequestIsCached(label) {
+	$sig = CurrentCacheSignature();
+	if ( app.cache_signatures.get(label) ) $sig
+}
+
 // returns a promise you can chain
 function QueueUpdate(name) {
+	let is_cached = CurrentCacheSignature() === app.cache_signatures.get(name);
+	
+	// if cached, just redraw if needed, wrapped in promise
+	if ( is_cached ) {
+		return new Promise( (resolveFn, rejectFn) => {
+			if ( updatesConfig.hasOwnProperty(name) ) {
+				updatesConfig[name]?.draw();
+			}
+			resolveFn(true);
+		});
+	}
+	
+	// otherwise mark as cached for future hits
+	if ( !is_cached ) {
+		app.cache_signatures.set(name, CurrentCacheSignature());
+	}
+	
 	app.spinners[name] = true; 
 	
 	// get a configured query, likely something that needs to draw a chart
@@ -550,6 +580,7 @@ app = new Vue({
 		showStatLookupFilter: false,
 		charts: [],
 		error_msg: null,
+		cache_signatures: new Map(),
 		// add `label`:true to make a spinner appear, remove afterward 
 		// TECHNICAL: vue.js needs all options to be present upfront to maintain reactivity 
 		spinners: {
@@ -787,12 +818,12 @@ function ChangePane(pane) {
 		}
 		else if ( pane === 'combat' ) {
 			QueueUpdate('alertLevels').then( _ => {
+				QueueUpdate('squadsDispatched');
 				QueueUpdate('attacksByWeaponType');
 				QueueUpdate('attacksByDamageType');
 				QueueUpdate('damageByWeaponType');
 				QueueUpdate('damageByDamageType');
 				QueueUpdate('classesDestroyed');
-				QueueUpdate('squadsDispatched');
 			});
 		}
 	});
