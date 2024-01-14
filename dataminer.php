@@ -8,6 +8,7 @@ if ( !defined('SCORESHEET_DOWNLOAD_DIR') ) { define('SCORESHEET_DOWNLOAD_DIR', _
 if ( !defined('SCORESHEET_ARCHIVE_DIR') ) { define('SCORESHEET_ARCHIVE_DIR', __DIR__ . '/scoresheets/archive'); } // set to NULL if you dont want to archive
 if ( !defined('CACHE_DIR') ) { define('CACHE_DIR', __DIR__ . '/cache'); } // set to NULL if you dont want to cache
 if ( !defined('CACHE_TTL') ) { define('CACHE_TTL', 86400); }
+if ( !defined('SIGNATURES_FILE') ) { define('SIGNATURES_FILE', CACHE_DIR . '/signatures.txt' ); }
 if ( !defined('SCRAPE_FETCH_DELAY') ) { define('SCRAPE_FETCH_DELAY', 2); }
 if ( !defined('SCORESHEET_LOOKBEHIND_DAYS') ) { define('SCORESHEET_LOOKBEHIND_DAYS', 365); }
 if ( !defined('DATAMINER_DB_SERVER') ) { define('DATAMINER_DB_SERVER', "127.0.0.1"); }
@@ -896,16 +897,29 @@ function ListAllNumericStatIDs() {
 
 // provides a list of [version, difficulty, mode] for recently completed runs
 function ListAllRecentRunSignatures( $days = 3 ) {
-	$db = DB();
-	$q = "SELECT DISTINCT version, difficulty, mode FROM runs WHERE date >= CURRENT_TIMESTAMP - INTERVAL $days day;";
-	$result = $db->query($q);
-	$records = [];
-	if ( $result->num_rows ) {
-		while( $row = $result->fetch_assoc() ) {
-			$records []= $row;
-		}
+	// if a signatures file is present, use that
+	if ( file_exists( SIGNATURES_FILE ) ) {
+		$lines = file( SIGNATURES_FILE, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES );
+		$lines = array_unique( $lines );
+		$records = array_map( function($line) {
+			$parts = str_getcsv($line);
+			return [ 'version' => $parts[0], 'difficulty' => $parts[1], 'mode' => $parts[2] ];
+		}, $lines);
+		return $records;
 	}
-	return $records;
+	// otherwise check the database itself
+	else {
+		$db = DB();
+		$q = "SELECT DISTINCT version, difficulty, mode FROM runs WHERE date >= CURRENT_TIMESTAMP - INTERVAL $days day;";
+		$result = $db->query($q);
+		$records = [];
+		if ( $result->num_rows ) {
+			while( $row = $result->fetch_assoc() ) {
+				$records []= $row;
+			}
+		}
+		return $records;
+	}
 }
 
 function ListAllModes() {
@@ -1202,7 +1216,7 @@ function AddRun( $hash, $data ) {
 	$result = $db->query("SELECT 1 FROM runs WHERE filehash = '" . addslashes($hash) . "' LIMIT 1;");
 	if ( $result && $result->num_rows ) { return false; }
 	
-	// don't add runs that didn't make it our of scrapyard. Messes up averages.
+	// don't add runs that didn't make it out of scrapyard. Messes up averages.
 	if ( $data['cogmind.location.depth'] == '-11' ) { return false; }
 	
 	$result = $db->query("START TRANSACTION;");
@@ -1338,6 +1352,10 @@ function AddRun( $hash, $data ) {
 	$result = $db->query("COMMIT;");
 	DBCheckForErrors( $result, $db );
 	
+	// make a note of the signature in a cache file to reduce processing work later
+	$signature = "{$data['header.version']}, {$data['header.difficulty']}, {$data['header.specialMode']}\n";
+	file_put_contents( SIGNATURES_FILE, $signature, FILE_APPEND );
+
 	return true;
 }
 
@@ -1507,12 +1525,18 @@ function Download( $url, $file ) {
 	}
 	
 function FileCleanup() {
-	// delete old stuff
-	PrintWithTS('Starting file cleanup.');
-	$output = [];
-	$resultcode = null;
-	exec('find ' . SCORESHEET_ARCHIVE_DIR . ' -name "*.json" -type f -mtime +' . DATAMINER_MAX_SCORESHEET_CACHE_AGE . ' -delete;', $output, $resultcode);
-	foreach ( $output as $line ) { print "\t$line\n"; }
+	PrintWithTS('Starting cache file cleanup.');
+	// delete old scoresheets
+	if ( DATAMINER_MAX_SCORESHEET_CACHE_AGE ) {
+		$output = [];
+		$resultcode = null;
+		exec('find ' . SCORESHEET_ARCHIVE_DIR . ' -name "*.json" -type f -mtime +' . DATAMINER_MAX_SCORESHEET_CACHE_AGE . ' -delete -print;', $output, $resultcode);
+		if ( $output ) { 
+			PrintWithTS('Removed ' . count($output) . ' cached scoresheets');
+		}
+	}
+	// check if storage for scoresheets has gone over the limit.
+	// if so, trim the largest scoresheets until we get back under the limit.
 	$cache_size = GetDirectorySize(SCORESHEET_ARCHIVE_DIR);
 	if ( $cache_size > DATAMINER_MAX_SCORESHEET_CACHE_SIZE ) {
 		$files = glob(SCORESHEET_ARCHIVE_DIR . '/*.json');
@@ -1527,7 +1551,19 @@ function FileCleanup() {
 			print "\tdeleted {$file['file']}\n";
 		}
 	}
-	PrintWithTS('Finished file cleanup.');
+	// delete cache files
+	if ( CACHE_TTL ) {
+		$output = [];
+		$resultcode = null;
+		exec('find ' . CACHE_DIR . ' -name "*.json" -type f -mmin +' . round(CACHE_TTL/60) . ' -delete -print;', $output, $resultcode);
+		if ( $output ) { 
+			PrintWithTS('Removed ' . count($output) . ' cached request files');
+		}
+	}
+	// delete the signatures file.
+	unlink( SIGNATURES_FILE );
+	
+	PrintWithTS('Finished cleanup.');
 }
 
 function GetDirectorySize($path) {
