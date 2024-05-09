@@ -903,7 +903,7 @@ function ListAllRecentRunSignatures( $days = 3 ) {
 		$lines = array_unique( $lines );
 		$records = array_map( function($line) {
 			$parts = str_getcsv($line);
-			return [ 'version' => $parts[0], 'difficulty' => $parts[1], 'mode' => $parts[2] ];
+			return [ 'version' => trim($parts[0]), 'difficulty' => trim($parts[1]), 'mode' => trim($parts[2]) ];
 		}, $lines);
 		return $records;
 	}
