@@ -203,8 +203,8 @@ let updatesConfig = {
 		requests: [ 'wintypes' ],
 		draw: function () {
 				app.charts.push( DrawWinTypesPieChart( 
-					app.stats.data.wintypes.map( x => x.num ),
-					app.stats.data.wintypes.map( x => 'W' + x.value )
+					app.stats.data.wintypes.filter( x => x.value >= 0 ).map( x => x.num ),
+					app.stats.data.wintypes.filter( x => x.value >= 0 ).map( x => 'W' + x.value )
 					) );
 			
 		}		
