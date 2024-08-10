@@ -1471,8 +1471,8 @@ function GetURLs() {
 	foreach ( $urls as &$url ) {
 		$url = 'https://www.gridsagegames.com/cogmind/scores/' . $url;
 	}
-	// we dont want beta 9 stuff
-	$urls = array_filter( $urls, function($x){ return !preg_match('/beta9/i',$x); } );
+	// we dont want old beta stuff - they stop getting activity after a while
+	$urls = array_filter( $urls, function($x){ return !preg_match('/beta(9|10|11|12|13)/i',$x); } );
 	return $urls;
 }
 
