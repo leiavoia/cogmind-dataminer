@@ -2248,13 +2248,13 @@ function CalculateBadges(data) {
 				else if ( row.event.match(/Attacked by the Exiles/i) ) { data.badges.push(['Jerk','Attacked the Exiles']); }
 				else if ( row.event.match(/Attacked by Warlord forces/i) ) { data.badges.push(['Traitor','Attacked Warlord']); }
 				else if ( row.event.match(/Attacked by Zionites/i) ) { data.badges.push(['Monster','Attacked Zion']); }
-				else if ( row.event.match(/Destroyed Zhirov/i) ) { data.badges.push(['-Zh','Destroyed Zhirov']); }
-				else if ( row.event.match(/Destroyed Fortress/i) ) { data.badges.push(['-FFF','Destroyed Fortress']); }
-				else if ( row.event.match(/Destroyed Data Miner/i) ) { data.badges.push(['-DM','Destroyed Data Miner']); }
-				else if ( row.event.match(/Destroyed Fake God Mode/i) ) { data.badges.push(['-FGM','Destroyed Fake God Mode']); }
-				else if ( row.event.match(/Destroyed God Mode/i) ) { data.badges.push(['-GM','Destroyed God Mode']); }
-				else if ( row.event.match(/Destroyed Warlord/i) ) { data.badges.push(['-W','Destroyed Warlord']); }
-				else if ( row.event.match(/Destroyed Triborg/i) ) { data.badges.push(['-Triborg','Destroyed Triborg']); }
+				else if ( row.event.match(/(Murdered|Destroyed) Zhirov/i) ) { data.badges.push(['-Zh','Destroyed Zhirov']); }
+				else if ( row.event.match(/(Murdered|Destroyed) Fortress/i) ) { data.badges.push(['-FFF','Destroyed Fortress']); }
+				else if ( row.event.match(/(Murdered|Destroyed) Data Miner/i) ) { data.badges.push(['-DM','Destroyed Data Miner']); }
+				else if ( row.event.match(/(Murdered|Destroyed) Fake God Mode/i) ) { data.badges.push(['-FGM','Destroyed Fake God Mode']); }
+				else if ( row.event.match(/(Murdered|Destroyed) God Mode/i) ) { data.badges.push(['-GM','Destroyed God Mode']); }
+				else if ( row.event.match(/(Murdered|Destroyed) Warlord/i) ) { data.badges.push(['-W','Destroyed Warlord']); }
+				else if ( row.event.match(/(Murdered|Destroyed) Triborg/i) ) { data.badges.push(['-Triborg','Destroyed Triborg']); }
 				else if ( row.event.match(/Scrapoid. reinforcements arrived/i) ) { data.badges.push(['Scrapoids','Called for Scrapoid reinforcements']); }
 				else if ( row.event.match(/Botcube activated/i) ) { data.badges.push(['Botcube','Activated a Botcube']); }
 				else if ( row.event.match(/gained temporary slots/i) ) { data.badges.push(['TempSlot','Gained temporary slots with a special item']); }
