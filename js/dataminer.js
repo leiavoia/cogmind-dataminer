@@ -236,9 +236,10 @@ const map_names = {
 	MIN: 'Mines',
 	LOW: 'Lower Caves',
 	UPP: 'Upper Caves',
-	SUB: 'Sub Caves',
+	SUB: 'Subcaves',
 	JUN: 'Junkyard',
-	SCR: 'Scrap',
+	YRD: 'Junkyard',
+	SCR: 'Scraptown',
 	RES: 'Research',
 	ACC: 'Access',
 	COM: 'Command',
@@ -423,7 +424,7 @@ function DownloadDataminerDataAnalysis( app, force_standard_set=false ) {
 		+ `&mode=${app.scoresheet.header.specialMode || 'SPECIAL_MODE_NONE'}`
 		;
 	if ( force_standard_set ) {
-		url = 'dataminer.analysis.standard.b11.json';
+		url = 'dataminer.analysis.standard.b13.json';
 	}
 	let fetchHandler = data => {
 		if ( data ) {
@@ -494,10 +495,7 @@ function DownloadDataminerDataAnalysis( app, force_standard_set=false ) {
 	.catch( error => {
 		// we couldn't download the live database version. 
 		// see if we can fall back to a local static file.
-		let static_file = 'dataminer.analysis.standard.b11.json';
-		if ( app.scoresheet.header.version.match(/beta 10/) ) {
-			static_file = 'dataminer.analysis.standard.b10.json';
-		}
+		let static_file = 'dataminer.analysis.standard.b13.json';
 		return fetch( static_file ).then( rsp => {
 			let json = rsp.json();
 			// couldnt get file
@@ -864,7 +862,7 @@ function AnalyzeScoresheet( data ) {
 		// history decoration - color coded messages
 		if ( map.historyEvents ) { 
 			for ( row of map.historyEvents ) { 
-				if ( row.event.match(/(lost|released all parts|locked|lockdown|assault|sterilization system|crushed|destroyed by|self destr|core integrity fell|corruption reached|assimilated all|stolen by|self-destructed|Destroyed self|Terminal network hard line cut|core destroyed|activated Command garrisons|Derelicts to an unsafe place|Attacked by the|came to Exiles' defense|came to Zion's defense)/i) ) { row.class = 'bad'; }
+				if ( row.event.match(/(lost|released all parts|locked|lockdown|assault|sterilization system|crushed|destroyed by|self destr|core integrity fell|corruption reached|murdered|assimilated all|stolen by|self-destructed|Destroyed self|Terminal network hard line cut|core destroyed|activated Command garrisons|Derelicts to an unsafe place|Attacked by the|came to Exiles' defense|came to Zion's defense)/i) ) { row.class = 'bad'; }
 				else if ( row.event.match(/(learned|destroyed|killed|installed|found|Aligned with FarCom|given|expanded rif|repaired|fabricated|Loaded intel|hub disabled|Gained derelict followers|Revealed the true nature|received the|redirected|Retrieved Zion|Zion.+teleported in|answering call for help|Disengaged cave|squad redirected|Derelicts to a safe place)/i) ) { row.class = 'good'; }
 				else if ( row.event.match(/(discovered|identified|build established|Accompanied by)/i) ) { row.class = 'info'; }
 				else if ( row.event.match(/(entered|evolved)/i) ) { row.class = 'notice'; }
@@ -2207,12 +2205,13 @@ function CalculateBadges(data) {
 	}
 	
 	// places of interest
-	let regular_places = ['MAT','FAC','RES','ACC','COM'].map( m => map_names[m] || m );
+	let regular_places = ['FAC','RES','ACC','COM'].map( m => map_names[m] || m );
 	for ( let x of data.route.entries ) {
 		// notable places visited
 		let mapname = typeof(x.location.map)=='string' ? x.location.map.replace('MAP_','') : (x.location.map==35 ? 'DSF' : 'Unknown Map');
 		let nicename = map_names[mapname] || mapname;
-		if ( ['JUN','SCR','MAT','UPP','FAC','LOW','RES','ACC','PRO','MIN','Unknown Map'].indexOf(mapname) === -1 ) {
+		// ignore common places
+		if ( ['JUN','YRD','MAT','UPP','FAC','LOW','RES','ACC','PRO','MIN','Unknown Map'].indexOf(mapname) === -1 ) {
 			data.badges.push([ nicename, 'Found ' + nicename]);
 		}
 		// farthest regular location
@@ -2240,28 +2239,42 @@ function CalculateBadges(data) {
 						data.badges.push(['Teleport','Found a way to teleport through subspace']); 
 					}
 				}
+				else if ( row.event.match(/Tech Extrapolator generated/i) ) { data.badges.push(['Extrapolated','Used a Tech Extrapolator']); }
 				else if ( row.event.match(/Opened Warlord's prototype stash/i) ) { data.badges.push(['Stash','Opened Warlord\s stash']); }
 				else if ( row.event.match(/Fired Supercharged Sigix Terminator/i) ) { data.badges.push(['SST','Nuked the entire screen']); }
+				else if ( row.event.match(/Spotted Lightning/i) ) { data.badges.push(['Lit','Encountered a Lightning squad']); }
+				else if ( row.event.match(/Assembled PL-3XN's Obliterator/i) ) { data.badges.push(['Obliterator','Assembled PL-3XN\'s Obliterator']); }
 				else if ( row.event.match(/Rescued A7/i) ) { data.badges.push(['A7','Rescued A7']); }
 				else if ( row.event.match(/Attacked by the Exiles/i) ) { data.badges.push(['Jerk','Attacked the Exiles']); }
 				else if ( row.event.match(/Attacked by Warlord forces/i) ) { data.badges.push(['Traitor','Attacked Warlord']); }
 				else if ( row.event.match(/Attacked by Zionites/i) ) { data.badges.push(['Monster','Attacked Zion']); }
 				else if ( row.event.match(/Destroyed Zhirov/i) ) { data.badges.push(['-Zh','Destroyed Zhirov']); }
 				else if ( row.event.match(/Destroyed Fortress/i) ) { data.badges.push(['-FFF','Destroyed Fortress']); }
-				else if ( row.event.match(/Destroyed YI-UF0/i) ) { data.badges.push(['-YI-UF0','Destroyed YI-UF0']); }
-				else if ( row.event.match(/Destroyed 8R-AWN/i) ) { data.badges.push(['-8R-AWN','Destroyed 8R-AWN']); }
 				else if ( row.event.match(/Destroyed Data Miner/i) ) { data.badges.push(['-DM','Destroyed Data Miner']); }
 				else if ( row.event.match(/Destroyed Fake God Mode/i) ) { data.badges.push(['-FGM','Destroyed Fake God Mode']); }
 				else if ( row.event.match(/Destroyed God Mode/i) ) { data.badges.push(['-GM','Destroyed God Mode']); }
 				else if ( row.event.match(/Destroyed Warlord/i) ) { data.badges.push(['-W','Destroyed Warlord']); }
-				else if ( row.event.match(/Destroyed EX-DEC/i) ) { data.badges.push(['-DEC','Destroyed EX-DEC']); }
-				else if ( row.event.match(/Destroyed EX-BIN/i) ) { data.badges.push(['-BIN','Destroyed EX-BIN']); }
-				else if ( row.event.match(/Destroyed EX-HEX/i) ) { data.badges.push(['-HEX','Destroyed EX-HEX']); }
-				else if ( row.event.match(/Met VL-GR5/i) ) { data.badges.push(['VL-GR5','Met VL-GR5']); }
-				else if ( row.event.match(/Met 7R-MNS/i) ) { data.badges.push(['7R-MNS','Met 7R-MNS']); }
+				else if ( row.event.match(/Destroyed Triborg/i) ) { data.badges.push(['-Triborg','Destroyed Triborg']); }
+				else if ( row.event.match(/Scrapoid. reinforcements arrived/i) ) { data.badges.push(['Scrapoids','Called for Scrapoid reinforcements']); }
+				else if ( row.event.match(/Botcube activated/i) ) { data.badges.push(['Botcube','Activated a Botcube']); }
+				else if ( row.event.match(/gained temporary slots/i) ) { data.badges.push(['TempSlot','Gained temporary slots with a special item']); }
+				else if ( row.event.match(/Attacked by Scraptown defenders/i) ) { data.badges.push(['Scrapterrorist','Attacked Scraptown']); }
 				else if ( row.event.match(/Found Scrap Engine/i) ) { data.badges.push(['SE','Found a Scrap Engine']); }
+				else if ( row.event.match(/Registered with UFD/i) ) { data.badges.push(['UFD',row.event]); }
+				else if ( row.event.match(/VL-GR5 left a parting gift/i) ) { data.badges.push(['Gift','Received a gift from VL-GR5']); }
 				else if ( row.event.match(/Found Encrypted Comm Array/i) ) { data.badges.push(['ECA','Found a Warlord Encrypted Comm Array']); }
 				else if ( row.event.match(/Joined by Warlord .* squad/i) ) { data.badges.push(['W-Boys','Summoned Warlord-affiliated squads']); }
+				// interesting characters
+				// ignore the EX crew - too common to note
+				else if ( row.event.match(/^Met (\w\w-\w\w\w|A\d)/i) && !row.event.match(/(8R|EX)-\w\w\w/) ) {
+					let name = row.event.replace(/Met (\w\w-\w\w\w|A\d).*/,'$1' );
+					data.badges.push([`${name}`,`Met ${name}`]); 
+					}
+				// kills
+				else if ( row.event.match(/^(Destroyed|Murdered) (Data Miner|\w\w-\w\w\w|A\d)$/i) ) { 
+					let name = row.event.replace(/(Destroyed|Murdered) (Data Miner|\w\w-\w\w\w|A\d)$/,'$2' );
+					data.badges.push([`-${name}`,`Murdered ${name}`]); 
+					}
 				else if ( row.event.match(/Fired Drained L-Cannon/i) ) { 
 					data.badges.push(['DLC','Fired a Drained L-Cannon']); 
 					// runia hack
@@ -2317,13 +2330,6 @@ function CalculateBadges(data) {
 	if ( data.bonus.destroyedArchitect ) { data.badges.push(['-Arch','Destroyed the Architect']); }
 	if ( data.bonus.destroyedMainc ) { data.badges.push(['-MC','Destroyed Main.C']); }
 	if ( data.bonus.destroyedZimprinter ) { data.badges.push(['-Z','Destroyed the Z-Imprinter']); }
-	if ( data.bonus.destroyedA2 ) { data.badges.push(['-A2','Destroyed A2']); }
-	if ( data.bonus.destroyedA3 ) { data.badges.push(['-A3','Destroyed A3']); }
-	if ( data.bonus.destroyedA4 ) { data.badges.push(['-A4','Destroyed A4']); }
-	if ( data.bonus.destroyedA5 ) { data.badges.push(['-A5','Destroyed A5']); }
-	if ( data.bonus.destroyedA6 ) { data.badges.push(['-A6','Destroyed A6']); }
-	if ( data.bonus.destroyedA7 ) { data.badges.push(['-A7','Destroyed A7']); }
-	if ( data.bonus.destroyedA8 ) { data.badges.push(['-A8','Destroyed A8']); } // are there more?
 	if ( data.bonus.destroyedRevision17 ) { data.badges.push(['-R17','Destroyed Revision17. Just because.']); }
 	if ( data.bonus.alignedWithFarcom) { data.badges.push(['FarCom','Aligned with FarCom from the Exiles']); }
 	if ( data.bonus.wasImprinted) { data.badges.push(['Imprinted','Got imprinted in Zion']); }
