@@ -700,9 +700,14 @@
 								
 							</div>
 							<div class="col-sm-12 mt-1">
-								<select v-model="settings.sort" class="form-select" style="width:14em;">
+								<select v-model="settings.sort" class="form-select" style="width:auto; display: inline-block;">
 									<option value="desc" selected>Sort Descending</option>
 									<option value="asc">Sort Ascending</option>
+								</select>
+								<select v-model="settings.lookupResultsMode" class="form-select" style="width:auto; display: inline-block;" >
+									<option value="auto" selected>Results: Auto</option>
+									<option value="sorted">Sorted Values</option>
+									<option value="frequency" >Frequency Count</option>
 								</select>
 							</div>
 							<div class="col-sm-12 mt-1">
@@ -716,7 +721,7 @@
 							<progress style="height: 2em;" ></progress>
 						</template>
 						
-						<template v-else-if="selectedStatData && selectedStatLookup.type === 'string'">
+						<template v-else-if="selectedStatData && selectedStatData.length && 'num' in selectedStatData[0]">
 							<h2>Frequency:</h2>
 							<table class="table text-nowrap">
 								<tr>
@@ -730,7 +735,7 @@
 							</table>						
 						</template>
 						
-						<template v-else-if="selectedStatData && selectedStatLookup.type !== 'string'">
+						<template v-else-if="selectedStatData && selectedStatData.length && 'mode' in selectedStatData[0]">
 							<h2>Top Runs</h2>
 							<table class="table text-nowrap">
 								<tr>
@@ -751,7 +756,11 @@
 								</tr>
 							</table>						
 						</template>
-						
+				
+						<template v-else>
+							<p>No results found</p>
+						</template>
+												
 					</template>
 					
 																					

@@ -516,8 +516,12 @@ function GetTopX( $label, $mode=null, $difficulty=null, $version=null, $player=n
 	$sort = $sort == 'ASC' ? 'ASC' : 'DESC';
 	$limit = $num ? " LIMIT $num " : NULL ;
 	$hooks = implode(' ', $hooks);
+	$order_by = 'CAST(runstats.value as DECIMAL(24,5))';
 	$records = [];
 	$db = DB();
+	$q = "SELECT 1 FROM stats WHERE id = CRC32('" . addslashes($label) . "') AND type='string' LIMIT 1;";
+	$result = $db->query($q);
+	if ( $result->num_rows ) { $order_by = 'runstats.value'; }
 	$q = "
 		SELECT 
 			runstats.value as value, 
@@ -530,7 +534,7 @@ function GetTopX( $label, $mode=null, $difficulty=null, $version=null, $player=n
 		WHERE runstats.run_id = runs.id
 			AND runstats.stat_id = CRC32('" . addslashes($label) . "') 
 			$hooks
-		ORDER BY CAST(runstats.value as DECIMAL(24,5)) $sort
+		ORDER BY $order_by $sort
 		$limit
 		";
 		// print $q; exit;

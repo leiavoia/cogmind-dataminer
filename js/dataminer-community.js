@@ -623,7 +623,8 @@ app = new Vue({
 			difficulties: [],
 			versions: [],
 			players: [],
-			modes:[]
+			modes:[],
+			lookupResultsMode:'auto' // used for individual state lookup: auto, frequency, sorted
 		},
 		settingsForm: {
 			num: 50,
@@ -707,29 +708,43 @@ function validateLookupFilter() {
 }
 
 function selectStatLookup() {
+	// if ( !app.selectedStatLookup ) { return false; }
+	// app.settings.label = app.selectedStatLookup.label;
+	// app.settings.num = 100;
+	// app.selectedStatData = 'loading';
+	// // if the data is numeric, get the top30 list
+	// if ( app.selectedStatLookup.type !== 'string' ) {
+	// 	LoadStatsFromServer( 'topx', data => {
+	// 		if ( data ) { 
+	// 			app.selectedStatData = data;
+	// 			ChangePane('lookup');
+	// 		}
+	// 	}, false);	
+	// }
+	// else {
+	// 	// if its a string, we want a frequency count instead
+	// 	LoadStatsFromServer( 'strfreq', data => {
+	// 		if ( data ) { 
+	// 			app.selectedStatData = data;
+	// 			ChangePane('lookup');
+	// 		}
+	// 	}, false);	
+	// }
 	if ( !app.selectedStatLookup ) { return false; }
 	app.settings.label = app.selectedStatLookup.label;
 	app.settings.num = 100;
 	app.selectedStatData = 'loading';
-	// if the data is numeric, get the top30 list
-	if ( app.selectedStatLookup.type !== 'string' ) {
-		LoadStatsFromServer( 'topx', data => {
-			if ( data ) { 
-				app.selectedStatData = data;
-				ChangePane('lookup');
-			}
-		}, false);	
-	}
-	else {
-		// if its a string, we want a frequency count instead
-		LoadStatsFromServer( 'strfreq', data => {
-			if ( data ) { 
-				app.selectedStatData = data;
-				ChangePane('lookup');
-			}
-		}, false);	
-	}
-	
+	let lookup_func = 'topx';
+	if ( app.settings.lookupResultsMode === 'frequency' ) { lookup_func = 'strfreq'; }
+	else if ( app.settings.lookupResultsMode === 'sorted' ) { lookup_func = 'topx'; }
+	else if ( app.selectedStatLookup.type !== 'string' ) { lookup_func = 'topx'; }
+	else { lookup_func = 'strfreq'; }
+	LoadStatsFromServer( lookup_func, data => {
+		if ( data ) { 
+			app.selectedStatData = data;
+			ChangePane('lookup');
+		}
+	}, false);	
 }
 
 function ChangePane(pane) {
