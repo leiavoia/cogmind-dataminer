@@ -265,6 +265,7 @@ const map_names = {
 	ARM: 'Armory',
 	WAS: 'Waste',
 	GAR: 'Garrison',
+	FRG: 'Protoforge',
 	DSF: 'DSF', 35: 'DSF', // bug for Beta11-X8 data format not updated yet
 };
 
@@ -2178,9 +2179,10 @@ function CalculateBadges(data) {
 	
 	// win type
 	if ( data.header.win ) {
-		let winbadge = 'W' + data.game.winType;
+		let winbadge = 'W' + ( data.game.winType ?? '0' );
 		if ( data.bonus.destroyedArchitect ) winbadge += '+';
 		if ( data.bonus.destroyedMainc ) winbadge += '+';
+		if ( data.bonus.destroyedSuperfortress ) winbadge += '+';
 		let desc = 'Win!';
 		switch ( data.game.winType ) { 
 			case 0: { desc = 'Win! Took the Access surface exit'; break; }
@@ -2192,6 +2194,8 @@ function CalculateBadges(data) {
 			case 6: { desc = 'Win! Escaped from the singularity in A0'; break; }
 			case 7: { desc = 'Win! Beat MAIN.C with the help of warlord'; break; }
 			case 8: { desc = 'Win! Surrendered to MAIN.C and fought off the assault'; break; }
+			case 9: { desc = 'Win! Bombed the Protoforge with 0bPrime'; break; }
+			default: { desc = 'Win! ' + data.header.runResult; break; }
 		}
 		data.badges.unshift([winbadge,desc]);
 		if ( data.game.winTotal === 1 ) { 
@@ -2253,16 +2257,21 @@ function CalculateBadges(data) {
 				else if ( row.event.match(/(Murdered|Destroyed) Data Miner/i) ) { data.badges.push(['-DM','Destroyed Data Miner']); }
 				else if ( row.event.match(/(Murdered|Destroyed) Fake God Mode/i) ) { data.badges.push(['-FGM','Destroyed Fake God Mode']); }
 				else if ( row.event.match(/(Murdered|Destroyed) God Mode/i) ) { data.badges.push(['-GM','Destroyed God Mode']); }
-				else if ( row.event.match(/(Murdered|Destroyed) Warlord/i) ) { data.badges.push(['-W','Destroyed Warlord']); }
+				else if ( row.event.match(/(Murdered|Destroyed) Warlord(?!\sOutpost)/i) ) { data.badges.push(['-W','Destroyed Warlord']); }
 				else if ( row.event.match(/(Murdered|Destroyed) Triborg/i) ) { data.badges.push(['-Triborg','Destroyed Triborg']); }
+				else if ( row.event.match(/(Murdered|Destroyed) Optimus/i) ) { data.badges.push(['-Optimus','Destroyed Optimus']); }
 				else if ( row.event.match(/Scrapoid. reinforcements arrived/i) ) { data.badges.push(['Scrapoids','Called for Scrapoid reinforcements']); }
 				else if ( row.event.match(/Botcube activated/i) ) { data.badges.push(['Botcube','Activated a Botcube']); }
 				else if ( row.event.match(/gained temporary slots/i) ) { data.badges.push(['TempSlot','Gained temporary slots with a special item']); }
 				else if ( row.event.match(/Attacked by Scraptown defenders/i) ) { data.badges.push(['Scrapterrorist','Attacked Scraptown']); }
 				else if ( row.event.match(/Found Scrap Engine/i) ) { data.badges.push(['SE','Found a Scrap Engine']); }
 				else if ( row.event.match(/Registered with UFD/i) ) { data.badges.push(['UFD',row.event]); }
+				else if ( row.event.match(/Identified Amulet of Y3-NDR/i) ) { data.badges.push(['Y3-NDR',row.event]); }
+				else if ( row.event.match(/Assembled PL-3XN's Obliterator/i) ) { data.badges.push(['Obliterator',row.event]); }
 				else if ( row.event.match(/VL-GR5 left a parting gift/i) ) { data.badges.push(['Gift','Received a gift from VL-GR5']); }
 				else if ( row.event.match(/Found Encrypted Comm Array/i) ) { data.badges.push(['ECA','Found a Warlord Encrypted Comm Array']); }
+				else if ( row.event.match(/Superfortress began startup sequence/i) ) { data.badges.push(['Awoken','Woke a sleeping Superfortress']); }
+				else if ( row.event.match(/Forged Prototype Slashing Weapon/i) ) { data.badges.push(['SQC','Forged a Superquantum Companion Sword']); }
 				else if ( row.event.match(/Joined by Warlord .* squad/i) ) { data.badges.push(['W-Boys','Summoned Warlord-affiliated squads']); }
 				// interesting characters
 				// ignore the EX crew - too common to note
@@ -2271,7 +2280,7 @@ function CalculateBadges(data) {
 					data.badges.push([`${name}`,`Met ${name}`]); 
 					}
 				// kills
-				else if ( row.event.match(/^(Destroyed|Murdered) (Data Miner|\w\w-\w\w\w|A\d)$/i) ) { 
+				else if ( row.event.match(/^(Destroyed|Murdered) (Data Miner|(!?EQ)\w\w-\w\w\w|A\d)$/i) ) { 
 					let name = row.event.replace(/(Destroyed|Murdered) (Data Miner|\w\w-\w\w\w|A\d)$/,'$2' );
 					data.badges.push([`-${name}`,`Murdered ${name}`]); 
 					}
@@ -2328,6 +2337,7 @@ function CalculateBadges(data) {
 			
 	// bonuses (that we know about)
 	if ( data.bonus.destroyedArchitect ) { data.badges.push(['-Arch','Destroyed the Architect']); }
+	if ( data.bonus.destroyedSuperfortress ) { data.badges.push(['-SFFF','Destroyed Superfortress']); }
 	if ( data.bonus.destroyedMainc ) { data.badges.push(['-MC','Destroyed Main.C']); }
 	if ( data.bonus.destroyedZimprinter ) { data.badges.push(['-Z','Destroyed the Z-Imprinter']); }
 	if ( data.bonus.destroyedRevision17 ) { data.badges.push(['-R17','Destroyed Revision17. Just because.']); }
@@ -2363,6 +2373,30 @@ function CalculateBadges(data) {
 	if ( data.bonus.hackedMainc ) { data.badges.push(['McHacked','Hacked Main.C']); }
 	if ( data.bonus.zhirovDestroyedMainc ) { data.badges.push(['Zhirov\'s Revenge','Zhirov destroyed Main.C']); }
 	if ( data.bonus.used0b10Conduit ) { data.badges.push(['Conduit','Hacked the 0b10 Conduit']); }
+	if ( data.bonus.recoveredSigixCorpse ) { data.badges.push(['Corpse','No alien left behind. Recovered a Sigix corpse.']); }
+	if ( data.bonus.forgedQuantumCompanion ) { 
+		// only add if we didnt get SQC
+		if ( data.badges.findIndex( x => x[0]==='SQC' ) < 0 ) {
+			data.badges.push(['QC','Forged a Quantum Companion']);
+		}
+	}
+	if ( data.bonus.metOptimusInHq ) { data.badges.push(['Optimus','Met Optimus in Scraptown']); }
+	if ( data.bonus.metOptimusAtProtoforge ) { 
+		data.badges.push(['Optimized','Met Optimus in the ProtoForge']); 
+		// also remove the first badge
+		let i = data.badges.findIndex( x => x[0]=='Optimus' );
+		if ( i >= 0 ) { data.badges.splice( i, 1 ); }
+	}
+	if ( data.bonus.optimusSurvivedTo0b1 ) { 
+		data.badges.push(['Optimum','Optimus survived the Protoforge assault']); 
+		// also remove the first badge
+		let i = data.badges.findIndex( x => x[0]=='Optimized' );
+		if ( i >= 0 ) { data.badges.splice( i, 1 ); }
+	}
+			
+			
+			
+			
 			
 	// behemoth killer
 	if ( data.stats.kills?.classesDestroyed?.behemoth > 5 ) {
