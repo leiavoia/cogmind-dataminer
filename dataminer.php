@@ -1222,6 +1222,14 @@ function AddRun( $hash, $data ) {
 	
 	// don't add runs that didn't make it out of scrapyard. Messes up averages.
 	if ( $data['cogmind.location.depth'] == '-11' ) { return false; }
+
+	// don't add runs from incomplete or anonymous players
+	$required = ['meta.runGuid','header.playerName','meta.playerId'];
+	foreach ( $required as $r ) {
+		if ( !isset($data[$r]) || !$data[$r] ) {
+			return false;
+		}
+	}
 	
 	$result = $db->query("START TRANSACTION;");
 	DBCheckForErrors( $result, $db );
