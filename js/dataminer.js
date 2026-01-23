@@ -420,12 +420,12 @@ function DownloadDataminerDataAnalysis( app, force_standard_set=false ) {
 		.replace( /#.*/, '' ) 
 		.replace('index.html','')
 		+ 'dataminer.php'
-		+ `?version=${app.scoresheet.header.version || 'Beta 11'}`
+		+ `?version=${app.scoresheet.header.version || 'Beta 16'}`
 		+ `&difficulty=${app.scoresheet.header.difficulty || 'DIFFICULTY_ROGUE'}`
 		+ `&mode=${app.scoresheet.header.specialMode || 'SPECIAL_MODE_NONE'}`
 		;
 	if ( force_standard_set ) {
-		url = 'dataminer.analysis.standard.b13.json';
+		url = 'dataminer.analysis.standard.b15.json';
 	}
 	let fetchHandler = data => {
 		if ( data ) {
@@ -2186,7 +2186,7 @@ function CalculateBadges(data) {
 		let desc = 'Win!';
 		switch ( data.game.winType ) { 
 			case 0: { desc = 'Win! Took the Access surface exit'; break; }
-			case 1: { desc = 'Win! Beat MAIN.C and took the Command exit'; break; }
+			case 1: { desc = 'Win! Beat MAIN.C and took a surface exit'; break; }
 			case 2: { desc = 'Win! Used a Core Reset Matrix'; break; }
 			case 3: { desc = 'Win! Escaped with Sigix or Sigix Containment Pod'; break; }
 			case 4: { desc = 'Win! Hacked the 0b10 Command Conduit'; break; }
@@ -2283,6 +2283,15 @@ function CalculateBadges(data) {
 				else if ( row.event.match(/^(Destroyed|Murdered) (Data Miner|(!?EQ)\w\w-\w\w\w|A\d)$/i) ) { 
 					let name = row.event.replace(/(Destroyed|Murdered) (Data Miner|\w\w-\w\w\w|A\d)$/,'$2' );
 					data.badges.push([`-${name}`,`Murdered ${name}`]); 
+					}
+				// killed unchained
+				else if ( row.event.match(/^(Destroyed|Murdered) (6S-H0T|DW-4LL|GL-D0S|CL-0N3|QV-33N|BL-1NK|CY-PHR|V4-D3R|1B-0RG)$/i) ) { 
+					let name = row.event.replace(/(Destroyed|Murdered) (6S-H0T|DW-4LL|GL-D0S|CL-0N3|QV-33N|BL-1NK|CY-PHR|V4-D3R|1B-0RG)$/,'$2' );
+					data.badges.push([`-${name}`,`Murdered ${name}`]); 
+					}
+				// met unchained
+				else if ( row.event.match(/Unchained authorized/i) ) { 
+					data.badges.push([`Unchained`,`Met one of the Unchained`]); 
 					}
 				else if ( row.event.match(/Fired Drained L-Cannon/i) ) { 
 					data.badges.push(['DLC','Fired a Drained L-Cannon']); 
